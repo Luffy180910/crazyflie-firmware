@@ -15,12 +15,21 @@
 #define RANGING_INTERVAL_MAX 500 // default 500
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
 #define TX_PERIOD_IN_MS 20
+#define TX_RV_INTERVAL_HISTORY_SIZE 10
 
+/*--2添加--*/
 typedef struct
 {
     int16_t distance_history[3];
     uint8_t index_inserting;
 } median_data_t;
+
+typedef struct
+{
+    uint16_t interval[TX_RV_INTERVAL_HISTORY_SIZE]; // 近似两次数据包的发送间隔.存5次历史值
+    uint8_t latest_data_index;                      // 存储最新数据的index;
+} tx_rv_interval_history_t;
+
 typedef struct
 {
     uint16_t distanceTowards[RANGING_TABLE_SIZE + 1]; // cm
@@ -40,6 +49,8 @@ typedef struct
     int size;
 } currentNeighborAddressInfo_t; /*当前正在和本无人机进行通信的邻居地址信息*/
 
+/*--2添加--*/
+
 /* Ranging Operations */
 void rangingInit();
 int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
@@ -49,6 +60,8 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 int generateRangingMessage(Ranging_Message_t *rangingMessage);
 int16_t getDistance(uint16_t neighborAddress);
 void setDistance(uint16_t neighborAddress, int16_t distance);
+
+/*--3添加--*/
 
 /*set邻居的状态信息*/
 void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Message_Header_t *rangingMessageHeader);
@@ -65,4 +78,5 @@ bool getOrSetKeepflying(uint16_t RobIDfromControl, bool keep_flying);
 /*get正在和本无人机进行通信的邻居地址信息，供外部调用*/
 void getCurrentNeighborAddressInfo_t(currentNeighborAddressInfo_t *currentNeighborAddressInfo);
 
+/*--3添加--*/
 #endif

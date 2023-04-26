@@ -48,8 +48,9 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
 static void flyRandomIn1meter(void)
 {
   float_t randomYaw = (rand() / (float)RAND_MAX) * 6.28f; // 0-2pi rad
-  float_t randomVel = (rand() / (float)RAND_MAX) * 1;     // 0-1 m/s
-  float_t vxBody = randomVel * cosf(randomYaw);           // 速度分解
+  // float_t randomVel = (rand() / (float)RAND_MAX) * 1;     // 0-1 m/s
+  float_t randomVel = 0.5;
+  float_t vxBody = randomVel * cosf(randomYaw); // 速度分解
   float_t vyBody = randomVel * sinf(randomYaw);
   for (int i = 1; i < 100; i++)
   {
@@ -79,7 +80,7 @@ static void formation0asCenter(float_t tarX, float_t tarY)
   PreTime = xTaskGetTickCount();
   if (dt > 1) // skip the first run of the EKF
     return;
-  // pid control for formation flight
+  // pid control for formation flight 当前是1号无人机
   float err_x = -(tarX - relaVarInCtrl[0][STATE_rlX]);
   float err_y = -(tarY - relaVarInCtrl[0][STATE_rlY]);
   float pid_vx = relaCtrl_p * err_x;  // 2.0*err_x 基于距离差进行一个速度控制
@@ -215,7 +216,7 @@ void reset_estimators()
 
 void relativeControlTask(void *arg)
 {
-  static const float_t targetList[7][STATE_DIM_rl] = {{0.0f, 0.0f, 0.0f}, {-1.0f, 0.5f, 0.0f}, {-1.0f, -0.5f, 0.0f}, {-1.0f, -1.5f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {-2.0f, 0.0f, 0.0f}};
+  static const float_t targetList[7][STATE_DIM_rl] = {{0.0f, 0.0f, 0.0f}, {-1.13f, -0.82f, 0.0f}, {-1.13f, 0.82f, 0.0f}, {0.43f, 1.33f, 0.0f}, {1.4f, 0.0f, 0.0f}, {0.43f, -1.33f, 0.0f}, {1.5f, 1.5f, 0.0f}};
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
 
@@ -237,30 +238,31 @@ void relativeControlTask(void *arg)
 
       // control loop
       tickInterval = xTaskGetTickCount() - takeoff_tick;
-      DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[0][STATE_rlX], relaVarInCtrl[0][STATE_rlY], relaVarInCtrl[0][STATE_rlYaw]);
+      // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[0][STATE_rlX], relaVarInCtrl[0][STATE_rlY], relaVarInCtrl[0][STATE_rlYaw]);
+      // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
+
       if (tickInterval <= 25000)
       {
 
         flyRandomIn1meter(); // random flight within first 10 seconds
-        targetX = relaVarInCtrl[0][STATE_rlX];
-        targetY = relaVarInCtrl[0][STATE_rlY];
       }
       else
       {
-
-        if ((tickInterval > 25000) && (tickInterval <= 50000))
-        { // 0-random, other formation
+        if ((tickInterval > 25000) && (tickInterval <= 28000))
+        {
           if (MY_UWB_ADDRESS == 0)
           {
-            flyRandomIn1meter();
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
           }
           else
           {
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
             formation0asCenter(targetX, targetY);
           }
           // NDI_formation0asCenter(targetX, targetY);
         }
-        else if ((tickInterval > 50000) && (tickInterval <= 70000))
+        else if ((tickInterval > 28000) && (tickInterval <= 50000))
         {
           if (MY_UWB_ADDRESS == 0)
           {
@@ -273,7 +275,7 @@ void relativeControlTask(void *arg)
             formation0asCenter(targetX, targetY);
           }
         }
-        else if (tickInterval > 70000 && tickInterval <= 90000)
+        else if (tickInterval > 50000 && tickInterval <= 60000)
         {
           if (MY_UWB_ADDRESS == 0)
           {

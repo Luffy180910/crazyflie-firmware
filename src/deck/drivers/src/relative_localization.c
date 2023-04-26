@@ -60,7 +60,7 @@ static uint16_t dij;       // distance between self i and other j
 static float hi, hj;       // height of robot i and j
 
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
-static uint8_t initRelativePosition[5][5][STATE_DIM_rl]; /*用于在指定无人机的初始位置时使用*/
+static int16_t initRelativePosition[5][5][STATE_DIM_rl]; /*用于在指定无人机的初始位置时使用*/
 
 // 矩阵转置
 static inline void mat_trans(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst)
@@ -134,36 +134,35 @@ void relativeLocoTask(void *arg)
     while (1)
     {
         vTaskDelay(10);
-        getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
+        getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo); // TODO
         for (int index = 0; index < currentNeighborAddressInfo.size; index++)
         {
+            connectCount = 0;
             address_t neighborAddress = currentNeighborAddressInfo.address[index];
             bool isNewAdd; // 邻居是否是新加入的
+
             if (getNeighborStateInfo(neighborAddress, &dij, &vxj_t, &vyj_t, &rj, &hj_t, &isNewAdd))
             {
-                // DEBUG_PRINT("isNewAdd:%d\n", isNewAdd);
+                // DEBUG_PRINT("start：%d\n", xTaskGetTickCount());
                 vxj = (vxj_t + 0.0) / 100;
                 vyj = (vyj_t + 0.0) / 100;
                 hj = (hj_t + 0.0) / 100;
                 if (isNewAdd)
                 {
-                    DEBUG_PRINT("is nEW\n");
                     relaVarInit(relaVar, neighborAddress);
-                    DEBUG_PRINT("after init:%d\n", relaVar[neighborAddress].S[STATE_rlX]);
                 }
-                connectCount = 0;
-                // DEBUG_PRINT("1:vx:%f,vy:%f,gz:%f,h:%f,dij:%d\n", vxj, vyj, rj, hj, dij);
                 estimatorKalmanGetSwarmInfo(&vxi_t, &vyi_t, &ri, &hi_t); // 当前无人机的信息
                 vxi = (vxi_t + 0.0) / 100;
                 vyi = (vyi_t + 0.0) / 100;
                 hi = (hi_t + 0.0) / 100;
-                // DEBUG_PRINT("2:vx:%f,vy:%f,gz:%f,h:%f,dij:%d\n", vxi, vyi, rj, hi, dij);
                 if (relaVar[neighborAddress].receiveFlag)
                 {
                     uint32_t osTick = xTaskGetTickCount();
                     float dtEKF = (float)(osTick - relaVar[neighborAddress].oldTimetick) / configTICK_RATE_HZ;
                     relaVar[neighborAddress].oldTimetick = osTick;
                     relativeEKF(neighborAddress, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
+
+                    // DEBUG_PRINT("end：%d\n", xTaskGetTickCount());
                 }
                 else
                 {
@@ -174,10 +173,16 @@ void relativeLocoTask(void *arg)
             }
         }
         connectCount++;
-        // DEBUG_PRINT("connectCount:%d\n", connectCount);
-        if (connectCount > 6000) // // 这里我设定的是60s没有测距，fullConnect=false
+        // DEBUG_PRINT("%d\n", connectCount);
+        if (connectCount < 1000) // // 这里我设定的是60s没有测距，fullConnect=false
         {
-            fullConnect = false; // disable control if there is no ranging after 1 second
+
+            fullConnect = true; // disable control if there is no ranging after 1 second
+        }
+        else
+        {
+            DEBUG_PRINT("------------");
+            fullConnect = false;
         }
     }
 }
@@ -257,7 +262,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     mat_trans(&tmpNN1m, &tmpNN2m);     // (KH - I)'
     mat_mult(&tmpNN1m, &Pm, &tmpNN3m); // (KH - I)*P
     mat_mult(&tmpNN3m, &tmpNN2m, &Pm); // (KH - I)*P*(KH - I)'
-    DEBUG_PRINT("dis:%d\n", dij);
+    // DEBUG_PRINT("dis:%d\n", dij);
 }
 
 bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)

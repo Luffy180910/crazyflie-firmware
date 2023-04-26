@@ -5,6 +5,8 @@
 #include "queue.h"
 #include "task.h"
 #include "system.h"
+#include "time.h"
+#include "math.h"
 
 #include "autoconf.h"
 #include "debug.h"
@@ -16,10 +18,23 @@
 #include "estimator_kalman.h"
 
 static uint16_t MY_UWB_ADDRESS;
+/*--5添加--*/
+static SemaphoreHandle_t rangingTableSetMutex;                 // 用于互斥访问rangingTableSet
+static median_data_t median_data[RANGING_TABLE_SIZE + 1];      // 存储测距的历史值
+static uint16_t rv_data_interval[RANGING_TABLE_SIZE + 1];      // 两次接收到数据包的时间间隔
+static uint8_t rv_data_interval_index[RANGING_TABLE_SIZE + 1]; // 两次接收到数据包的时间间隔下标
+static uint8_t rv_any_index = 0;
+static uint8_t temp;
+static currentNeighborAddressInfo_t currentNeighborAddressInfo;
+static uint32_t latest_txTime;                                                  // 最新的发送数据包时间，用于日志
+static uint32_t neighbor_latest_rvTime[RANGING_TABLE_SIZE + 1];                 // 最新的接收数据包时间，用于日志
+static uint32_t last_swapPeriod_Time;                                           // 上一次变化周期的时间，如果距离上一次变换周期的时间>固定的传输周期，则恢复至固定传输周期
+static uint32_t last_swapPeriod_period;                                         // 上一次变化的周期值
+static tx_rv_interval_history_t tx_rv_interval_history[RANGING_TABLE_SIZE + 1]; //  两次的漂移差
+static uint8_t tx_rv_interval = 0;
+static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS; // 发送数据包周期
 
-static SemaphoreHandle_t rangingTableSetMutex;            // 用于互斥访问rangingTableSet
-static median_data_t median_data[RANGING_TABLE_SIZE + 1]; // 存储测距的历史值
-
+/*--5添加--*/
 static QueueHandle_t rxQueue;
 static Ranging_Table_Set_t rangingTableSet;
 static UWB_Message_Listener_t listener;
@@ -28,13 +43,13 @@ static TaskHandle_t uwbRangingRxTaskHandle = 0;
 
 static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int TfBufferIndex = 0;
-static int rangingSeqNumber = 1;
-
+static uint8_t rangingSeqNumber = 1;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
+/*--4添加--*/
 static neighborStateInfo_t neighborStateInfo; // 邻居的状态信息
 static bool my_keep_flying;                   // 当前无人机的keep_flying
 
@@ -42,6 +57,8 @@ void initNeighborStateInfoAndMedian_data()
 {
   for (int i = 0; i < RANGING_TABLE_SIZE + 1; i++)
   {
+    tx_rv_interval_history[i].latest_data_index = 0;
+    tx_rv_interval_history[i].interval[0] = 1000;
     median_data[i].index_inserting = 0;
     neighborStateInfo.refresh[i] = false;
   }
@@ -129,6 +146,20 @@ void getCurrentNeighborAddressInfo_t(currentNeighborAddressInfo_t *currentNeighb
   xSemaphoreGive(rangingTableSetMutex);
 }
 
+uint16_t get_tx_rx_min_interval(address_t address)
+{
+  uint8_t index = tx_rv_interval_history[address].latest_data_index;
+  uint16_t res = tx_rv_interval_history[address].interval[index];
+
+  for (uint8_t i = 0; i < TX_RV_INTERVAL_HISTORY_SIZE - 1; i++)
+  {
+    index = (index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
+    uint16_t interval = tx_rv_interval_history[address].interval[index];
+    res = res < interval ? res : interval;
+  }
+  return res;
+}
+
 static int16_t median_filter_3(int16_t *data)
 {
   int16_t middle;
@@ -148,7 +179,7 @@ static int16_t median_filter_3(int16_t *data)
 }
 #define ABS(a) ((a) > 0 ? (a) : -(a))
 
-/*---自己添加---*/
+/*--4添加--*/
 
 void rangingRxCallback(void *parameters)
 {
@@ -207,7 +238,33 @@ static void uwbRangingTxTask(void *parameters)
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    vTaskDelay(TX_PERIOD_IN_MS + rand() % 15);
+    uint8_t last_period = xTaskGetTickCount() - latest_txTime;
+    latest_txTime = xTaskGetTickCount();
+    /*--13添加--*/
+    getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
+    uint16_t notget_packet_interval = 0;
+
+    nextTransportPeriod = TX_PERIOD_IN_MS;
+
+    for (int i = 0; i < currentNeighborAddressInfo.size; i++)
+    {
+      address_t address = currentNeighborAddressInfo.address[i];
+      notget_packet_interval = xTaskGetTickCount() - neighbor_latest_rvTime[address];
+      if (notget_packet_interval > 45)
+      {
+        // if (get_tx_rx_min_interval(address) <= 2 /*|| get_tx_rx_min_interval(address) >= 18*/)
+        // {
+        //   nextTransportPeriod = TX_PERIOD_IN_MS / 4 + rand() % 25;
+        //   break;
+        // }
+        nextTransportPeriod = TX_PERIOD_IN_MS / 4 + rand() % 25;
+        break;
+      }
+    }
+    // nextTransportPeriod = 15 + rand() % 6;
+    vTaskDelay(nextTransportPeriod);
+
+    /*--13添加--*/
   }
 }
 
@@ -231,9 +288,12 @@ void rangingInit()
 {
   MY_UWB_ADDRESS = getUWBAddress();
   DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
+  /*--12添加--*/
   initNeighborStateInfoAndMedian_data();
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetMutex = xSemaphoreCreateMutex();
+  srand((unsigned)time(NULL));
+  /*--12添加--*/
   rangingTableSetInit(&rangingTableSet);
 
   listener.type = RANGING;
@@ -256,6 +316,7 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
                         Timestamp_Tuple_t Tr, Timestamp_Tuple_t Rr,
                         Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf)
 {
+  // DEBUG_PRINT("compute start");
 
   int64_t tRound1, tReply1, tRound2, tReply2, diff1, diff2, tprop_ctn;
   tRound1 = (Rr.timestamp.full - Tp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
@@ -266,10 +327,12 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
   diff2 = tRound2 - tReply2;
   tprop_ctn = (diff1 * tReply2 + diff2 * tReply1 + diff2 * diff1) / (tRound1 + tRound2 + tReply1 + tReply2);
   int16_t calcDist = (int16_t)tprop_ctn * 0.4691763978616;
-
+  /*--7添加--*/
   /*这里暂时采用和李树帅twr中一样的形式*/
+
   if (calcDist > 0 && calcDist < 1000)
   {
+
     int16_t medianDist = median_filter_3(median_data[neighborAddress].distance_history);
 
     median_data[neighborAddress].index_inserting++;
@@ -279,7 +342,7 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
     }
     median_data[neighborAddress].distance_history[median_data[neighborAddress].index_inserting] = calcDist;
 
-    if (ABS(medianDist - calcDist) > 50)
+    if (ABS(medianDist - calcDist) > 15)
     {
       return medianDist;
     }
@@ -289,6 +352,7 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
     }
   }
   return 0;
+  /*--7添加--*/
 
   // bool isErrorOccurred = false;
   // if (calcDist > 1000 || calcDist < 0)
@@ -317,8 +381,41 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
   set_index_t neighborIndex = findInRangingTableSet(&rangingTableSet, neighborAddress);
 
+  /*这里用于测试数据丢包情况*/
+  rv_data_interval[neighborAddress] = xTaskGetTickCount() - neighbor_latest_rvTime[neighborAddress];
+  rv_data_interval_index[neighborAddress] = (rv_data_interval_index[neighborAddress] + 1) % 10;
+  rv_any_index++;
+  /*这里用于测试数据丢包情况*/
+  uint32_t curr_time = xTaskGetTickCount();
+  neighbor_latest_rvTime[neighborAddress] = curr_time;
+  tx_rv_interval_history[neighborAddress].latest_data_index = (tx_rv_interval_history[neighborAddress].latest_data_index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
+  tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index] = curr_time - latest_txTime;
+
+  if (neighborAddress == 5)
+  {
+    tx_rv_interval = curr_time - latest_txTime;
+  }
+  // DEBUG_PRINT("%d,%d,%d\n", neighborAddress, tx_rv_interval_history[neighborAddress].latest_data_index, tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index]);
+  // if (tx_rv_interval <= 1)
+  // {
+
+  //   nextTransportPeriod = TX_PERIOD_IN_MS - 5 + rand() % 10;
+  //   last_swapPeriod_Time = xTaskGetTickCount();
+  //   last_swapPeriod_period = nextTransportPeriod;
+  // }
+  // else
+  // {
+  //   if ((xTaskGetTickCount() - last_swapPeriod_Time) > nextTransportPeriod + 3)
+  //   {
+  //     nextTransportPeriod = TX_PERIOD_IN_MS;
+  //   }
+  //   // DEBUG_PRINT("..%d\n", nextTransportPeriod);
+  // }
+
+  /*--8添加--*/
   bool isNewAddNeighbor = neighborIndex == -1 ? true : false; /*如果是新添加的邻居，则是true*/
   setNeighborStateInfo_isNewAdd(neighborAddress, isNewAddNeighbor);
+  /*--8添加--*/
 
   // DEBUG_PRINT("processRangingMessage:%d\n", isNewAddNeighbor);
   /* handle new neighbor */
@@ -331,9 +428,11 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     }
     Ranging_Table_t table;
     rangingTableInit(&table, neighborAddress);
+    /*--10添加--*/
     xSemaphoreTake(rangingTableSetMutex, portMAX_DELAY);
     neighborIndex = rangingTableSetInsert(&rangingTableSet, &table);
     xSemaphoreGive(rangingTableSetMutex);
+    /*--10添加--*/
   }
 
   Ranging_Table_t *neighborRangingTable = &rangingTableSet.setData[neighborIndex].data;
@@ -370,6 +469,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 
   if (neighborRf.timestamp.full)
   {
+
     neighborRangingTable->Rf = neighborRf;
     // TODO it is possible that can not find corresponding Tf
     /* find corresponding Tf in TfBuffer */
@@ -388,6 +488,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
         neighborRangingTable->Tp.timestamp.full && neighborRangingTable->Rp.timestamp.full &&
         neighborRangingTable->Tf.timestamp.full && neighborRangingTable->Rf.timestamp.full)
     {
+
       int16_t distance = computeDistance(neighborAddress, neighborRangingTable->Tp, neighborRangingTable->Rp,
                                          Tr_Rr_Candidate.Tr, Tr_Rr_Candidate.Rr,
                                          neighborRangingTable->Tf, neighborRangingTable->Rf);
@@ -395,8 +496,9 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       {
         neighborRangingTable->distance = distance;
         setDistance(neighborRangingTable->neighborAddress, distance);
-
+        /*--9添加--*/
         setNeighborStateInfo(neighborAddress, distance, &rangingMessage->header);
+        /*--9添加--*/
       }
       else
       {
@@ -422,6 +524,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 
 int generateRangingMessage(Ranging_Message_t *rangingMessage)
 {
+  /*--9添加--*/
   xSemaphoreTake(rangingTableSetMutex, portMAX_DELAY);
 #ifdef ENABLE_BUS_BOARDING_SCHEME
   sortRangingTableSet(&rangingTableSet);
@@ -468,6 +571,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   estimatorKalmanGetSwarmInfo(&rangingMessage->header.velocityXInWorld, &rangingMessage->header.velocityYInWorld, &rangingMessage->header.gyroZ, &rangingMessage->header.positionZ);
   rangingMessage->header.keep_flying = my_keep_flying;
 
+  /*--9添加--*/
   return rangingMessage->header.msgLength;
 }
 
@@ -481,4 +585,25 @@ LOG_ADD(LOG_INT16, distTo6, distanceTowards + 6)
 LOG_ADD(LOG_INT16, distTo7, distanceTowards + 7)
 LOG_ADD(LOG_INT16, distTo8, distanceTowards + 8)
 LOG_ADD(LOG_INT16, distTo8, distanceTowards + 9)
+
+LOG_ADD(LOG_UINT8, index, &rv_any_index)               // 只要接收到数据包，index++
+LOG_ADD(LOG_UINT8, index0, rv_data_interval_index + 0) // 接收到0号无人机数据包，rv_data_interval_index[0]++
+LOG_ADD(LOG_UINT8, index1, rv_data_interval_index + 1)
+LOG_ADD(LOG_UINT8, index2, rv_data_interval_index + 2)
+LOG_ADD(LOG_UINT8, index3, rv_data_interval_index + 3)
+LOG_ADD(LOG_UINT8, index4, rv_data_interval_index + 4)
+LOG_ADD(LOG_UINT8, index5, rv_data_interval_index + 5)
+LOG_ADD(LOG_UINT8, index6, rv_data_interval_index + 6)
+
+LOG_ADD(LOG_UINT8, diff5, &tx_rv_interval) // 与5号无人机的漂移差
+
+LOG_ADD(LOG_UINT16, interval0, rv_data_interval + 0) // 连续两次接收到0号无人机的时间差
+LOG_ADD(LOG_UINT16, interval1, rv_data_interval + 1)
+LOG_ADD(LOG_UINT16, interval2, rv_data_interval + 2)
+LOG_ADD(LOG_UINT16, interval3, rv_data_interval + 3)
+LOG_ADD(LOG_UINT16, interval4, rv_data_interval + 4)
+LOG_ADD(LOG_UINT16, interval5, rv_data_interval + 5)
+LOG_ADD(LOG_UINT16, interval6, rv_data_interval + 6)
+LOG_ADD(LOG_UINT8, period, &nextTransportPeriod)
+LOG_ADD(LOG_UINT8, seq, &rangingSeqNumber)
 LOG_GROUP_STOP(Ranging)
