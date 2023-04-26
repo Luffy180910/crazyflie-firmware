@@ -34,6 +34,8 @@ static tx_rv_interval_history_t tx_rv_interval_history[RANGING_TABLE_SIZE + 1]; 
 static uint8_t tx_rv_interval = 0;
 static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS; // 发送数据包周期
 
+static SemaphoreHandle_t rangingTableSetMutex;            // 用于互斥访问rangingTableSet
+static median_data_t median_data[RANGING_TABLE_SIZE + 1]; // 存储测距的历史值
 /*--5添加--*/
 static QueueHandle_t rxQueue;
 static Ranging_Table_Set_t rangingTableSet;
@@ -44,7 +46,9 @@ static TaskHandle_t uwbRangingRxTaskHandle = 0;
 static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int TfBufferIndex = 0;
 static uint8_t rangingSeqNumber = 1;
+/*--6添加--*/
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
+/*--6添加--*/
 static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
@@ -131,6 +135,7 @@ bool getOrSetKeepflying(uint16_t uwbAddress, bool keep_flying)
 
 void getCurrentNeighborAddressInfo_t(currentNeighborAddressInfo_t *currentNeighborAddressInfo)
 {
+  /*--11添加--*/
   xSemaphoreTake(rangingTableSetMutex, portMAX_DELAY);
   currentNeighborAddressInfo->size = 0;
   int i = 0;
@@ -144,6 +149,7 @@ void getCurrentNeighborAddressInfo_t(currentNeighborAddressInfo_t *currentNeighb
     iter = cur.next;
   }
   xSemaphoreGive(rangingTableSetMutex);
+  /*--11添加--*/
 }
 
 uint16_t get_tx_rx_min_interval(address_t address)
@@ -264,6 +270,8 @@ static void uwbRangingTxTask(void *parameters)
     // nextTransportPeriod = 15 + rand() % 6;
     vTaskDelay(nextTransportPeriod);
 
+    /*--13添加--*/
+    vTaskDelay(TX_PERIOD_IN_MS + rand() % 15);
     /*--13添加--*/
   }
 }
@@ -411,7 +419,6 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   //   }
   //   // DEBUG_PRINT("..%d\n", nextTransportPeriod);
   // }
-
   /*--8添加--*/
   bool isNewAddNeighbor = neighborIndex == -1 ? true : false; /*如果是新添加的邻居，则是true*/
   setNeighborStateInfo_isNewAdd(neighborAddress, isNewAddNeighbor);
