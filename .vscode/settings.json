@@ -16,5 +16,6 @@
         "iterator": "c",
         "ranging_struct.h": "c",
         "adhocdeck.h": "c"
-    }
+    },
+    "editor.fontSize": 18
 }

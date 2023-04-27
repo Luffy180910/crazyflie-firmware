@@ -31,7 +31,7 @@ static uint32_t neighbor_latest_rvTime[RANGING_TABLE_SIZE + 1];                 
 static uint32_t last_swapPeriod_Time;                                           // 上一次变化周期的时间，如果距离上一次变换周期的时间>固定的传输周期，则恢复至固定传输周期
 static uint32_t last_swapPeriod_period;                                         // 上一次变化的周期值
 static tx_rv_interval_history_t tx_rv_interval_history[RANGING_TABLE_SIZE + 1]; //  两次的漂移差
-static uint8_t tx_rv_interval = 0;
+static uint8_t tx_rv_interval[RANGING_TABLE_SIZE + 1] = {0};
 static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS; // 发送数据包周期
 
 static SemaphoreHandle_t rangingTableSetMutex;            // 用于互斥访问rangingTableSet
@@ -399,10 +399,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   tx_rv_interval_history[neighborAddress].latest_data_index = (tx_rv_interval_history[neighborAddress].latest_data_index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
   tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index] = curr_time - latest_txTime;
 
-  if (neighborAddress == 5)
-  {
-    tx_rv_interval = curr_time - latest_txTime;
-  }
+  tx_rv_interval[neighborAddress] = curr_time - latest_txTime;
   // DEBUG_PRINT("%d,%d,%d\n", neighborAddress, tx_rv_interval_history[neighborAddress].latest_data_index, tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index]);
   // if (tx_rv_interval <= 1)
   // {
@@ -602,7 +599,13 @@ LOG_ADD(LOG_UINT8, index4, rv_data_interval_index + 4)
 LOG_ADD(LOG_UINT8, index5, rv_data_interval_index + 5)
 LOG_ADD(LOG_UINT8, index6, rv_data_interval_index + 6)
 
-LOG_ADD(LOG_UINT8, diff5, &tx_rv_interval) // 与5号无人机的漂移差
+LOG_ADD(LOG_UINT8, diff0, tx_rv_interval+0) // 与0号无人机的漂移差
+LOG_ADD(LOG_UINT8, diff1, tx_rv_interval+1) // 
+LOG_ADD(LOG_UINT8, diff2, tx_rv_interval+2) // 
+LOG_ADD(LOG_UINT8, diff3, tx_rv_interval+3) // 
+LOG_ADD(LOG_UINT8, diff4, tx_rv_interval+4) // 
+LOG_ADD(LOG_UINT8, diff5, tx_rv_interval+5) // 
+LOG_ADD(LOG_UINT8, diff6, tx_rv_interval+6) // 
 
 LOG_ADD(LOG_UINT16, interval0, rv_data_interval + 0) // 连续两次接收到0号无人机的时间差
 LOG_ADD(LOG_UINT16, interval1, rv_data_interval + 1)
