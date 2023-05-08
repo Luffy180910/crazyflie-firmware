@@ -112,7 +112,7 @@ static void uwbRangingRxTask(void *parameters) {
       populateTwoHopNeighborSet(&rxPacketCache);
       MPRNeighborBitMap = populateMPRSet(twoHopNeighborBitMap);
       populateMPRSelectorSet(&rxPacketCache);
-      DEBUG_PRINT("MPR RECORD: %llu \n", MPRNeighborBitMap);
+      // DEBUG_PRINT("MPR RECORD: %llu \n", MPRNeighborBitMap);
     }
   }
 }

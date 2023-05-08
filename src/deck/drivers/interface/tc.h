@@ -25,10 +25,11 @@ typedef struct {
 /* Tc Message Header */
 typedef struct {
   uint16_t srcAddress; // 2 byte
+  uint16_t lastAddress; // 2 byte
   uint16_t msgSequence; // 2 byte
   uint16_t msgLength; // 2 byte
   uint8_t timeToLive; // 1 byte
-} __attribute__((packed)) Tc_Message_Header_t; // 7 byte
+} __attribute__((packed)) Tc_Message_Header_t; // 9 byte
 
 /* Tc Message */
 typedef struct {
@@ -41,7 +42,7 @@ typedef struct {
 #define TC_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
 
 /* Tc Constants */
-#define TC_INTERVAL 500
+#define TC_INTERVAL 4000
 #define TC_TIME_TO_LIVE 6
 
 /* Tc Operations */
@@ -54,5 +55,9 @@ void processTcMessage(Tc_Message_t *tcMessage);
 bool checkTcMessage(Tc_Message_t *tcMessage);
 
 /* Ms Operations */
+
+/* Upper Layer Protocol Interface */
+Flooding_Topology_Table_t getTcFloodingTopologyTable(uint16_t srcAddress, uint16_t dstAddress);
+int getTcFloodingTopologyTableSize();
 
 #endif
