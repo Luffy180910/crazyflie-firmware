@@ -134,11 +134,13 @@ uint16_t getUWBAddress()
 
 int uwbSendPacket(UWB_Packet_t *packet)
 {
+  TX_MESSAGE_TYPE = packet->header.type;
   xQueueSend(txQueue, packet, 0);
 }
 
 int uwbSendPacketBlock(UWB_Packet_t *packet)
 {
+  TX_MESSAGE_TYPE = packet->header.type;
   xQueueSend(txQueue, packet, portMAX_DELAY);
 }
 
@@ -401,7 +403,7 @@ static void uwbTaskInit()
   relativeLocoInit();
   relativeControlInit();
   // routingInit();
-  floodingInit();
+//  floodingInit();
 }
 /*********** Deck driver initialization ***************/
 static void dwm3000Init(DeckInfo *info)
