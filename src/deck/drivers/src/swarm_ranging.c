@@ -62,6 +62,7 @@ void rangingRxCallback(void *parameters) {
 }
 
 void rangingTxCallback(void *parameters) {
+//  DEBUG_PRINT("rangingTxCallback \n");
   dwTime_t txTime;
   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
   TfBufferIndex++;

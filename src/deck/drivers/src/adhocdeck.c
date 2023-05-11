@@ -78,6 +78,7 @@ static int packetSeqNumber = 1;
 static uint8_t rxBuffer[FRAME_LEN_MAX];
 
 static void txCallback() {
+//  DEBUG_PRINT("adhocdeck txCallback %d \n", TX_MESSAGE_TYPE);
   packetSeqNumber++;
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
     listeners[TX_MESSAGE_TYPE].txCb(NULL); // TODO no parameter passed into txCb now
@@ -124,11 +125,13 @@ uint16_t getUWBAddress() {
 }
 
 int uwbSendPacket(UWB_Packet_t *packet) {
-  xQueueSend(txQueue, packet, 0);
+  TX_MESSAGE_TYPE = packet->header.type;
+  return xQueueSend(txQueue, packet, 0);
 }
 
 int uwbSendPacketBlock(UWB_Packet_t *packet) {
-  xQueueSend(txQueue, packet, portMAX_DELAY);
+  TX_MESSAGE_TYPE = packet->header.type;
+  return xQueueSend(txQueue, packet, portMAX_DELAY);
 }
 
 int uwbReceivePacket(MESSAGE_TYPE type, UWB_Packet_t *packet) {

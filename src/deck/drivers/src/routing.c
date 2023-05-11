@@ -36,11 +36,11 @@ static uint16_t routingShortestTree[ROUTING_NODE_MAX_SIZE] = {0};
 static uint16_t MY_UWB_ADDRESS;
 
 void routingRxCallback(void *parameters) {
-  // DEBUG_PRINT("routingRxCallback \n");
+//   DEBUG_PRINT("routingRxCallback \n");
 }
 
 void routingTxCallback(void *parameters) {
-  // DEBUG_PRINT("routingTxCallback \n");
+//   DEBUG_PRINT("routingTxCallback \n");
 }
 
 int generateRoutingDataMessage(MockData_t *message, uint16_t dstAddress) {

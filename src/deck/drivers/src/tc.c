@@ -29,11 +29,11 @@ static int tcSeqNumber = 1;
 uint16_t tcCheckTable[TC_CHECK_TABLE_SIZE] = {0};
 
 void tcRxCallback(void *parameters) {
-  // DEBUG_PRINT("tcRxCallback \n");
+//   DEBUG_PRINT("tcRxCallback \n");
 }
 
 void tcTxCallback(void *parameters) {
-  // DEBUG_PRINT("tcTxCallback \n");
+//   DEBUG_PRINT("tcTxCallback \n");
 }
 
 static void uwbTcTxTask(void *parameters) {
