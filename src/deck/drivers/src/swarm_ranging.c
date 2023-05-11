@@ -22,6 +22,7 @@ static uint16_t MY_UWB_ADDRESS;
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t LOSS_COUNT[RANGING_TABLE_SIZE + 1] = {0};
+uint32_t DIST_COUNT[RANGING_TABLE_SIZE + 1] = {0};
 uint16_t LAST_RECEIVED_SEQ[RANGING_TABLE_SIZE + 1] = {0};
 /*用于计算丢包率*/
 
@@ -170,13 +171,11 @@ void getCurrentNeighborAddressInfo_t(currentNeighborAddressInfo_t *currentNeighb
 
 uint16_t get_tx_rx_min_interval(address_t address)
 {
-  uint8_t index = tx_rv_interval_history[address].latest_data_index;
-  uint16_t res = tx_rv_interval_history[address].interval[index];
+  uint16_t res = tx_rv_interval_history[address].interval[0];
 
-  for (uint8_t i = 0; i < TX_RV_INTERVAL_HISTORY_SIZE - 1; i++)
+  for (uint8_t i = 1; i < TX_RV_INTERVAL_HISTORY_SIZE; i++)
   {
-    index = (index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
-    uint16_t interval = tx_rv_interval_history[address].interval[index];
+    uint16_t interval = tx_rv_interval_history[address].interval[i];
     res = res < interval ? res : interval;
   }
   return res;
@@ -241,6 +240,8 @@ void setDistance(uint16_t neighborAddress, int16_t distance)
 {
   ASSERT(neighborAddress <= RANGING_TABLE_SIZE);
   distanceTowards[neighborAddress] = distance;
+  // 下面用于计算真正测距次数
+  DIST_COUNT[neighborAddress]++;
 }
 
 static void uwbRangingTxTask(void *parameters)
@@ -266,7 +267,7 @@ static void uwbRangingTxTask(void *parameters)
     getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
     uint16_t notget_packet_interval = 0;
 
-    nextTransportPeriod = TX_PERIOD_IN_MS-5;
+    nextTransportPeriod = TX_PERIOD_IN_MS;
 
     for (int i = 0; i < currentNeighborAddressInfo.size; i++)
     {
@@ -274,16 +275,16 @@ static void uwbRangingTxTask(void *parameters)
       notget_packet_interval = xTaskGetTickCount() - neighbor_latest_rvTime[address];
       if (notget_packet_interval > 45)
       {
-        if (get_tx_rx_min_interval(address) <= 2 /*|| get_tx_rx_min_interval(address) >= 18*/)
+        if (get_tx_rx_min_interval(address) <= 2 || notget_packet_interval > 100)
         {
-          nextTransportPeriod = TX_PERIOD_IN_MS / 4 + rand() % 25;
+          nextTransportPeriod = TX_PERIOD_IN_MS / 4 + rand() % 15;
           break;
         }
         // nextTransportPeriod = TX_PERIOD_IN_MS / 4 + rand() % 25;
         // break;+
       }
     }
-    nextTransportPeriod = 20;
+    // nextTransportPeriod = 20;
     vTaskDelay(nextTransportPeriod);
   }
 }
@@ -349,7 +350,7 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
   int16_t calcDist = (int16_t)tprop_ctn * 0.4691763978616;
   /*--7添加--*/
   /*这里暂时采用和李树帅twr中一样的形式*/
-  DEBUG_PRINT("%d\n",calcDist);
+  //DEBUG_PRINT("%d\n",calcDist);
 
   if (calcDist > 0 && calcDist < 1000)
   {
@@ -411,6 +412,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   /*这里用于测试数据丢包情况*/
   neighbor_latest_rvTime[neighborAddress] = curr_time;
   tx_rv_interval_history[neighborAddress].latest_data_index = (tx_rv_interval_history[neighborAddress].latest_data_index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
+  //DEBUG_PRINT("%d",tx_rv_interval_history[neighborAddress].latest_data_index);
   tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index] = curr_time - latest_txTime;
 
   tx_rv_interval[neighborAddress] = curr_time - latest_txTime;
@@ -443,10 +445,11 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   setNeighborStateInfo_isNewAdd(neighborAddress, isNewAddNeighbor);
   /*--8添加--*/
 
-  /*记录丢包率*/
+  /*记录丢包率-测距成功次数*/
   if(isNewAddNeighbor){
     LOSS_COUNT[neighborAddress]=0;
     RECEIVE_COUNT[neighborAddress]=1;
+    DIST_COUNT[neighborAddress]=0;
   }else{
       uint16_t lastSeqNumber = LAST_RECEIVED_SEQ[neighborAddress];
       uint16_t curSeqNumber = rangingMessage->header.msgSequence;
@@ -657,6 +660,15 @@ LOG_ADD(LOG_UINT32, recvNum4, RECEIVE_COUNT + 4)
 LOG_ADD(LOG_UINT32, recvNum5, RECEIVE_COUNT + 5)
 LOG_ADD(LOG_UINT32, recvNum6, RECEIVE_COUNT + 6)
 LOG_ADD(LOG_UINT32, recvNum7, RECEIVE_COUNT + 7)
+
+LOG_ADD(LOG_UINT32, distNum0, DIST_COUNT + 0) // 测距成功次数
+LOG_ADD(LOG_UINT32, distNum1, DIST_COUNT + 1)
+LOG_ADD(LOG_UINT32, distNum2, DIST_COUNT + 2)
+LOG_ADD(LOG_UINT32, distNum3, DIST_COUNT + 3)
+LOG_ADD(LOG_UINT32, distNum4, DIST_COUNT + 4)
+LOG_ADD(LOG_UINT32, distNum5, DIST_COUNT + 5)
+LOG_ADD(LOG_UINT32, distNum6, DIST_COUNT + 6)
+LOG_ADD(LOG_UINT32, distNum7, DIST_COUNT + 7)
 
 
 LOG_ADD(LOG_UINT8, index, &rv_any_index)               // 只要接收到数据包，index++
