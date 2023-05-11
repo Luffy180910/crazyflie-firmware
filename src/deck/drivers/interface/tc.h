@@ -8,7 +8,7 @@
 #include "dwTypes.h"
 #include "ranging_struct.h"
 
-#define MAX_TC_BODY_UNIT_NUMBER 30
+#define MAX_TC_BODY_UNIT_NUMBER 10
 #define TC_CHECK_TABLE_SIZE 10
 
 typedef portTickType Time_t;
