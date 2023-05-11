@@ -275,7 +275,7 @@ static void uwbTask(void *parameters)
         dwt_isr();
         xSemaphoreGive(irqSemaphore);
 #ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-        vTaskDelay(M2T(5)); // TODO check if necessary since increasing FREERTOS_HEAP_SIZE
+        // vTaskDelay(M2T(5)); // TODO check if necessary since increasing FREERTOS_HEAP_SIZE
 #endif
       } while (digitalRead(GPIO_PIN_IRQ) != 0);
     }

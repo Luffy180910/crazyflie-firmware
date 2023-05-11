@@ -22,7 +22,7 @@ static bool isInit;
 
 static float Qv = 1.0f;         // velocity deviation,初始值为1.0
 static float Qr = 0.7f;         // yaw rate deviation
-static float Ruwb = 0.5f;       // ranging deviation
+static float Ruwb = 1.0f;       // ranging deviation
 static float InitCovPos = 5.0f; // 初始位置误差
 static float InitCovYaw = 1.0f; // 初始偏航角误差
 
@@ -116,7 +116,7 @@ void relaVarInit(relaVariable_t *relaVar, uint16_t neighborAddress)
     // relaVar[neighborAddress].S[STATE_rlX] = initRelativePosition[neighborAddress][MY_UWB_ADDRESS][STATE_rlX]; // 设定初始位置
     // relaVar[neighborAddress].S[STATE_rlY] = initRelativePosition[neighborAddress][MY_UWB_ADDRESS][STATE_rlY];
     // relaVar[neighborAddress].S[STATE_rlYaw] = initRelativePosition[neighborAddress][MY_UWB_ADDRESS][STATE_rlYaw];
-    relaVar[neighborAddress].receiveFlag = false;
+    relaVar[neighborAddress].oldTimetick = xTaskGetTickCount();
     // DEBUG_PRINT("%f\n", relaVar[neighborAddress].S[STATE_rlX]);
 }
 
@@ -176,12 +176,11 @@ void relativeLocoTask(void *arg)
         // DEBUG_PRINT("%d\n", connectCount);
         if (connectCount < 1000) // // 这里我设定的是60s没有测距，fullConnect=false
         {
-
             fullConnect = true; // disable control if there is no ranging after 1 second
         }
         else
         {
-            DEBUG_PRINT("------------");
+            // DEBUG_PRINT("------------");
             fullConnect = false;
         }
     }
@@ -200,7 +199,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     relaVar[n].S[STATE_rlX] = xij + (cyaw * vxj - syaw * vyj - vxi + ri * yij) * dt;
     relaVar[n].S[STATE_rlY] = yij + (syaw * vxj + cyaw * vyj - vyi - ri * xij) * dt;
     relaVar[n].S[STATE_rlYaw] = relaVar[n].S[STATE_rlYaw] + (rj - ri) * dt;
-
+    // A状态转移矩阵
     A[0][0] = 1;
     A[0][1] = ri * dt;
     A[0][2] = (-syaw * vxj - cyaw * vyj) * dt;
@@ -233,8 +232,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     yij = relaVar[n].S[STATE_rlY];
     float distPred = arm_sqrt(xij * xij + yij * yij + (hi - hj) * (hi - hj)) + 0.0001f;
     float distMeas = (float)(dij / 100.0f);
-    // DEBUG_PRINT("%f\n", distMeas);
-    // distMeas = distMeas - (0.048f * distMeas + 0.65f); // UWB biad model
+    // h矩阵
     h[0] = xij / distPred;
     h[1] = yij / distPred;
     h[2] = 0;
@@ -262,7 +260,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     mat_trans(&tmpNN1m, &tmpNN2m);     // (KH - I)'
     mat_mult(&tmpNN1m, &Pm, &tmpNN3m); // (KH - I)*P
     mat_mult(&tmpNN3m, &tmpNN2m, &Pm); // (KH - I)*P*(KH - I)'
-    // DEBUG_PRINT("dis:%d\n", dij);
+    DEBUG_PRINT("dis:%d\n", dij);
 }
 
 bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)

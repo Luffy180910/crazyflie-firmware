@@ -45,11 +45,10 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   commanderSetSetpoint(setpoint, 3);
 }
 
-static void flyRandomIn1meter(void)
+static void flyRandomIn1meter(float_t randomVel)
 {
   float_t randomYaw = (rand() / (float)RAND_MAX) * 6.28f; // 0-2pi rad
   // float_t randomVel = (rand() / (float)RAND_MAX) * 1;     // 0-1 m/s
-  float_t randomVel = 0.5;
   float_t vxBody = randomVel * cosf(randomYaw); // 速度分解
   float_t vyBody = randomVel * sinf(randomYaw);
   for (int i = 1; i < 100; i++)
@@ -124,11 +123,11 @@ void take_off()
     setHoverSetpoint(&setpoint, 0, 0, height, 0);
     vTaskDelay(M2T(100));
   }
-  for (int i = 0; i < 10 * MY_UWB_ADDRESS; i++)
-  {
-    setHoverSetpoint(&setpoint, 0, 0, height, 0);
-    vTaskDelay(M2T(100));
-  }
+  // for (int i = 0; i < 10 * MY_UWB_ADDRESS; i++)
+  // {
+  //   setHoverSetpoint(&setpoint, 0, 0, height, 0);
+  //   vTaskDelay(M2T(100));
+  // }
   onGround = false;
 }
 
@@ -238,35 +237,38 @@ void relativeControlTask(void *arg)
 
       // control loop
       tickInterval = xTaskGetTickCount() - takeoff_tick;
-      // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[0][STATE_rlX], relaVarInCtrl[0][STATE_rlY], relaVarInCtrl[0][STATE_rlYaw]);
+      DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
       // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
 
-      if (tickInterval <= 25000)
+      if (tickInterval <= 15000)
       {
 
-        flyRandomIn1meter(); // random flight within first 10 seconds
+        float_t randomVel = 0.7;     // 0-1 m/s
+        flyRandomIn1meter(randomVel); // random flight within first 10 seconds
+        targetX = relaVarInCtrl[0][STATE_rlX];
+        targetY = relaVarInCtrl[0][STATE_rlY];
       }
       else
       {
-        if ((tickInterval > 25000) && (tickInterval <= 28000))
+        if ((tickInterval > 15000) && (tickInterval <= 30000))
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, height, 0);
+            float_t randomVel = (rand() / (float)RAND_MAX) * 1;   
+            flyRandomIn1meter(randomVel);
           }
           else
           {
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
             formation0asCenter(targetX, targetY);
           }
           // NDI_formation0asCenter(targetX, targetY);
         }
-        else if ((tickInterval > 28000) && (tickInterval <= 50000))
+        else if ((tickInterval > 30000) && (tickInterval <= 40000))
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            flyRandomIn1meter();
+            float_t randomVel = (rand() / (float)RAND_MAX) * 1;     // 0-1 m/s
+            flyRandomIn1meter(randomVel);
           }
           else
           {
@@ -274,8 +276,7 @@ void relativeControlTask(void *arg)
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
             formation0asCenter(targetX, targetY);
           }
-        }
-        else if (tickInterval > 50000 && tickInterval <= 60000)
+        }else if (tickInterval > 40000 && tickInterval <= 50000)
         {
           if (MY_UWB_ADDRESS == 0)
           {
