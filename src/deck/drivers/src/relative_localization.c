@@ -20,9 +20,9 @@
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
 
-static float Qv = 1.0f;         // velocity deviation,初始值为1.0
+static float Qv = 1.0f;         // velocity deviation,初始值为1.0    -0.25
 static float Qr = 0.7f;         // yaw rate deviation
-static float Ruwb = 1.0f;       // ranging deviation
+static float Ruwb = 1.0f;       // ranging deviation                -0.5
 static float InitCovPos = 5.0f; // 初始位置误差
 static float InitCovYaw = 1.0f; // 初始偏航角误差
 
