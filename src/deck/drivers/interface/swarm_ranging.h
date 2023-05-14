@@ -14,8 +14,12 @@
 #define RANGING_INTERVAL_MIN 20  // default 20
 #define RANGING_INTERVAL_MAX 500 // default 500
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
-#define TX_PERIOD_IN_MS 20
+#define TX_PERIOD_IN_MS 100
 #define TX_RV_INTERVAL_HISTORY_SIZE 5
+#define ZERO_STAGE 124  // 飞行阶段，0阶段随机飞
+#define FIRST_STAGE 125 //
+#define SECOND_STAGE 126
+#define LAND_STAGE 127
 
 /*--2添加--*/
 typedef struct
@@ -29,6 +33,16 @@ typedef struct
     uint16_t interval[TX_RV_INTERVAL_HISTORY_SIZE]; // 近似两次数据包的发送间隔.存5次历史值
     uint8_t latest_data_index;                      // 存储最新数据的index;
 } tx_rv_interval_history_t;
+
+typedef struct
+{
+    uint16_t address;
+    int8_t stage;
+    bool keepFlying;
+    uint32_t keepFlyingTrueTick;
+    bool alreadyTakeoff;
+
+} leaderStateInfo_t;
 
 typedef struct
 {
@@ -62,6 +76,15 @@ int16_t getDistance(uint16_t neighborAddress);
 void setDistance(uint16_t neighborAddress, int16_t distance);
 
 /*--3添加--*/
+
+/*设置当前无人机已经起飞*/
+void setMyTakeoff(bool isAlreadyTakeoff);
+
+/*获取leader的阶段信息*/
+uint8_t getLeaderStage();
+
+/*初始化leader状态信息*/
+void initLeaderStateInfo();
 
 /*set邻居的状态信息*/
 void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Message_Header_t *rangingMessageHeader);

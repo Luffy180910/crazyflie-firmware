@@ -42,6 +42,7 @@ typedef struct
   float gyroZ;            // 4 byte rad/s
   uint16_t positionZ;     // 2 byte cm/s
   bool keep_flying;       // 无人机的飞行状态
+  uint8_t stage;          // 飞行阶段
   /*--1添加--*/
   uint16_t msgLength;                               // 2 byte
   uint16_t filter;                                  // 16 bits bloom filter
