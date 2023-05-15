@@ -22,9 +22,9 @@ static bool isInit;
 
 static float Qv = 0.2f;         // velocity deviation,初始值为1.0    -0.25
 static float Qr = 0.1f;         // yaw rate deviation
-static float Ruwb = 0.5f;       // ranging deviation                -0.5
-static float InitCovPos = 0.1f; // 初始位置误差
-static float InitCovYaw = 0.1f; // 初始偏航角误差
+static float Ruwb = 0.2f;       // ranging deviation                -0.5
+static float InitCovPos = 0.2f; // 初始位置误差
+static float InitCovYaw = 0.2f; // 初始偏航角误差
 
 static relaVariable_t relaVar[RANGING_TABLE_SIZE];
 

@@ -237,8 +237,8 @@ void relativeControlTask(void *arg)
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     int8_t leaderStage = getLeaderStage();
-    int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; 
-    DEBUG_PRINT("%d,%d,%d\n",keepFlying,leaderStage,index);
+    // int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; 
+    //DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
@@ -255,7 +255,7 @@ void relativeControlTask(void *arg)
         // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
         if (leaderStage == ZERO_STAGE) // 第0个阶段随机飞行
         {
-          float_t randomVel = 0.6;
+          float_t randomVel = 0.7;
           flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
@@ -264,7 +264,7 @@ void relativeControlTask(void *arg)
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            float_t randomVel = 0.6;      // 0-randomVel m/s
+            float_t randomVel = 0.7;      // 0-randomVel m/s
             flyRandomIn1meter(randomVel); //
           }
           else

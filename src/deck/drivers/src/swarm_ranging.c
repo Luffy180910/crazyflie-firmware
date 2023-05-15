@@ -614,27 +614,27 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   if (MY_UWB_ADDRESS == leaderStateInfo.address && leaderStateInfo.keepFlying)
   {
     uint32_t tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
-    if (tickInterval < 20000)
+    if (tickInterval < 30000)
     {
       stage = ZERO_STAGE; // 0阶段随机飞行
     }
-    else if (tickInterval >= 20000 && tickInterval < 40000)
+    else if (tickInterval >= 30000 && tickInterval < 50000)
     {
       stage = FIRST_STAGE; // 1阶段跟随运动
     }
-    else if (tickInterval >= 40000 && tickInterval < 45000)
+    else if (tickInterval >= 50000 && tickInterval < 55000)
     {
       stage = -1; // 列表的偏移
     }
-    else if (tickInterval >= 45000 && tickInterval < 50000)
+    else if (tickInterval >= 55000 && tickInterval < 60000)
     {
       stage = 0; // 列表的偏移
     }
-    else if (tickInterval >= 50000 && tickInterval < 55000)
+    else if (tickInterval >= 60000 && tickInterval < 65000)
     {
       stage = 1; // 列表的偏移
     }
-    else if (tickInterval >= 55000 && tickInterval < 60000)
+    else if (tickInterval >= 65000 && tickInterval < 70000)
     {
       stage = 2; // 列表的偏移
     }
