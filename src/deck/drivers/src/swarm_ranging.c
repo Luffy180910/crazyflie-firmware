@@ -79,7 +79,7 @@ void initLeaderStateInfo()
   leaderStateInfo.address = 0;
   leaderStateInfo.stage = ZERO_STAGE;
 }
-uint8_t getLeaderStage()
+int8_t getLeaderStage()
 {
   return leaderStateInfo.stage;
 }
@@ -109,7 +109,8 @@ bool getOrSetKeepflying(uint16_t uwbAddress, bool keep_flying)
 {
   if (uwbAddress == leaderStateInfo.address)
   {
-    if(leaderStateInfo.keepFlying==false&&keep_flying==true){
+    if (leaderStateInfo.keepFlying == false && keep_flying == true)
+    {
       leaderStateInfo.keepFlyingTrueTick = xTaskGetTickCount();
     }
     leaderStateInfo.keepFlying = keep_flying;
@@ -615,23 +616,27 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     uint32_t tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
     if (tickInterval < 20000)
     {
-      stage = ZERO_STAGE;
+      stage = ZERO_STAGE; // 0阶段随机飞行
     }
     else if (tickInterval >= 20000 && tickInterval < 40000)
     {
-      stage = SECOND_STAGE;
+      stage = FIRST_STAGE; // 1阶段跟随运动
     }
-    else if (tickInterval >= 40000 && tickInterval < 50000)
+    else if (tickInterval >= 40000 && tickInterval < 45000)
     {
       stage = -1; // 列表的偏移
     }
-    else if (tickInterval >= 50000 && tickInterval < 60000)
+    else if (tickInterval >= 45000 && tickInterval < 50000)
     {
       stage = 0; // 列表的偏移
     }
-    else if (tickInterval >= 60000 && tickInterval < 70000)
+    else if (tickInterval >= 50000 && tickInterval < 55000)
     {
       stage = 1; // 列表的偏移
+    }
+    else if (tickInterval >= 55000 && tickInterval < 60000)
+    {
+      stage = 2; // 列表的偏移
     }
     else
     {

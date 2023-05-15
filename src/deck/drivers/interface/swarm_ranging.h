@@ -81,7 +81,7 @@ void setDistance(uint16_t neighborAddress, int16_t distance);
 void setMyTakeoff(bool isAlreadyTakeoff);
 
 /*获取leader的阶段信息*/
-uint8_t getLeaderStage();
+int8_t getLeaderStage();
 
 /*初始化leader状态信息*/
 void initLeaderStateInfo();

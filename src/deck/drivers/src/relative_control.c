@@ -214,7 +214,7 @@ void reset_estimators()
 
 void relativeControlTask(void *arg)
 {
-  uint8_t targetShift = 0;
+  int8_t targetShift = 0;
   uint8_t UAV_NUM = 9;
   static const float_t targetList[10][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},   // 0
@@ -237,7 +237,8 @@ void relativeControlTask(void *arg)
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     int8_t leaderStage = getLeaderStage();
-    DEBUG_PRINT("%d\n",leaderStage);
+    int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; 
+    DEBUG_PRINT("%d,%d,%d\n",keepFlying,leaderStage,index);
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
@@ -252,18 +253,18 @@ void relativeControlTask(void *arg)
         }
         // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
         // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
-        if (leaderStage == FIRST_STAGE) // 第一个阶段随机飞行
+        if (leaderStage == ZERO_STAGE) // 第0个阶段随机飞行
         {
           float_t randomVel = 0.6;
           flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
         }
-        else if (leaderStage == SECOND_STAGE) // 第二个阶段跟随飞行
+        else if (leaderStage == FIRST_STAGE) // 第1个阶段跟随飞行
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            float_t randomVel = 0.5;      // 0-randomVel m/s
+            float_t randomVel = 0.6;      // 0-randomVel m/s
             flyRandomIn1meter(randomVel); //
           }
           else
@@ -281,7 +282,7 @@ void relativeControlTask(void *arg)
           {
             targetShift = leaderStage;
             // 使得targetList在1~UAV_NUM之间偏移
-            uint8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; // 目标地址索引
+            int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; // 目标地址索引
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY);
