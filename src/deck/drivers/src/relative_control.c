@@ -13,7 +13,7 @@
 #include "log.h"
 #include "math.h"
 #include "adhocdeck.h"
-#define RUNNING_STAGE 1 // 0代码debug阶段，1代码运行阶段
+#define RUNNING_STAGE 0 // 0代码debug阶段，1代码运行阶段
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
