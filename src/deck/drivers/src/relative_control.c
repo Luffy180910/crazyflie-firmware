@@ -247,6 +247,7 @@ void relativeControlTask(void *arg)
         // take off
         if (onGround)
         {
+          vTaskDelay(2000); // 设定位置使得其收敛时间
           take_off();
           // onGround = false;
           setMyTakeoff(true);

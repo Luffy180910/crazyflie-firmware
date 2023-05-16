@@ -138,7 +138,13 @@ void setNeighborStateInfo_isNewAdd(uint16_t neighborAddress, bool isNewAddNeighb
   }
 }
 
-bool getNeighborStateInfo(uint16_t neighborAddress, uint16_t *distance, short *vx, short *vy, float *gyroZ, uint16_t *height, bool *isNewAddNeighbor)
+bool getNeighborStateInfo(uint16_t neighborAddress,
+                          uint16_t *distance,
+                          short *vx,
+                          short *vy,
+                          float *gyroZ,
+                          uint16_t *height,
+                          bool *isNewAddNeighbor)
 {
   if (neighborStateInfo.refresh[neighborAddress] == true && leaderStateInfo.keepFlying == true)
   {
@@ -419,8 +425,10 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   rv_any_index++;
   /*这里用于测试数据丢包情况*/
   neighbor_latest_rvTime[neighborAddress] = curr_time;
-  tx_rv_interval_history[neighborAddress].latest_data_index = (tx_rv_interval_history[neighborAddress].latest_data_index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
-  tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index] = curr_time - latest_txTime;
+  tx_rv_interval_history[neighborAddress].latest_data_index =
+      (tx_rv_interval_history[neighborAddress].latest_data_index + 1) % TX_RV_INTERVAL_HISTORY_SIZE;
+  tx_rv_interval_history[neighborAddress].interval[tx_rv_interval_history[neighborAddress].latest_data_index] =
+      curr_time - latest_txTime;
 
   tx_rv_interval[neighborAddress] = curr_time - latest_txTime;
 
@@ -607,7 +615,10 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short)(velocity * 100);
 
-  estimatorKalmanGetSwarmInfo(&rangingMessage->header.velocityXInWorld, &rangingMessage->header.velocityYInWorld, &rangingMessage->header.gyroZ, &rangingMessage->header.positionZ);
+  estimatorKalmanGetSwarmInfo(&rangingMessage->header.velocityXInWorld,
+                              &rangingMessage->header.velocityYInWorld,
+                              &rangingMessage->header.gyroZ,
+                              &rangingMessage->header.positionZ);
   rangingMessage->header.keep_flying = leaderStateInfo.keepFlying;
   // 如果是leader则进行阶段控制
   int8_t stage = ZERO_STAGE;
