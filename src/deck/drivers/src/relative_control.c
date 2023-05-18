@@ -216,18 +216,30 @@ void relativeControlTask(void *arg)
 {
   int8_t targetShift = 0;
   uint8_t UAV_NUM = 9;
-  static const float_t targetList[10][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},   // 0
-      {-1.5f, -1.5f, 0.0f}, // 1
-      {-1.5f, 0.0f, 0.0f},  // 2
-      {-1.5f, 1.5f, 0.0f},  // 3
-      {0.0f, 1.5f, 0.0f},   // 4
-      {1.5f, 1.5f, 0.0f},   // 5
-      {1.5f, 0.0f, 0.0f},   // 6
-      {1.5, -1.5f, 0.0f},   // 7
-      {0.0f, -1.5f, 0.0f},  // 8
-      {0.0f, 0.0f, 0.0f},   // 9
-      {0.0f, 0.0f, 0.0f}};  // 10
+  // static const float_t targetList[15][STATE_DIM_rl] = {
+  //     {0.0f, 0.0f, 0.0f},   // 0
+  //     {-1.5f, -1.5f, 0.0f}, // 1
+  //     {-1.5f, 0.0f, 0.0f},  // 2
+  //     {-1.5f, 1.5f, 0.0f},  // 3
+  //     {0.0f, 1.5f, 0.0f},   // 4
+  //     {1.5f, 1.5f, 0.0f},   // 5
+  //     {1.5f, 0.0f, 0.0f},   // 6
+  //     {1.5, -1.5f, 0.0f},   // 7
+  //     {0.0f, -1.5f, 0.0f},  // 8
+  //     {0.0f, 0.0f, 0.0f},   // 9
+  //     {0.0f, 0.0f, 0.0f}};  // 10
+  static const float_t targetList[15][STATE_DIM_rl] = {
+    {0.0f, 0.0f, 0.0f},   // 0
+    {-1.8f, -0.9f, 0.0f}, // 1
+    {-1.8f, 0.9f, 0.0f},  // 2
+    {-0.9f, 1.8f, 0.0f},  // 3
+    {0.9f, 1.8f, 0.0f},   // 4
+    {1.8f, 0.9f, 0.0f},   // 5
+    {1.8f, -0.9f, 0.0f},  // 6
+    {0.9, -1.8f, 0.0f},   // 7
+    {-0.9f, -1.8f, 0.0f}, // 8
+    {0.0f, 0.0f, 0.0f},   // 9
+    {0.0f, 0.0f, 0.0f}};  // 10
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
 
@@ -237,8 +249,8 @@ void relativeControlTask(void *arg)
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     int8_t leaderStage = getLeaderStage();
-    // int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; 
-    //DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
+    // int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1;
+    // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
@@ -265,7 +277,7 @@ void relativeControlTask(void *arg)
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            float_t randomVel = 0.7;      // 0-randomVel m/s
+            float_t randomVel = 0.65;     // 0-randomVel m/s
             flyRandomIn1meter(randomVel); //
           }
           else
@@ -283,7 +295,7 @@ void relativeControlTask(void *arg)
           {
             targetShift = leaderStage;
             // 使得targetList在1~UAV_NUM之间偏移
-            int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1; // 目标地址索引
+            int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM - 1) + 1; // 目标地址索引
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY);
@@ -314,6 +326,7 @@ void relativeControlInit(void)
 
 PARAM_GROUP_START(relative_ctrl)
 PARAM_ADD(PARAM_UINT8, keepFlying, &keepFlying)
+PARAM_ADD(PARAM_UINT8, mode, &CONTROL_MODE)
 PARAM_ADD(PARAM_FLOAT, relaCtrl_p, &relaCtrl_p)
 PARAM_ADD(PARAM_FLOAT, relaCtrl_i, &relaCtrl_i)
 PARAM_ADD(PARAM_FLOAT, relaCtrl_d, &relaCtrl_d)

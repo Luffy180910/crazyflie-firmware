@@ -63,6 +63,7 @@ static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 // static int16_t initRelativePosition[RANGING_TABLE_SIZE][RANGING_TABLE_SIZE][STATE_DIM_rl - 1];/*用于在指定无人机的初始位置时使用,由于在同一水平面，为了节省内存就不用Z轴了*/
 
 // 初始时，所有无人机基于0号无人机的相对位置
+/* //正方向编队方案
 static const float_t initPositionRela0[10][STATE_DIM_rl] = {
     {0.0f, 0.0f, 0.0f},   // 0
     {-1.5f, -1.5f, 0.0f}, // 1
@@ -73,6 +74,20 @@ static const float_t initPositionRela0[10][STATE_DIM_rl] = {
     {1.5f, 0.0f, 0.0f},   // 6
     {1.5, -1.5f, 0.0f},   // 7
     {0.0f, -1.5f, 0.0f},  // 8
+    {0.0f, 0.0f, 0.0f},   // 9
+    {0.0f, 0.0f, 0.0f}};  // 10
+*/
+// 八边形编队方案
+static const float_t initPositionRela0[15][STATE_DIM_rl] = {
+    {0.0f, 0.0f, 0.0f},   // 0
+    {-1.8f, -0.9f, 0.0f}, // 1
+    {-1.8f, 0.9f, 0.0f},  // 2
+    {-0.9f, 1.8f, 0.0f},  // 3
+    {0.9f, 1.8f, 0.0f},   // 4
+    {1.8f, 0.9f, 0.0f},   // 5
+    {1.8f, -0.9f, 0.0f},  // 6
+    {0.9, -1.8f, 0.0f},   // 7
+    {-0.9f, -1.8f, 0.0f}, // 8
     {0.0f, 0.0f, 0.0f},   // 9
     {0.0f, 0.0f, 0.0f}};  // 10
 
@@ -293,6 +308,14 @@ bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)
     {
         return false;
     }
+}
+void copyTargetList(float_t *dest,float_t *src){
+  for (int i = 0; i < ARRAY_LENGTH; i++)
+  {
+    *(dest+i*STATE_DIM_rl+0) = *(src+i*STATE_DIM_rl+0);
+    *(dest+i*STATE_DIM_rl+1) = *(src+i*STATE_DIM_rl+1);
+    *(dest+i*STATE_DIM_rl+2) = *(src+i*STATE_DIM_rl+2);
+  }
 }
 
 LOG_GROUP_START(relative_pos)

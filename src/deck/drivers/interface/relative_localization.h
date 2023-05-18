@@ -2,6 +2,7 @@
 #define RELATIVELOCA_H_
 #include "ranging_struct.h"
 #include "swarm_ranging.h"
+#include "math.h"
 typedef enum
 {
   STATE_rlX,
@@ -28,6 +29,37 @@ typedef struct
   uint32_t oldTimetick;
   bool receiveFlag;
 } relaVariable_t;
+
+/*--用于初始位置设定--*/
+static uint8_t CONTROL_MODE = 1;
+const static uint8_t ARRAY_LENGTH=15;
+// static  float_t TARGETLIST0[ARRAY_LENGTH][STATE_DIM_rl] = {
+//     {0.0f, 0.0f, 0.0f},   // 0
+//     {-1.5f, -1.5f, 0.0f}, // 1
+//     {-1.5f, 0.0f, 0.0f},  // 2
+//     {-1.5f, 1.5f, 0.0f},  // 3
+//     {0.0f, 1.5f, 0.0f},   // 4
+//     {1.5f, 1.5f, 0.0f},   // 5
+//     {1.5f, 0.0f, 0.0f},   // 6
+//     {1.5, -1.5f, 0.0f},   // 7
+//     {0.0f, -1.5f, 0.0f},  // 8
+//     {0.0f, 0.0f, 0.0f},   // 9
+//     {0.0f, 0.0f, 0.0f}};  // 10
+// static const float_t TARGETLIST1[ARRAY_LENGTH][STATE_DIM_rl] = {
+//     {0.0f, 0.0f, 0.0f},   // 0
+//     {-1.8f, -0.9f, 0.0f}, // 1
+//     {-1.8f, 0.9f, 0.0f},  // 2
+//     {-0.9f, 1.8f, 0.0f},  // 3
+//     {0.9f, 1.8f, 0.0f},   // 4
+//     {1.8f, 0.9f, 0.0f},   // 5
+//     {1.8f, -0.9f, 0.0f},  // 6
+//     {0.9, -1.8f, 0.0f},   // 7
+//     {-0.9f, -1.8f, 0.0f}, // 8
+//     {0.0f, 0.0f, 0.0f},   // 9
+//     {0.0f, 0.0f, 0.0f}};  // 10
+void copyTargetList(float_t *dest,float_t *src);
+/*--用于初始位置设定--*/
+
 
 void relativeLocoInit(void);
 void relativeLocoTask(void *arg);
