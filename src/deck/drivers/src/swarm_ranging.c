@@ -297,7 +297,7 @@ static void uwbRangingTxTask(void *parameters)
         // break;
       }
     }
-    // nextTransportPeriod = 20;
+    nextTransportPeriod = 20;
     vTaskDelay(nextTransportPeriod);
   }
 }
@@ -625,29 +625,53 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   if (MY_UWB_ADDRESS == leaderStateInfo.address && leaderStateInfo.keepFlying)
   {
     uint32_t tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
-    if (tickInterval < 30000)
+    uint32_t convergeTick = 10000; // 收敛时间10s
+    uint32_t followTick = 10000;   // 跟随时间10s
+    uint32_t converAndFollowTick = convergeTick + followTick;
+    uint32_t maintainTick = 5000;
+    if (tickInterval < convergeTick)
     {
-      stage = ZERO_STAGE; // 0阶段随机飞行
+      stage = ZERO_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
     }
-    else if (tickInterval >= 30000 && tickInterval < 50000)
+    else if (tickInterval >= convergeTick && tickInterval < converAndFollowTick)
     {
-      stage = FIRST_STAGE; // 1阶段跟随运动
+      stage = FIRST_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
     }
-    else if (tickInterval >= 50000 && tickInterval < 55000)
+    else if (tickInterval >= converAndFollowTick + 0 * maintainTick && tickInterval < converAndFollowTick + 1 * maintainTick)
     {
-      stage = -1; // 列表的偏移
+      stage = -1; // 列表的偏移，原地不动
     }
-    else if (tickInterval >= 55000 && tickInterval < 60000)
+    else if (tickInterval >= converAndFollowTick + 1 * maintainTick && tickInterval < converAndFollowTick + 2 * maintainTick)
     {
       stage = 0; // 列表的偏移
     }
-    else if (tickInterval >= 60000 && tickInterval < 65000)
+    else if (tickInterval >= converAndFollowTick + 2 * maintainTick && tickInterval < converAndFollowTick + 3 * maintainTick)
     {
       stage = 1; // 列表的偏移
     }
-    else if (tickInterval >= 65000 && tickInterval < 70000)
+    else if (tickInterval >= converAndFollowTick + 3 * maintainTick && tickInterval < converAndFollowTick + 4 * maintainTick)
     {
       stage = 2; // 列表的偏移
+    }
+    else if (tickInterval >= converAndFollowTick + 4 * maintainTick && tickInterval < converAndFollowTick + 5 * maintainTick)
+    {
+      stage = 3; // 列表的偏移
+    }
+    else if (tickInterval >= converAndFollowTick + 5 * maintainTick && tickInterval < converAndFollowTick + 6 * maintainTick)
+    {
+      stage = 4; // 列表的偏移
+    }
+    else if (tickInterval >= converAndFollowTick + 6 * maintainTick && tickInterval < converAndFollowTick + 7 * maintainTick)
+    {
+      stage = 5; // 列表的偏移
+    }
+    else if (tickInterval >= converAndFollowTick + 7 * maintainTick && tickInterval < converAndFollowTick + 8 * maintainTick)
+    {
+      stage = 6; // 列表的偏移
+    }
+    else if (tickInterval >= converAndFollowTick + 8 * maintainTick && tickInterval < converAndFollowTick + 9 * maintainTick)
+    {
+      stage = 7; // 列表的偏移
     }
     else
     {

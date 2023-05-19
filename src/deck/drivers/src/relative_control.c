@@ -253,6 +253,7 @@ void relativeControlTask(void *arg)
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
+      
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
       {
 
