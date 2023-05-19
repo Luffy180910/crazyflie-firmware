@@ -56,6 +56,8 @@ static uint16_t rangingSeqNumber = 1;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ; // 从日志获取速度
 static float velocity;
 static bool MYisAlreadyTakeoff = false;
+static bool allIsTakeoff = false; // 判断是否所有的邻居无人机都起飞了
+// static bool allIsTakeoff = true; // 测试时，设置为true
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
@@ -70,6 +72,7 @@ void initNeighborStateInfoAndMedian_data()
     tx_rv_interval_history[i].interval[0] = 1000;
     median_data[i].index_inserting = 0;
     neighborStateInfo.refresh[i] = false;
+    neighborStateInfo.isAlreadyTakeoff[i] = false;
   }
 }
 
@@ -98,6 +101,7 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   neighborStateInfo.gyroZ[neighborAddress] = rangingMessageHeader->gyroZ;
   neighborStateInfo.positionZ[neighborAddress] = rangingMessageHeader->positionZ;
   neighborStateInfo.refresh[neighborAddress] = true;
+  neighborStateInfo.isAlreadyTakeoff[neighborAddress] = rangingMessageHeader->isAlreadyTakeoff;
   if (neighborAddress == leaderStateInfo.address)
   { /*无人机的keep_flying都是由0号无人机来设置的*/
     leaderStateInfo.keepFlying = rangingMessageHeader->keep_flying;
@@ -620,65 +624,64 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
                               &rangingMessage->header.gyroZ,
                               &rangingMessage->header.positionZ);
   rangingMessage->header.keep_flying = leaderStateInfo.keepFlying;
+  rangingMessage->header.isAlreadyTakeoff = MYisAlreadyTakeoff;
   // 如果是leader则进行阶段控制
   int8_t stage = ZERO_STAGE;
   if (MY_UWB_ADDRESS == leaderStateInfo.address && leaderStateInfo.keepFlying)
   {
+    // 分阶段控制
     uint32_t tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
-    uint32_t convergeTick = 10000; // 收敛时间10s
-    uint32_t followTick = 10000;   // 跟随时间10s
-    uint32_t converAndFollowTick = convergeTick + followTick;
-    uint32_t maintainTick = 5000;
-    if (tickInterval < convergeTick)
+    // 所有邻居起飞判断
+    if (allIsTakeoff)
     {
-      stage = ZERO_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
+
+      uint32_t convergeTick = 10000; // 收敛时间10s
+      uint32_t followTick = 10000;   // 跟随时间10s
+      uint32_t converAndFollowTick = convergeTick + followTick;
+      uint32_t maintainTick = 5000; // 每转一次需要的时间
+      uint32_t rotationNums = 8; // 旋转次数
+      uint32_t rotationTick = maintainTick*(rotationNums+1); // 旋转总时间
+      if (tickInterval < convergeTick)
+      {
+        stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
+      }
+      else if (tickInterval >= convergeTick && tickInterval < converAndFollowTick)
+      {
+        stage = SECOND_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
+      }else if(tickInterval< converAndFollowTick + rotationTick){
+        stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
+        stage = stage -1;
+      }
+      else
+      {
+        stage = LAND_STAGE;
+      }
     }
-    else if (tickInterval >= convergeTick && tickInterval < converAndFollowTick)
+    else // 进行allIsTakeoff设置
     {
-      stage = FIRST_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
+      currentNeighborAddressInfo_t currentNeighborAddressInfo;
+      getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
+      uint8_t takeoffNum = 0;
+      for (int index = 0; index < currentNeighborAddressInfo.size; index++)
+      {
+        address_t neighborAddress = currentNeighborAddressInfo.address[index];
+        if(neighborStateInfo.isAlreadyTakeoff[neighborAddress]){
+          takeoffNum++;
+        }else{
+          break;
+        }
+      }
+      if(takeoffNum == currentNeighborAddressInfo.size){
+        allIsTakeoff = true;
+      }
+      // 如果10s钟还没有全部起飞，则落地
+      if(tickInterval>10000){
+        stage = LAND_STAGE;
+      }
     }
-    else if (tickInterval >= converAndFollowTick + 0 * maintainTick && tickInterval < converAndFollowTick + 1 * maintainTick)
-    {
-      stage = -1; // 列表的偏移，原地不动
-    }
-    else if (tickInterval >= converAndFollowTick + 1 * maintainTick && tickInterval < converAndFollowTick + 2 * maintainTick)
-    {
-      stage = 0; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 2 * maintainTick && tickInterval < converAndFollowTick + 3 * maintainTick)
-    {
-      stage = 1; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 3 * maintainTick && tickInterval < converAndFollowTick + 4 * maintainTick)
-    {
-      stage = 2; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 4 * maintainTick && tickInterval < converAndFollowTick + 5 * maintainTick)
-    {
-      stage = 3; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 5 * maintainTick && tickInterval < converAndFollowTick + 6 * maintainTick)
-    {
-      stage = 4; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 6 * maintainTick && tickInterval < converAndFollowTick + 7 * maintainTick)
-    {
-      stage = 5; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 7 * maintainTick && tickInterval < converAndFollowTick + 8 * maintainTick)
-    {
-      stage = 6; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 8 * maintainTick && tickInterval < converAndFollowTick + 9 * maintainTick)
-    {
-      stage = 7; // 列表的偏移
-    }
-    else
-    {
-      stage = LAND_STAGE;
-    }
-    leaderStateInfo.stage = stage; // 这里设置leader的stage
+    //DEBUG_PRINT("%d,%d\n",tickInterval,stage);
   }
+  leaderStateInfo.stage = stage; // 这里设置leader的stage
   rangingMessage->header.stage = stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
 
   /*--9添加--*/
