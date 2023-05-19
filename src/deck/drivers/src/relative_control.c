@@ -216,30 +216,30 @@ void relativeControlTask(void *arg)
 {
   int8_t targetShift = 0;
   uint8_t UAV_NUM = 9;
-  // static const float_t targetList[15][STATE_DIM_rl] = {
-  //     {0.0f, 0.0f, 0.0f},   // 0
-  //     {-1.5f, -1.5f, 0.0f}, // 1
-  //     {-1.5f, 0.0f, 0.0f},  // 2
-  //     {-1.5f, 1.5f, 0.0f},  // 3
-  //     {0.0f, 1.5f, 0.0f},   // 4
-  //     {1.5f, 1.5f, 0.0f},   // 5
-  //     {1.5f, 0.0f, 0.0f},   // 6
-  //     {1.5, -1.5f, 0.0f},   // 7
-  //     {0.0f, -1.5f, 0.0f},  // 8
-  //     {0.0f, 0.0f, 0.0f},   // 9
-  //     {0.0f, 0.0f, 0.0f}};  // 10
   static const float_t targetList[15][STATE_DIM_rl] = {
-    {0.0f, 0.0f, 0.0f},   // 0
-    {-1.8f, -0.9f, 0.0f}, // 1
-    {-1.8f, 0.9f, 0.0f},  // 2
-    {-0.9f, 1.8f, 0.0f},  // 3
-    {0.9f, 1.8f, 0.0f},   // 4
-    {1.8f, 0.9f, 0.0f},   // 5
-    {1.8f, -0.9f, 0.0f},  // 6
-    {0.9, -1.8f, 0.0f},   // 7
-    {-0.9f, -1.8f, 0.0f}, // 8
-    {0.0f, 0.0f, 0.0f},   // 9
-    {0.0f, 0.0f, 0.0f}};  // 10
+      {0.0f, 0.0f, 0.0f},   // 0
+      {-1.5f, -1.5f, 0.0f}, // 1
+      {-1.5f, 0.0f, 0.0f},  // 2
+      {-1.5f, 1.5f, 0.0f},  // 3
+      {0.0f, 1.5f, 0.0f},   // 4
+      {1.5f, 1.5f, 0.0f},   // 5
+      {1.5f, 0.0f, 0.0f},   // 6
+      {1.5, -1.5f, 0.0f},   // 7
+      {0.0f, -1.5f, 0.0f},  // 8
+      {0.0f, 0.0f, 0.0f},   // 9
+      {0.0f, 0.0f, 0.0f}};  // 10
+  // static const float_t targetList[15][STATE_DIM_rl] = {
+  //   {0.0f, 0.0f, 0.0f},   // 0
+  //   {-1.8f, -0.9f, 0.0f}, // 1
+  //   {-1.8f, 0.9f, 0.0f},  // 2
+  //   {-0.9f, 1.8f, 0.0f},  // 3
+  //   {0.9f, 1.8f, 0.0f},   // 4
+  //   {1.8f, 0.9f, 0.0f},   // 5
+  //   {1.8f, -0.9f, 0.0f},  // 6
+  //   {0.9, -1.8f, 0.0f},   // 7
+  //   {-0.9f, -1.8f, 0.0f}, // 8
+  //   {0.0f, 0.0f, 0.0f},   // 9
+  //   {0.0f, 0.0f, 0.0f}};  // 10
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
 
@@ -269,7 +269,7 @@ void relativeControlTask(void *arg)
         // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
         if (leaderStage == ZERO_STAGE) // 第0个阶段随机飞行
         {
-          float_t randomVel = 0.7;
+          float_t randomVel = 0.5;
           flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
@@ -278,7 +278,7 @@ void relativeControlTask(void *arg)
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            float_t randomVel = 0.65;     // 0-randomVel m/s
+            float_t randomVel = 0.5;     // 0-randomVel m/s
             flyRandomIn1meter(randomVel); //
           }
           else

@@ -297,7 +297,7 @@ static void uwbRangingTxTask(void *parameters)
         // break;
       }
     }
-    nextTransportPeriod = 20;
+    // nextTransportPeriod = 20;
     vTaskDelay(nextTransportPeriod);
   }
 }
