@@ -339,15 +339,9 @@ LOG_ADD(LOG_FLOAT, rlX4, &relaVar[4].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY4, &relaVar[4].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw4, &relaVar[4].S[STATE_rlYaw])
 
-<<<<<<< HEAD
 LOG_ADD(LOG_FLOAT, rlX5, &relaVar[5].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY5, &relaVar[5].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw5, &relaVar[5].S[STATE_rlYaw])
-=======
-LOG_ADD(LOG_FLOAT, rlX5, &relaVar[4].S[STATE_rlX])
-LOG_ADD(LOG_FLOAT, rlY5, &relaVar[4].S[STATE_rlY])
-LOG_ADD(LOG_FLOAT, rlYaw5, &relaVar[4].S[STATE_rlYaw])
->>>>>>> 3526430336bd27805bf5bea51d3bcb159d84386a
 LOG_GROUP_STOP(relative_pos)
 
 PARAM_GROUP_START(arelative_pos)

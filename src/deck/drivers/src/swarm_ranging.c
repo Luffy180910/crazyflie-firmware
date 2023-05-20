@@ -66,8 +66,6 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 /*--4添加--*/
 static leaderStateInfo_t leaderStateInfo;
 static neighborStateInfo_t neighborStateInfo; // 邻居的状态信息
-static uint32_t tickInterval = 0;             // 记录控制飞行的时间
-static int8_t stage = ZERO_STAGE;             // 编队控制
 void initNeighborStateInfoAndMedian_data()
 {
   for (int i = 0; i < RANGING_TABLE_SIZE + 1; i++)
@@ -664,6 +662,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     /*--9添加--*/
     return rangingMessage->header.msgLength;
   }
+}
 
   LOG_GROUP_START(Ranging)
   LOG_ADD(LOG_INT16, distTo0, distanceTowards + 0)
@@ -708,8 +707,6 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   LOG_ADD(LOG_UINT32, distNum6, DIST_COUNT + 6)
   LOG_ADD(LOG_UINT32, distNum7, DIST_COUNT + 7)
 
-  LOG_ADD(LOG_UINT32, tick, &tickInterval) // 记录起飞时间
-  LOG_ADD(LOG_INT8, stage, &stage)
 
   LOG_ADD(LOG_UINT8, index0, rv_data_interval_index + 0) // 接收到0号无人机数据包，rv_data_interval_index[0]++
   LOG_ADD(LOG_UINT8, index1, rv_data_interval_index + 1)
