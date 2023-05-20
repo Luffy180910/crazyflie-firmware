@@ -57,6 +57,8 @@ static logVarId_t idVelocityX, idVelocityY, idVelocityZ; // 从日志获取速�
 static float velocity;
 static bool MYisAlreadyTakeoff = false;
 static bool allIsTakeoff = false; // 判断是否所有的邻居无人机都起飞了
+static uint32_t tickInterval = 0; // 记录控制飞行的时间
+static int8_t stage = ZERO_STAGE; // 编队控制阶段
 // static bool allIsTakeoff = true; // 测试时，设置为true
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
@@ -626,11 +628,11 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   rangingMessage->header.keep_flying = leaderStateInfo.keepFlying;
   rangingMessage->header.isAlreadyTakeoff = MYisAlreadyTakeoff;
   // 如果是leader则进行阶段控制
-  int8_t stage = ZERO_STAGE;
+  stage = ZERO_STAGE;
   if (MY_UWB_ADDRESS == leaderStateInfo.address && leaderStateInfo.keepFlying)
   {
     // 分阶段控制
-    uint32_t tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
+    tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
     // 所有邻居起飞判断
     if (allIsTakeoff)
     {
@@ -638,9 +640,9 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       uint32_t convergeTick = 10000; // 收敛时间10s
       uint32_t followTick = 10000;   // 跟随时间10s
       uint32_t converAndFollowTick = convergeTick + followTick;
-      uint32_t maintainTick = 5000; // 每转一次需要的时间
-      uint32_t rotationNums = 8; // 旋转次数
-      uint32_t rotationTick = maintainTick*(rotationNums+1); // 旋转总时间
+      uint32_t maintainTick = 5000;                              // 每转一次需要的时间
+      uint32_t rotationNums = 8;                                 // 旋转次数
+      uint32_t rotationTick = maintainTick * (rotationNums + 1); // 旋转总时间
       if (tickInterval < convergeTick)
       {
         stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
@@ -648,9 +650,11 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       else if (tickInterval >= convergeTick && tickInterval < converAndFollowTick)
       {
         stage = SECOND_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
-      }else if(tickInterval< converAndFollowTick + rotationTick){
+      }
+      else if (tickInterval < converAndFollowTick + rotationTick)
+      {
         stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
-        stage = stage -1;
+        stage = stage - 1;
       }
       else
       {
@@ -665,23 +669,28 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       for (int index = 0; index < currentNeighborAddressInfo.size; index++)
       {
         address_t neighborAddress = currentNeighborAddressInfo.address[index];
-        if(neighborStateInfo.isAlreadyTakeoff[neighborAddress]){
+        if (neighborStateInfo.isAlreadyTakeoff[neighborAddress])
+        {
           takeoffNum++;
-        }else{
+        }
+        else
+        {
           break;
         }
       }
-      if(takeoffNum == currentNeighborAddressInfo.size){
+      if (takeoffNum == currentNeighborAddressInfo.size)
+      {
         allIsTakeoff = true;
       }
       // 如果10s钟还没有全部起飞，则落地
-      if(tickInterval>10000){
+      if (tickInterval > 10000)
+      {
         stage = LAND_STAGE;
       }
     }
-    //DEBUG_PRINT("%d,%d\n",tickInterval,stage);
+    DEBUG_PRINT("%d,%d\n",tickInterval,stage);
   }
-  leaderStateInfo.stage = stage; // 这里设置leader的stage
+  leaderStateInfo.stage = stage;        // 这里设置leader的stage
   rangingMessage->header.stage = stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
 
   /*--9添加--*/
@@ -709,6 +718,10 @@ LOG_ADD(LOG_UINT32, lossNum4, LOSS_COUNT + 4)
 LOG_ADD(LOG_UINT32, lossNum5, LOSS_COUNT + 5)
 LOG_ADD(LOG_UINT32, lossNum6, LOSS_COUNT + 6)
 LOG_ADD(LOG_UINT32, lossNum7, LOSS_COUNT + 7)
+
+LOG_ADD(LOG_UINT32, tick, &tickInterval) // 记录起飞时间
+LOG_ADD(LOG_INT8, stage, &stage) 
+
 
 LOG_ADD(LOG_UINT32, recvNum0, RECEIVE_COUNT + 0) // 总包数
 LOG_ADD(LOG_UINT32, recvNum1, RECEIVE_COUNT + 1)
