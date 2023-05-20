@@ -27,7 +27,7 @@ static float_t height = 0.5;
 
 static float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
-static float relaCtrl_i = 0.001f;
+static float relaCtrl_i = 0.01f;
 static float relaCtrl_d = 0.01f;
 // static float NDI_k = 2.0f;
 
