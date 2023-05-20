@@ -143,7 +143,6 @@ void land()
       setHoverSetpoint(&setpoint, 0, 0, height - (float)i * land_height_per_100ms, 0);
       vTaskDelay(M2T(100));
     }
-    isCompleteTaskAndLand = true;
   }
   onGround = true;
 }
@@ -313,11 +312,13 @@ void relativeControlTask(void *arg)
         {
           // 运行90s之后，落地
           land();
+          isCompleteTaskAndLand = true;
         }
       }
       else
       {
         land();
+        isCompleteTaskAndLand = false;
       }
     }
   }
