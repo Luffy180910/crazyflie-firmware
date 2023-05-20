@@ -657,9 +657,9 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     {
       stage = LAND_STAGE;
     }
+    leaderStateInfo.stage = stage;        // 这里设置leader的stage
+    rangingMessage->header.stage = stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
   }
-  leaderStateInfo.stage = stage;        // 这里设置leader的stage
-  rangingMessage->header.stage = stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
   /*--9添加--*/
   return rangingMessage->header.msgLength;
 }
