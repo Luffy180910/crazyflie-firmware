@@ -27,7 +27,7 @@ static float_t height = 0.5;
 
 static float relaCtrl_p = 2.0f;    // p可以抑制震荡
 // static float relaCtrl_i = 0.0001f; // 调大点，消除稳定误差，不能过于大，10倍数量级增加
-static float relaCtrl_i = 0.001f; // 调大点，消除稳定误差，不能过于大，10倍数量级增加
+static float relaCtrl_i = 0.0001f; // 调大点，消除稳定误差，不能过于大，10倍数量级增加
 static float relaCtrl_d = 0.01f;
 // static float NDI_k = 2.0f;
 

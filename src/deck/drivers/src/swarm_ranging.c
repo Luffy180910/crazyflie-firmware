@@ -681,6 +681,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       if (takeoffNum == currentNeighborAddressInfo.size)
       {
         allIsTakeoff = true;
+        leaderStateInfo.keepFlyingTrueTick = xTaskGetTickCount();
       }
       // 如果10s钟还没有全部起飞，则落地
       if (tickInterval > 10000)
