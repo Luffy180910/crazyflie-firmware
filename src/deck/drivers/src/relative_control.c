@@ -250,13 +250,16 @@ void relativeControlTask(void *arg)
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     int8_t leaderStage = getLeaderStage();
-    // int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1;
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
+    // if(RUNNING_STAGE==0){ // 调试
+    //   vTaskDelay(10000);
+    //   setMyTakeoff(true);
+    // }
+
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
       {
-
         // take off
         if (onGround)
         {
