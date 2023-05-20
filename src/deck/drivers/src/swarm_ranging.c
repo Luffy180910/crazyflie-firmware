@@ -111,6 +111,7 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   { /*无人机的keep_flying都是由0号无人机来设置的*/
     leaderStateInfo.keepFlying = rangingMessageHeader->keep_flying;
     leaderStateInfo.stage = rangingMessageHeader->stage;
+    DEBUG_PRINT("--before recv--%d\n",leaderStateInfo.stage);
     DEBUG_PRINT("--recv--%d\n",leaderStateInfo.stage);
   }
 }
