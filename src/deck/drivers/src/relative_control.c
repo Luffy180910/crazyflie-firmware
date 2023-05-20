@@ -249,14 +249,17 @@ void relativeControlTask(void *arg)
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     int8_t leaderStage = getLeaderStage();
-    // int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM-1) + 1;
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
+    // if(RUNNING_STAGE==0){ // 调试
+    //   vTaskDelay(10000);
+    //   setMyTakeoff(true);
+    // }
+
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
-      
+
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
       {
-
         // take off
         if (onGround)
         {
@@ -267,26 +270,30 @@ void relativeControlTask(void *arg)
         }
         // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
         // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
-        if (leaderStage == ZERO_STAGE) // 第0个阶段随机飞行
+        if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
+        {
+          setHoverSetpoint(&setpoint, 0, 0, height, 0);
+        }
+        else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           float_t randomVel = 0.5;
           flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
         }
-        else if (leaderStage == FIRST_STAGE) // 第1个阶段跟随飞行
+        else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            float_t randomVel = 0.5;     // 0-randomVel m/s
-            flyRandomIn1meter(randomVel); //
+            float_t randomVel = 0.5;
+            flyRandomIn1meter(randomVel); 
           }
           else
           {
             formation0asCenter(targetX, targetY);
           }
         }
-        else if (leaderStage != LAND_STAGE) // 第三个阶段
+        else if (leaderStage != LAND_STAGE) // 第3个阶段，转圈
         {
           if (MY_UWB_ADDRESS == 0)
           {

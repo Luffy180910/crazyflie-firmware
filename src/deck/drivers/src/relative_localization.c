@@ -195,7 +195,7 @@ void relativeLocoTask(void *arg)
                     relaVar[neighborAddress].oldTimetick = osTick;
                     relativeEKF(neighborAddress, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
                 }
-                DEBUG_PRINT("addr:%d,X:%f,Y:%f",neighborAddress,relaVar[neighborAddress].S[STATE_rlX],relaVar[neighborAddress].S[STATE_rlY]);
+                // DEBUG_PRINT("addr:%d,X:%f,Y:%f",neighborAddress,relaVar[neighborAddress].S[STATE_rlX],relaVar[neighborAddress].S[STATE_rlY]);
             }
         }
     }
@@ -331,6 +331,14 @@ LOG_ADD(LOG_FLOAT, rlYaw2, &relaVar[2].S[STATE_rlYaw])
 LOG_ADD(LOG_FLOAT, rlX3, &relaVar[3].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY3, &relaVar[3].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw3, &relaVar[3].S[STATE_rlYaw])
+
+LOG_ADD(LOG_FLOAT, rlX4, &relaVar[4].S[STATE_rlX])
+LOG_ADD(LOG_FLOAT, rlY4, &relaVar[4].S[STATE_rlY])
+LOG_ADD(LOG_FLOAT, rlYaw4, &relaVar[4].S[STATE_rlYaw])
+
+LOG_ADD(LOG_FLOAT, rlX5, &relaVar[4].S[STATE_rlX])
+LOG_ADD(LOG_FLOAT, rlY5, &relaVar[4].S[STATE_rlY])
+LOG_ADD(LOG_FLOAT, rlYaw5, &relaVar[4].S[STATE_rlYaw])
 LOG_GROUP_STOP(relative_pos)
 
 PARAM_GROUP_START(arelative_pos)
