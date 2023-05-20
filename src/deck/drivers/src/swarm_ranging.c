@@ -62,6 +62,8 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 /*--4添加--*/
 static leaderStateInfo_t leaderStateInfo;
 static neighborStateInfo_t neighborStateInfo; // 邻居的状态信息
+static uint32_t tickInterval = 0;             // 记录控制飞行的时间
+static int8_t stage = ZERO_STAGE;             // 编队控制
 void initNeighborStateInfoAndMedian_data()
 {
   for (int i = 0; i < RANGING_TABLE_SIZE + 1; i++)
@@ -621,57 +623,30 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
                               &rangingMessage->header.positionZ);
   rangingMessage->header.keep_flying = leaderStateInfo.keepFlying;
   // 如果是leader则进行阶段控制
-  int8_t stage = ZERO_STAGE;
+  stage = ZERO_STAGE;
   if (MY_UWB_ADDRESS == leaderStateInfo.address && leaderStateInfo.keepFlying)
   {
-    uint32_t tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
+    // 分阶段控制
+    tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
+    // 所有邻居起飞判断
     uint32_t convergeTick = 10000; // 收敛时间10s
     uint32_t followTick = 10000;   // 跟随时间10s
     uint32_t converAndFollowTick = convergeTick + followTick;
-    uint32_t maintainTick = 5000;
+    uint32_t maintainTick = 5000;                              // 每转一次需要的时间
+    uint32_t rotationNums = 8;                                 // 旋转次数
+    uint32_t rotationTick = maintainTick * (rotationNums + 1); // 旋转总时间
     if (tickInterval < convergeTick)
     {
-      stage = ZERO_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
+      stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
     }
     else if (tickInterval >= convergeTick && tickInterval < converAndFollowTick)
     {
-      stage = FIRST_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
+      stage = SECOND_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
     }
-    else if (tickInterval >= converAndFollowTick + 0 * maintainTick && tickInterval < converAndFollowTick + 1 * maintainTick)
+    else if (tickInterval < converAndFollowTick + rotationTick)
     {
-      stage = -1; // 列表的偏移，原地不动
-    }
-    else if (tickInterval >= converAndFollowTick + 1 * maintainTick && tickInterval < converAndFollowTick + 2 * maintainTick)
-    {
-      stage = 0; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 2 * maintainTick && tickInterval < converAndFollowTick + 3 * maintainTick)
-    {
-      stage = 1; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 3 * maintainTick && tickInterval < converAndFollowTick + 4 * maintainTick)
-    {
-      stage = 2; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 4 * maintainTick && tickInterval < converAndFollowTick + 5 * maintainTick)
-    {
-      stage = 3; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 5 * maintainTick && tickInterval < converAndFollowTick + 6 * maintainTick)
-    {
-      stage = 4; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 6 * maintainTick && tickInterval < converAndFollowTick + 7 * maintainTick)
-    {
-      stage = 5; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 7 * maintainTick && tickInterval < converAndFollowTick + 8 * maintainTick)
-    {
-      stage = 6; // 列表的偏移
-    }
-    else if (tickInterval >= converAndFollowTick + 8 * maintainTick && tickInterval < converAndFollowTick + 9 * maintainTick)
-    {
-      stage = 7; // 列表的偏移
+      stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
+      stage = stage - 1;
     }
     else
     {
@@ -724,6 +699,9 @@ LOG_ADD(LOG_UINT32, distNum4, DIST_COUNT + 4)
 LOG_ADD(LOG_UINT32, distNum5, DIST_COUNT + 5)
 LOG_ADD(LOG_UINT32, distNum6, DIST_COUNT + 6)
 LOG_ADD(LOG_UINT32, distNum7, DIST_COUNT + 7)
+
+LOG_ADD(LOG_UINT32, tick, &tickInterval) // 记录起飞时间
+LOG_ADD(LOG_INT8, stage, &stage)
 
 LOG_ADD(LOG_UINT8, index0, rv_data_interval_index + 0) // 接收到0号无人机数据包，rv_data_interval_index[0]++
 LOG_ADD(LOG_UINT8, index1, rv_data_interval_index + 1)

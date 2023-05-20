@@ -322,15 +322,26 @@ LOG_GROUP_START(relative_pos)
 LOG_ADD(LOG_FLOAT, rlX0, &relaVar[0].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY0, &relaVar[0].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw0, &relaVar[0].S[STATE_rlYaw])
+
 LOG_ADD(LOG_FLOAT, rlX1, &relaVar[1].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY1, &relaVar[1].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw1, &relaVar[1].S[STATE_rlYaw])
+
 LOG_ADD(LOG_FLOAT, rlX2, &relaVar[2].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY2, &relaVar[2].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw2, &relaVar[2].S[STATE_rlYaw])
+
 LOG_ADD(LOG_FLOAT, rlX3, &relaVar[3].S[STATE_rlX])
 LOG_ADD(LOG_FLOAT, rlY3, &relaVar[3].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw3, &relaVar[3].S[STATE_rlYaw])
+
+LOG_ADD(LOG_FLOAT, rlX4, &relaVar[4].S[STATE_rlX])
+LOG_ADD(LOG_FLOAT, rlY4, &relaVar[4].S[STATE_rlY])
+LOG_ADD(LOG_FLOAT, rlYaw4, &relaVar[4].S[STATE_rlYaw])
+
+LOG_ADD(LOG_FLOAT, rlX5, &relaVar[5].S[STATE_rlX])
+LOG_ADD(LOG_FLOAT, rlY5, &relaVar[5].S[STATE_rlY])
+LOG_ADD(LOG_FLOAT, rlYaw5, &relaVar[5].S[STATE_rlYaw])
 LOG_GROUP_STOP(relative_pos)
 
 PARAM_GROUP_START(arelative_pos)
