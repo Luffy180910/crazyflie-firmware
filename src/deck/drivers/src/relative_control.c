@@ -334,7 +334,7 @@ void relativeControlInit(void)
 {
   if (isInit)
     return;
-  srand((unsigned)time(NULL));
+  
   MY_UWB_ADDRESS = getUWBAddress();
   xTaskCreate(relativeControlTask, "relative_Control", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
   isInit = true;
