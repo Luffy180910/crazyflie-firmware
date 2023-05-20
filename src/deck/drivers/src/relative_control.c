@@ -286,7 +286,7 @@ void relativeControlTask(void *arg)
           if (MY_UWB_ADDRESS == 0)
           {
             float_t randomVel = 0.5;
-            flyRandomIn1meter(randomVel); 
+            flyRandomIn1meter(randomVel);
           }
           else
           {
@@ -327,6 +327,7 @@ void relativeControlInit(void)
 {
   if (isInit)
     return;
+  srand((unsigned)time(NULL));
   MY_UWB_ADDRESS = getUWBAddress();
   xTaskCreate(relativeControlTask, "relative_Control", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
   isInit = true;
