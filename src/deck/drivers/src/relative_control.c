@@ -251,7 +251,7 @@ void relativeControlTask(void *arg)
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     relaVarInCtrl[0][STATE_rlYaw]=0;
     int8_t leaderStage = getLeaderStage();
-    // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
+    DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
     // if(RUNNING_STAGE==0){ // 调试
     //   vTaskDelay(10000);
     //   setMyTakeoff(true);
