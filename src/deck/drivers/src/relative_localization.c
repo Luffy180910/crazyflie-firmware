@@ -286,7 +286,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     mat_trans(&tmpNN1m, &tmpNN2m);     // (KH - I)'
     mat_mult(&tmpNN1m, &Pm, &tmpNN3m); // (KH - I)*P
     mat_mult(&tmpNN3m, &tmpNN2m, &Pm); // (KH - I)*P*(KH - I)'
-    DEBUG_PRINT("dis:%d\n", dij);
+    // DEBUG_PRINT("dis:%d\n", dij);
 }
 
 bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)
