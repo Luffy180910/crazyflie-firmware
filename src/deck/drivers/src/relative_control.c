@@ -273,21 +273,20 @@ void relativeControlTask(void *arg)
         // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {
+          DEBUG_PRINT("--0--\n");
           setHoverSetpoint(&setpoint, 0, 0, height, 0);
-          DEBUG_PRINT("in----0---\n");
         }
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
-          DEBUG_PRINT("in----1---\n");
+          DEBUG_PRINT("--1--\n");
           float_t randomVel = 0.5;
           flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
-          
         }
         else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
         {
-          DEBUG_PRINT("in----2---\n");
+          DEBUG_PRINT("--2--\n");
           if (MY_UWB_ADDRESS == 0)
           {
             float_t randomVel = 0.5;
@@ -297,11 +296,10 @@ void relativeControlTask(void *arg)
           {
             formation0asCenter(targetX, targetY);
           }
-
         }
         else if (leaderStage != LAND_STAGE) // 第3个阶段，转圈
         {
-          DEBUG_PRINT("in----3---\n");
+          DEBUG_PRINT("--3--\n");
           if (MY_UWB_ADDRESS == 0)
           {
             setHoverSetpoint(&setpoint, 0, 0, height, 0);
@@ -334,8 +332,8 @@ void relativeControlInit(void)
 {
   if (isInit)
     return;
-  
   MY_UWB_ADDRESS = getUWBAddress();
+  srand(MY_UWB_ADDRESS);
   xTaskCreate(relativeControlTask, "relative_Control", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
   isInit = true;
 }
