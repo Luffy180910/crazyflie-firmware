@@ -279,7 +279,7 @@ void relativeControlTask(void *arg)
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           // DEBUG_PRINT("--1--\n");
-          float_t randomVel = 0.5;
+          float_t randomVel = 0.4;
           flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
