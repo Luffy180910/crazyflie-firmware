@@ -13,7 +13,7 @@
 #include "log.h"
 #include "math.h"
 #include "adhocdeck.h"
-#define RUNNING_STAGE 1 // 0代码debug阶段，1代码运行阶段
+#define RUNNING_STAGE 0 // 0代码debug阶段，1代码运行阶段
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
@@ -249,6 +249,7 @@ void relativeControlTask(void *arg)
     vTaskDelay(10);
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
+    relaVarInCtrl[0][STATE_rlYaw]=0;
     int8_t leaderStage = getLeaderStage();
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
     // if(RUNNING_STAGE==0){ // 调试
