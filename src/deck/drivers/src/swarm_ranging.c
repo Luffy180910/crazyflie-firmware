@@ -83,12 +83,12 @@ void initLeaderStateInfo()
   leaderStateInfo.keepFlying = false;
   leaderStateInfo.address = 0;
   leaderStateInfo.stage = ZERO_STAGE;
-  DEBUG_PRINT("--init--%d\n",leaderStateInfo.stage);
+  //DEBUG_PRINT("--init--%d\n",leaderStateInfo.stage);
   
 }
 int8_t getLeaderStage()
 {
-  DEBUG_PRINT("--get--%d\n",leaderStateInfo.stage);
+  //DEBUG_PRINT("--get--%d\n",leaderStateInfo.stage);
   return leaderStateInfo.stage;
 }
 
@@ -111,8 +111,8 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   { /*无人机的keep_flying都是由0号无人机来设置的*/
     leaderStateInfo.keepFlying = rangingMessageHeader->keep_flying;
     leaderStateInfo.stage = rangingMessageHeader->stage;
-    DEBUG_PRINT("--before recv--%d\n",leaderStateInfo.stage);
-    DEBUG_PRINT("--recv--%d\n",leaderStateInfo.stage);
+    //DEBUG_PRINT("--before recv--%d\n",leaderStateInfo.stage);
+    //DEBUG_PRINT("--recv--%d\n",leaderStateInfo.stage);
   }
 }
 
@@ -664,8 +664,10 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     }
     // DEBUG_PRINT("%d\n",stage)
     leaderStateInfo.stage = stage;        // 这里设置leader的stage
-    rangingMessage->header.stage = stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
+    
+    //DEBUG_PRINT("--send--%d\n",rangingMessage->header.stage);
   }
+  rangingMessage->header.stage = leaderStateInfo.stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
   /*--9添加--*/
   return rangingMessage->header.msgLength;
 }
