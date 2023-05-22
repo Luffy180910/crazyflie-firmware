@@ -34,11 +34,11 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 
 static bool checkAddress(uint16_t address) {
   if(MY_UWB_ADDRESS == 1 && (address == 2 || address == 3)) return true;
-  if(MY_UWB_ADDRESS == 2 && (address == 1 || address == 5 || address == 6)) return true;
-  if(MY_UWB_ADDRESS == 3 && (address == 1 || address == 4 || address == 5)) return true;
-  if(MY_UWB_ADDRESS == 4 && address == 3) return true;
-  if(MY_UWB_ADDRESS == 5 && (address == 2 || address == 3)) return true;
-  if(MY_UWB_ADDRESS == 6 && address == 2) return true;
+  if(MY_UWB_ADDRESS == 2 && (address == 1 || address == 4)) return true;
+  if(MY_UWB_ADDRESS == 3 && (address == 1 || address == 4)) return true;
+  if(MY_UWB_ADDRESS == 4 && (address == 2 || address == 3 || address == 5 || address == 6)) return true;
+  if(MY_UWB_ADDRESS == 5 && address == 4) return true;
+  if(MY_UWB_ADDRESS == 6 && address == 4) return true;
   return false;
 }
 
@@ -113,7 +113,7 @@ static void uwbRangingRxTask(void *parameters) {
       populateTwoHopNeighborSet(&rxPacketCache);
       MPRNeighborBitMap = populateMPRSet(twoHopNeighborBitMap);
       populateMPRSelectorSet(&rxPacketCache);
-      DEBUG_PRINT("MPR RECORD: %llu \n", MPRNeighborBitMap);
+      // DEBUG_PRINT("MPR RECORD: %llu \n", MPRNeighborBitMap);
     }
   }
 }

@@ -26,7 +26,7 @@
 
 // Experiment
 #define SRC_ADDR 1
-#define DST_ADDR 5
+#define DST_ADDR 6
 
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
@@ -112,6 +112,7 @@ static void dispatchRoutingDataMessage(UWB_Packet_t *rxPacketCache) {
       DEBUG_PRINT("NEXT!\n");
       updateRoutingDataMessage(mockData);
       uwbSendPacketBlock(rxPacketCache);
+      uwbSendPacketBlock(rxPacketCache);
       return;
     case ROUTING_TO_OTHER:
       DEBUG_PRINT("OTHER!\n");
@@ -137,6 +138,8 @@ static void uwbRoutingTxTask(void *parameters) {
       DEBUG_PRINT("NextAddr: %u\n", mockDataHeader->nextAddress);
       if (msgLen != -1) {
         txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
+        uwbSendPacketBlock(&txPacketCache);
+        uwbSendPacketBlock(&txPacketCache);
         uwbSendPacketBlock(&txPacketCache);
       }
     }
@@ -211,9 +214,9 @@ void computeRouting() {
         uint16_t edgeDistance = topologyTable.distance;
         set_index_t dstNodeIndex = findInRoutingNodeStateTableSet(&routingNodeStateTableSet, dstAddress);
         if (dstNodeIndex != -1) {
-          if (routingNodeStateTableSet.setData[dstAddress].data.distance > (nodeItem.distance + edgeDistance)) {
-            routingNodeStateTableSet.setData[dstAddress].data.distance = nodeItem.distance + edgeDistance;
-            routingPriorityQueuePush(&routingPriorityQueue, &routingNodeStateTableSet.setData[dstAddress].data);
+          if (routingNodeStateTableSet.setData[dstNodeIndex].data.distance > (nodeItem.distance + edgeDistance)) {
+            routingNodeStateTableSet.setData[dstNodeIndex].data.distance = nodeItem.distance + edgeDistance;
+            routingPriorityQueuePush(&routingPriorityQueue, &routingNodeStateTableSet.setData[dstNodeIndex].data);
             routingShortestTree[dstAddress] = srcAddress;
           }
         } else {

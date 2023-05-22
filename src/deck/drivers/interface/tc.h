@@ -38,11 +38,11 @@ typedef struct {
 } __attribute__((packed)) Tc_Message_t; // 7 + 6 * MAX_Tc_BODY_UNIT_NUMBER byte
 
 /* Queue Constants */
-#define TC_RX_QUEUE_SIZE 10
+#define TC_RX_QUEUE_SIZE 20
 #define TC_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
 
 /* Tc Constants */
-#define TC_INTERVAL 4000
+#define TC_INTERVAL 2555
 #define TC_TIME_TO_LIVE 6
 
 /* Tc Operations */

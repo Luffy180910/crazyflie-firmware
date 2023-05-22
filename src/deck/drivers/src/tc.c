@@ -43,9 +43,11 @@ static void uwbTcTxTask(void *parameters) {
   txPacketCache.header.type = TC;
 
   while (true) {
-    // printFloodingTopologyTableSet(&tcFloodingTopologyTableSet);
+    printFloodingTopologyTableSet(&tcFloodingTopologyTableSet);
     int msgLen = generateTcMessage((Tc_Message_t *) &txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
+    uwbSendPacketBlock(&txPacketCache);
+    // 为解决丢包问题多发送一次
     uwbSendPacketBlock(&txPacketCache);
     /* jitter */
     int jitter = (int) (rand() / (float) RAND_MAX * 9) - 4;
@@ -55,11 +57,11 @@ static void uwbTcTxTask(void *parameters) {
 
 static bool checkAddress(uint16_t address) {
   if(MY_UWB_ADDRESS == 1 && (address == 2 || address == 3)) return true;
-  if(MY_UWB_ADDRESS == 2 && (address == 1 || address == 5 || address == 6)) return true;
-  if(MY_UWB_ADDRESS == 3 && (address == 1 || address == 4 || address == 5)) return true;
-  if(MY_UWB_ADDRESS == 4 && address == 3) return true;
-  if(MY_UWB_ADDRESS == 5 && (address == 2 || address == 3)) return true;
-  if(MY_UWB_ADDRESS == 6 && address == 2) return true;
+  if(MY_UWB_ADDRESS == 2 && (address == 1 || address == 4)) return true;
+  if(MY_UWB_ADDRESS == 3 && (address == 1 || address == 4)) return true;
+  if(MY_UWB_ADDRESS == 4 && (address == 2 || address == 3 || address == 5 || address == 6)) return true;
+  if(MY_UWB_ADDRESS == 5 && address == 4) return true;
+  if(MY_UWB_ADDRESS == 6 && address == 4) return true;
   return false;
 }
 
