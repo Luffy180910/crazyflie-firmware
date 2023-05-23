@@ -171,7 +171,7 @@ void relativeLocoTask(void *arg)
                 vxj = (vxj_t + 0.0) / 100;
                 vyj = (vyj_t + 0.0) / 100;
                 hj = (hj_t + 0.0) / 100;
-                DEBUG_PRINT("xworld:%f,yworld:%f,gyroz:%f,height:%f",vxj,vyj,hj,rj);
+                DEBUG_PRINT("%f,%f,%f,%f",vxj,vyj,hj,rj);
                 //  使用固定数据
 
                 // vxj = data[0][curi];
