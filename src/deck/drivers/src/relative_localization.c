@@ -62,6 +62,10 @@ static float hi, hj;       // height of robot i and j
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 // static int16_t initRelativePosition[RANGING_TABLE_SIZE][RANGING_TABLE_SIZE][STATE_DIM_rl - 1];/*用于在指定无人机的初始位置时使用,由于在同一水平面，为了节省内存就不用Z轴了*/
 
+
+static float data[4][8000];
+static int curi = 0;
+
 // 初始时，所有无人机基于0号无人机的相对位置
 //正方向编队方案
 static const float_t initPositionRela0[15][STATE_DIM_rl] = {
@@ -167,6 +171,16 @@ void relativeLocoTask(void *arg)
                 vxj = (vxj_t + 0.0) / 100;
                 vyj = (vyj_t + 0.0) / 100;
                 hj = (hj_t + 0.0) / 100;
+                DEBUG_PRINT("xworld:%f,yworld:%f,gyroz:%f,height:%f",vxj,vyj,hj,rj);
+                //  使用固定数据
+
+                // vxj = data[0][curi];
+                // vyj = data[1][curi];
+                // rj = data[2][curi];
+                // hj = data[3][curi];
+                // curi += 1;
+
+                //  使用固定数据
                 if (isNewAdd)
                 {
                     relaVarInit(relaVar, neighborAddress);
