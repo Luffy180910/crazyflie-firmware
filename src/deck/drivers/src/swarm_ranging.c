@@ -640,11 +640,8 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
     // 所有邻居起飞判断
     uint32_t convergeTick = 10000; // 收敛时间10s
-    uint32_t followTick = 10000;   // 跟随时间10s
+    uint32_t followTick = 50000;   // 跟随时间10s
     uint32_t converAndFollowTick = convergeTick + followTick;
-    uint32_t maintainTick = 5000;                              // 每转一次需要的时间
-    uint32_t rotationNums = 8;                                 // 旋转次数
-    uint32_t rotationTick = maintainTick * (rotationNums + 1); // 旋转总时间
     if (tickInterval < convergeTick)
     {
       stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
@@ -652,11 +649,6 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     else if (tickInterval >= convergeTick && tickInterval < converAndFollowTick)
     {
       stage = SECOND_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
-    }
-    else if (tickInterval < converAndFollowTick + rotationTick)
-    {
-      stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
-      stage = stage - 1;
     }
     else
     {

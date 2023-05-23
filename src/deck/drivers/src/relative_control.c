@@ -280,30 +280,12 @@ void relativeControlTask(void *arg)
         {
           // DEBUG_PRINT("--2--\n");
           targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
-          targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];  
+          targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
           if (MY_UWB_ADDRESS != 0)
             formation0asCenter(targetX, targetY);
         }
-        else if (leaderStage != LAND_STAGE) // 第3个阶段，转圈
-        {
-          // DEBUG_PRINT("--3--\n");
-          if (MY_UWB_ADDRESS == 0)
-          {
-            setHoverSetpoint(&setpoint, 0, 0, height, 0);
-          }
-          else
-          {
-            targetShift = leaderStage;
-            // 使得targetList在1~UAV_NUM之间偏移
-            int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM - 1) + 1; // 目标地址索引
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY);
-          }
-        }
         else
         {
-          // 运行90s之后，落地
           land();
         }
       }
