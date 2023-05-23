@@ -24,6 +24,9 @@ uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t LOSS_COUNT[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t DIST_COUNT[RANGING_TABLE_SIZE + 1] = {0};
 uint16_t LAST_RECEIVED_SEQ[RANGING_TABLE_SIZE + 1] = {0};
+uint32_t RECEIVED_COUNT = 0;
+uint32_t COMPUTED_COUNT = 0;
+uint32_t LOSSED_COUNT = 0;
 /*用于计算丢包率*/
 
 /*--5添加--*/
@@ -35,8 +38,7 @@ static uint8_t rv_any_index = 0;
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 static uint32_t latest_txTime;                                                  // 最新的发送数据包时间，用于日志
 static uint32_t neighbor_latest_rvTime[RANGING_TABLE_SIZE + 1];                 // 最新的接收数据包时间，用于日志
-static uint32_t
-    last_swapPeriod_Time;                                           // 上一次变化周期的时间，如果距离上一次变换周期的时间>固定的传输周期，则恢复至固定传输周期
+static uint32_t last_swapPeriod_Time;                                           // 上一次变化周期的时间，如果距离上一次变换周期的时间>固定的传输周期，则恢复至固定传输周期
 static uint32_t last_swapPeriod_period;                                         // 上一次变化的周期值
 static tx_rv_interval_history_t tx_rv_interval_history[RANGING_TABLE_SIZE + 1]; //  两次的漂移差
 static uint8_t tx_rv_interval[RANGING_TABLE_SIZE + 1] = {0};                    // 两次漂移时间差
@@ -235,6 +237,7 @@ void setDistance(uint16_t neighborAddress, int16_t distance) {
   distanceTowards[neighborAddress] = distance;
   // 下面用于计算真正测距次数
   DIST_COUNT[neighborAddress]++;
+  COMPUTED_COUNT++;
 }
 
 static void uwbRangingTxTask(void *parameters) {
@@ -410,10 +413,13 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     uint16_t curSeqNumber = rangingMessage->header.msgSequence;
     if (curSeqNumber < lastSeqNumber) {
       LOSS_COUNT[neighborAddress] += (curSeqNumber + 1) + 65535 - lastSeqNumber - 1;
+      LOSSED_COUNT += (curSeqNumber + 1) + 65535 - lastSeqNumber - 1;
     } else {
       LOSS_COUNT[neighborAddress] += curSeqNumber - lastSeqNumber - 1;
+      LOSSED_COUNT += curSeqNumber - lastSeqNumber - 1;
     }
     RECEIVE_COUNT[neighborAddress]++;
+    RECEIVED_COUNT++;
   }
 
   LAST_RECEIVED_SEQ[neighborAddress] = rangingMessage->header.msgSequence;;
@@ -605,6 +611,7 @@ LOG_GROUP_START(Ranging)
 
 // LOG_ADD(LOG_UINT8, t0index, &test_0_index)
 // LOG_ADD(LOG_UINT8, t0inter, &test_0_interval)
+        LOG_ADD(LOG_UINT32, LOSSED_COUNT, &LOSSED_COUNT)
         LOG_ADD(LOG_UINT32, lossNum0, LOSS_COUNT + 0) // 丢包数量
         LOG_ADD(LOG_UINT32, lossNum1, LOSS_COUNT + 1)
         LOG_ADD(LOG_UINT32, lossNum2, LOSS_COUNT + 2)
@@ -617,6 +624,7 @@ LOG_GROUP_START(Ranging)
         LOG_ADD(LOG_UINT32, tick, &tickInterval) // 记录起飞时间
         LOG_ADD(LOG_INT8, stage, &stage)
 
+        LOG_ADD(LOG_UINT32, RECEIVED_COUNT, &RECEIVED_COUNT)
         LOG_ADD(LOG_UINT32, recvNum0, RECEIVE_COUNT + 0) // 总包数
         LOG_ADD(LOG_UINT32, recvNum1, RECEIVE_COUNT + 1)
         LOG_ADD(LOG_UINT32, recvNum2, RECEIVE_COUNT + 2)
@@ -626,6 +634,7 @@ LOG_GROUP_START(Ranging)
         LOG_ADD(LOG_UINT32, recvNum6, RECEIVE_COUNT + 6)
         LOG_ADD(LOG_UINT32, recvNum7, RECEIVE_COUNT + 7)
 
+        LOG_ADD(LOG_UINT32, COMPUTED_COUNT, &COMPUTED_COUNT)
         LOG_ADD(LOG_UINT32, distNum0, DIST_COUNT + 0) // 测距成功次数
         LOG_ADD(LOG_UINT32, distNum1, DIST_COUNT + 1)
         LOG_ADD(LOG_UINT32, distNum2, DIST_COUNT + 2)
