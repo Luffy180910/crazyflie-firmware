@@ -72,6 +72,10 @@ static int packetSeqNumber = 1;
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[FRAME_LEN_MAX];
 
+/* log block */
+uint32_t TOTAL_SEND = 0;
+uint32_t TOTAL_RECEIVED = 0;
+
 static void txCallback() {
   packetSeqNumber++;
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
@@ -105,6 +109,8 @@ static void rxCallback() {
 
   dwt_forcetrxoff();
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
+
+  TOTAL_RECEIVED++;
 }
 
 static void rxTimeoutCallback() {
@@ -218,6 +224,7 @@ static void uwbTxTask(void *parameters) {
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       }
+      TOTAL_SEND++;
       vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
     }
   }
@@ -408,3 +415,8 @@ PARAM_GROUP_STOP(deck)
 PARAM_GROUP_START(ADHOC)
         PARAM_ADD_CORE(PARAM_UINT16 | PARAM_PERSISTENT, MY_UWB_ADDRESS, &MY_UWB_ADDRESS)
 PARAM_GROUP_STOP(ADHOC)
+
+LOG_GROUP_START(ADHOC)
+        LOG_ADD(LOG_UINT32, TOTAL_SEND, &TOTAL_SEND)
+        LOG_ADD(LOG_UINT32, TOTAL_RECEIVED, &TOTAL_RECEIVED)
+LOG_GROUP_STOP(ADHOC)
