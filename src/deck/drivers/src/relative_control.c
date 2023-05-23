@@ -217,33 +217,28 @@ void relativeControlTask(void *arg)
 {
   int8_t targetShift = 0;
   uint8_t UAV_NUM = 9;
+  uint8_t currentPosition = MY_UWB_ADDRESS;
   static const float_t targetList[15][STATE_DIM_rl] = {
-    {0.0f, 0.0f, 0.0f},   // 0
-    {-1.5f, -1.5f, 0.0f}, // 1
-    {-1.5f, 0.0f, 0.0f},  // 2
-    {-1.5f, 1.5f, 0.0f},  // 3
-    {0.0f, 1.5f, 0.0f},   // 4
-    {1.5f, 1.5f, 0.0f},   // 5
-    {1.5f, 0.0f, 0.0f},   // 6
-    {1.5, -1.5f, 0.0f},   // 7
-    {0.0f, -1.5f, 0.0f},  // 8
-    {-1.5f, -3.0f, 0.0f}, // 9
-    {0.0f, -3.0f, 0.0f}, // 10
-    {1.5f, -3.0f, 0.0f},  // 11
-    {0.0f, 0.0f, 0.0f},   // ----12
-    {0.0f, 0.0f, 0.0f}};  // ----13
-  // static const float_t targetList[15][STATE_DIM_rl] = {
-  //   {0.0f, 0.0f, 0.0f},   // 0
-  //   {-1.8f, -0.9f, 0.0f}, // 1
-  //   {-1.8f, 0.9f, 0.0f},  // 2
-  //   {-0.9f, 1.8f, 0.0f},  // 3
-  //   {0.9f, 1.8f, 0.0f},   // 4
-  //   {1.8f, 0.9f, 0.0f},   // 5
-  //   {1.8f, -0.9f, 0.0f},  // 6
-  //   {0.9, -1.8f, 0.0f},   // 7
-  //   {-0.9f, -1.8f, 0.0f}, // 8
-  //   {0.0f, 0.0f, 0.0f},   // 9
-  //   {0.0f, 0.0f, 0.0f}};  // 10
+      {0.0f, 0.0f, 0.0f},                                                   // 0
+      {-1.5f, -1.5f, 0.0f},                                                 // 1
+      {-1.5f, 0.0f, 0.0f},                                                  // 2
+      {-1.5f, 1.5f, 0.0f},                                                  // 3
+      {0.0f, 1.5f, 0.0f},                                                   // 4
+      {1.5f, 1.5f, 0.0f},                                                   // 5
+      {1.5f, 0.0f, 0.0f},                                                   // 6
+      {1.5, -1.5f, 0.0f},                                                   // 7
+      {0.0f, -1.5f, 0.0f},                                                  // 8
+      {-1.5f, -3.0f, 0.0f},                                                 // 9
+      {0.0f, -3.0f, 0.0f},                                                  // 10
+      {1.5f, -3.0f, 0.0f},                                                  // 11
+      {0.0f, 0.0f, 0.0f},                                                   // ----12
+      {0.0f, 0.0f, 0.0f}};                                                  // ----13
+  static const uint8_t targetSquere3_3[15]={
+    1,2,3,4,5,6,7,8
+  };
+  static const uint8_t targetSquere3_4[15]={
+    9,1,2,3,4,5,6,7,11,10
+  };
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
 
@@ -269,11 +264,8 @@ void relativeControlTask(void *arg)
         {
           vTaskDelay(2000); // 设定位置使得其收敛时间
           take_off();
-          // onGround = false;
           setMyTakeoff(true);
         }
-        // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
-        // DEBUG_PRINT("tick:%f\n", relaVarInCtrl[0][STATE_rlYaw]);
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {
           // DEBUG_PRINT("--0--\n");
@@ -300,7 +292,7 @@ void relativeControlTask(void *arg)
             formation0asCenter(targetX, targetY);
           }
         }
-        else if (leaderStage != LAND_STAGE) // 第3个阶段，转圈
+        else if (leaderStage <=30) // 第3个阶段，3*3转圈
         {
           // DEBUG_PRINT("--3--\n");
           if (MY_UWB_ADDRESS == 0)
@@ -314,6 +306,13 @@ void relativeControlTask(void *arg)
             int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM - 1) + 1; // 目标地址索引
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            formation0asCenter(targetX, targetY);
+            currentPosition = index;
+          }
+        }else if (leaderStage != LAND_STAGE){ // 第4个阶段，3*4转圈
+          if(currentPosition!=8){ // 如果不在8号位置
+
+          }else{
             formation0asCenter(targetX, targetY);
           }
         }
