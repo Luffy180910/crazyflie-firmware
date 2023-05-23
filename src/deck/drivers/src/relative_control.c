@@ -215,20 +215,9 @@ void reset_estimators()
 
 void relativeControlTask(void *arg)
 {
-  int8_t targetShift = 0;
-  uint8_t UAV_NUM = 9;
   static const float_t targetList[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},   // 0
-      {-1.0f, 0.0f, 0.0f}, // 1
-      {-1.5f, 0.0f, 0.0f},  // 2
-      {-1.5f, 1.5f, 0.0f},  // 3
-      {0.0f, 1.5f, 0.0f},   // 4
-      {1.5f, 1.5f, 0.0f},   // 5
-      {1.5f, 0.0f, 0.0f},   // 6
-      {1.5, -1.5f, 0.0f},   // 7
-      {0.0f, -1.5f, 0.0f},  // 8
-      {0.0f, 0.0f, 0.0f},   // 9
-      {0.0f, 0.0f, 0.0f}  // 10
+      {-1.0f, 0.0f, 0.0f},  // 1
   };
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
@@ -240,11 +229,6 @@ void relativeControlTask(void *arg)
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
     // relaVarInCtrl[0][STATE_rlYaw]=0;
     int8_t leaderStage = getLeaderStage();
-    // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
-    // if(RUNNING_STAGE==0){ // 调试
-    //   vTaskDelay(10000);
-    //   setMyTakeoff(true);
-    // }
 
     if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
     {
@@ -269,7 +253,6 @@ void relativeControlTask(void *arg)
         }
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
-          // DEBUG_PRINT("--1--\n");
           float_t randomVel = 1.0;
           if (MY_UWB_ADDRESS != 0)
             flyRandomIn1meter(randomVel);
