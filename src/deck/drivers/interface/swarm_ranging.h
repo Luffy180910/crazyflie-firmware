@@ -7,14 +7,14 @@
 #define ENABLE_BUS_BOARDING_SCHEME
 
 /* Queue Constants */
-#define RANGING_RX_QUEUE_SIZE 10
+#define RANGING_RX_QUEUE_SIZE 25
 #define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
 
 /* Ranging Constants */
 #define RANGING_INTERVAL_MIN 20  // default 20
 #define RANGING_INTERVAL_MAX 500 // default 500
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
-#define TX_PERIOD_IN_MS 40
+#define TX_PERIOD_IN_MS 60
 #define TX_RV_INTERVAL_HISTORY_SIZE 5
 #define ZERO_STAGE 124  // 飞行阶段，0阶段随机飞
 #define FIRST_STAGE 125 //
