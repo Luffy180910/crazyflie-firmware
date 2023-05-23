@@ -219,7 +219,7 @@ void relativeControlTask(void *arg)
   uint8_t UAV_NUM = 9;
   static const float_t targetList[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},   // 0
-      {-1.5f, -1.5f, 0.0f}, // 1
+      {-1.0f, 0.0f, 0.0f}, // 1
       {-1.5f, 0.0f, 0.0f},  // 2
       {-1.5f, 1.5f, 0.0f},  // 3
       {0.0f, 1.5f, 0.0f},   // 4
@@ -228,19 +228,8 @@ void relativeControlTask(void *arg)
       {1.5, -1.5f, 0.0f},   // 7
       {0.0f, -1.5f, 0.0f},  // 8
       {0.0f, 0.0f, 0.0f},   // 9
-      {0.0f, 0.0f, 0.0f}};  // 10
-  // static const float_t targetList[15][STATE_DIM_rl] = {
-  //   {0.0f, 0.0f, 0.0f},   // 0
-  //   {-1.8f, -0.9f, 0.0f}, // 1
-  //   {-1.8f, 0.9f, 0.0f},  // 2
-  //   {-0.9f, 1.8f, 0.0f},  // 3
-  //   {0.9f, 1.8f, 0.0f},   // 4
-  //   {1.8f, 0.9f, 0.0f},   // 5
-  //   {1.8f, -0.9f, 0.0f},  // 6
-  //   {0.9, -1.8f, 0.0f},   // 7
-  //   {-0.9f, -1.8f, 0.0f}, // 8
-  //   {0.0f, 0.0f, 0.0f},   // 9
-  //   {0.0f, 0.0f, 0.0f}};  // 10
+      {0.0f, 0.0f, 0.0f}  // 10
+  };
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
 
@@ -265,8 +254,9 @@ void relativeControlTask(void *arg)
         if (onGround)
         {
           vTaskDelay(2000); // 设定位置使得其收敛时间
-          take_off();
-          // onGround = false;
+          if(MY_UWB_ADDRESS != 0)
+            take_off();
+          onGround = false;
           setMyTakeoff(true);
         }
         // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
@@ -274,28 +264,25 @@ void relativeControlTask(void *arg)
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {
           // DEBUG_PRINT("--0--\n");
-          setHoverSetpoint(&setpoint, 0, 0, height, 0);
+          if (MY_UWB_ADDRESS != 0)
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
         }
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           // DEBUG_PRINT("--1--\n");
-          float_t randomVel = 0.4;
-          flyRandomIn1meter(randomVel);
+          float_t randomVel = 1.0;
+          if (MY_UWB_ADDRESS != 0)
+            flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
         }
         else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
         {
           // DEBUG_PRINT("--2--\n");
-          if (MY_UWB_ADDRESS == 0)
-          {
-            float_t randomVel = 0.5;
-            flyRandomIn1meter(randomVel);
-          }
-          else
-          {
+          targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
+          targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];  
+          if (MY_UWB_ADDRESS != 0)
             formation0asCenter(targetX, targetY);
-          }
         }
         else if (leaderStage != LAND_STAGE) // 第3个阶段，转圈
         {

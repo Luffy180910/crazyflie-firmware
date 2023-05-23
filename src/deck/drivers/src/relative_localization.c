@@ -66,7 +66,7 @@ static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 //正方向编队方案
 static const float_t initPositionRela0[15][STATE_DIM_rl] = {
     {0.0f, 0.0f, 0.0f},   // 0
-    {-1.5f, -1.5f, 0.0f}, // 1
+    {-1.0f, 0.0f, 0.0f},  // 1
     {-1.5f, 0.0f, 0.0f},  // 2
     {-1.5f, 1.5f, 0.0f},  // 3
     {0.0f, 1.5f, 0.0f},   // 4
@@ -75,21 +75,8 @@ static const float_t initPositionRela0[15][STATE_DIM_rl] = {
     {1.5, -1.5f, 0.0f},   // 7
     {0.0f, -1.5f, 0.0f},  // 8
     {0.0f, 0.0f, 0.0f},   // 9
-    {0.0f, 0.0f, 0.0f}};  // 10
-
-// 八边形编队方案
-// static const float_t initPositionRela0[15][STATE_DIM_rl] = {
-//     {0.0f, 0.0f, 0.0f},   // 0
-//     {-1.8f, -0.9f, 0.0f}, // 1
-//     {-1.8f, 0.9f, 0.0f},  // 2
-//     {-0.9f, 1.8f, 0.0f},  // 3
-//     {0.9f, 1.8f, 0.0f},   // 4
-//     {1.8f, 0.9f, 0.0f},   // 5
-//     {1.8f, -0.9f, 0.0f},  // 6
-//     {0.9, -1.8f, 0.0f},   // 7
-//     {-0.9f, -1.8f, 0.0f}, // 8
-//     {0.0f, 0.0f, 0.0f},   // 9
-//     {0.0f, 0.0f, 0.0f}};  // 10
+    {0.0f, 0.0f, 0.0f}    // 10
+};
 
 // 矩阵转置
 static inline void mat_trans(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst)
