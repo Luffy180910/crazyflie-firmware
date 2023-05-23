@@ -17,7 +17,7 @@
 #define RX_ANT_DLY 16385
 
 #define FRAME_LEN_STD 127
-#define FRAME_LEN_EXT 1023
+#define FRAME_LEN_EXT 512
 #ifdef ENABLE_PHR_EXT_MODE
 #define FRAME_LEN_MAX FRAME_LEN_EXT
 #else
