@@ -74,8 +74,11 @@ static const float_t initPositionRela0[15][STATE_DIM_rl] = {
     {1.5f, 0.0f, 0.0f},   // 6
     {1.5, -1.5f, 0.0f},   // 7
     {0.0f, -1.5f, 0.0f},  // 8
-    {0.0f, 0.0f, 0.0f},   // 9
-    {0.0f, 0.0f, 0.0f}};  // 10
+    {-1.5f, -3.0f, 0.0f}, // 9
+    {0.0f, -3.0f, 0.0f}, // 10
+    {1.5f, -3.0f, 0.0f},  // 11
+    {0.0f, 0.0f, 0.0f},   // ----12
+    {0.0f, 0.0f, 0.0f}};  // ----13
 
 // 八边形编队方案
 // static const float_t initPositionRela0[15][STATE_DIM_rl] = {
