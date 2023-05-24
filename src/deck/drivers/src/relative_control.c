@@ -238,9 +238,9 @@ void relativeControlTask(void *arg)
         if (onGround)
         {
           vTaskDelay(2000); // 设定位置使得其收敛时间
-          // if(MY_UWB_ADDRESS != 0)
-          take_off();
-          // onGround = false;
+          if(MY_UWB_ADDRESS != 0)
+            take_off();
+          onGround = false;
           setMyTakeoff(true);
         }
         // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
@@ -248,14 +248,14 @@ void relativeControlTask(void *arg)
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {
           // DEBUG_PRINT("--0--\n");
-          // if (MY_UWB_ADDRESS != 0)
-          setHoverSetpoint(&setpoint, 0, 0, height, 0);
+          if (MY_UWB_ADDRESS != 0)
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
         }
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           float_t randomVel = 1.0;
-          // if (MY_UWB_ADDRESS != 0)
-          flyRandomIn1meter(randomVel);
+          if (MY_UWB_ADDRESS != 0)
+            flyRandomIn1meter(randomVel);
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
         }
@@ -266,12 +266,12 @@ void relativeControlTask(void *arg)
           targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
           if (MY_UWB_ADDRESS != 0)
             formation0asCenter(targetX, targetY);
-          else{
-            if(leaderStage % 2 == 0)
-              setHoverSetpoint(&setpoint, 1, 0, height, 0);
-            else
-              setHoverSetpoint(&setpoint, 0, 0, height, 30); 
-          }
+          // else{
+          //   if(leaderStage % 2 == 0)
+          //     setHoverSetpoint(&setpoint, 1, 0, height, 0);
+          //   else
+          //     setHoverSetpoint(&setpoint, 0, 0, height, 30); 
+          // }
         }
         else
         {
