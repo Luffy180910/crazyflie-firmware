@@ -83,12 +83,11 @@ void initLeaderStateInfo()
   leaderStateInfo.keepFlying = false;
   leaderStateInfo.address = 0;
   leaderStateInfo.stage = ZERO_STAGE;
-  //DEBUG_PRINT("--init--%d\n",leaderStateInfo.stage);
-  
+  // DEBUG_PRINT("--init--%d\n",leaderStateInfo.stage);
 }
 int8_t getLeaderStage()
 {
-  //DEBUG_PRINT("--get--%d\n",leaderStateInfo.stage);
+  // DEBUG_PRINT("--get--%d\n",leaderStateInfo.stage);
   return leaderStateInfo.stage;
 }
 
@@ -111,8 +110,8 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   { /*无人机的keep_flying都是由0号无人机来设置的*/
     leaderStateInfo.keepFlying = rangingMessageHeader->keep_flying;
     leaderStateInfo.stage = rangingMessageHeader->stage;
-    //DEBUG_PRINT("--before recv--%d\n",leaderStateInfo.stage);
-    //DEBUG_PRINT("--recv--%d\n",leaderStateInfo.stage);
+    // DEBUG_PRINT("--before recv--%d\n",leaderStateInfo.stage);
+    // DEBUG_PRINT("--recv--%d\n",leaderStateInfo.stage);
   }
 }
 
@@ -642,9 +641,12 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     uint32_t convergeTick = 10000; // 收敛时间10s
     uint32_t followTick = 10000;   // 跟随时间10s
     uint32_t converAndFollowTick = convergeTick + followTick;
-    uint32_t maintainTick = 5000;                              // 每转一次需要的时间
-    uint32_t rotationNums = 8;                                 // 旋转次数
-    uint32_t rotationTick = maintainTick * (rotationNums + 1); // 旋转总时间
+    uint32_t maintainTick = 5000;                                            // 每转一次需要的时间
+    uint32_t rotationNums_3Stage = 4;                                        // 第3阶段旋转次数
+    uint32_t rotationNums_4Stage = 4;                                        // 第4阶段旋转次数
+    uint32_t rotationTick_3Stage = maintainTick * (rotationNums_3Stage + 1); // 旋转总时间
+    uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage);     // 旋转总时间
+    int8_t stageStartPoint_4 = 30; // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
     if (tickInterval < convergeTick)
     {
       stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
@@ -653,19 +655,24 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     {
       stage = SECOND_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
     }
-    else if (tickInterval < converAndFollowTick + rotationTick)
+    else if (tickInterval < converAndFollowTick + rotationTick_3Stage)
     {
       stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
       stage = stage - 1;
+    }
+    else if (tickInterval >= converAndFollowTick + rotationTick_3Stage && tickInterval < converAndFollowTick + rotationTick_4Stage)
+    {
+      stage = (tickInterval-converAndFollowTick-rotationTick_3Stage)/maintainTick;
+      stage += stageStartPoint_4;
     }
     else
     {
       stage = LAND_STAGE;
     }
     // DEBUG_PRINT("%d\n",stage)
-    leaderStateInfo.stage = stage;        // 这里设置leader的stage
-    
-    //DEBUG_PRINT("--send--%d\n",rangingMessage->header.stage);
+    leaderStateInfo.stage = stage; // 这里设置leader的stage
+
+    // DEBUG_PRINT("--send--%d\n",rangingMessage->header.stage);
   }
   rangingMessage->header.stage = leaderStateInfo.stage; // 这里传输stage，因为在设置setNeighborStateInfo()函数中只会用leader无人机的stage的值
   /*--9添加--*/

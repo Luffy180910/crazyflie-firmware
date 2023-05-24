@@ -216,29 +216,39 @@ void reset_estimators()
 void relativeControlTask(void *arg)
 {
   int8_t targetShift = 0;
-  uint8_t UAV_NUM = 9;
-  uint8_t currentPosition = MY_UWB_ADDRESS;
+
+  uint8_t currentPosition_3Stage = MY_UWB_ADDRESS; // 当前位于的位置
+  uint8_t currentPosition_4Stage = MY_UWB_ADDRESS; // 当前位于的位置
   static const float_t targetList[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},                                                   // 0
-      {-1.5f, -1.5f, 0.0f},                                                 // 1
-      {-1.5f, 0.0f, 0.0f},                                                  // 2
-      {-1.5f, 1.5f, 0.0f},                                                  // 3
-      {0.0f, 1.5f, 0.0f},                                                   // 4
-      {1.5f, 1.5f, 0.0f},                                                   // 5
-      {1.5f, 0.0f, 0.0f},                                                   // 6
-      {1.5, -1.5f, 0.0f},                                                   // 7
-      {0.0f, -1.5f, 0.0f},                                                  // 8
-      {-1.5f, -3.0f, 0.0f},                                                 // 9
-      {0.0f, -3.0f, 0.0f},                                                  // 10
-      {1.5f, -3.0f, 0.0f},                                                  // 11
-      {0.0f, 0.0f, 0.0f},                                                   // ----12
-      {0.0f, 0.0f, 0.0f}};                                                  // ----13
-  static const uint8_t targetSquere3_3[15]={
-    1,2,3,4,5,6,7,8
+      {0.0f, 0.0f, 0.0f},   // 0
+      {-1.5f, -1.5f, 0.0f}, // 1
+      {-1.5f, 0.0f, 0.0f},  // 2
+      {-1.5f, 1.5f, 0.0f},  // 3
+      {0.0f, 1.5f, 0.0f},   // 4
+      {1.5f, 1.5f, 0.0f},   // 5
+      {1.5f, 0.0f, 0.0f},   // 6
+      {1.5, -1.5f, 0.0f},   // 7
+      {0.0f, -1.5f, 0.0f},  // 8
+      {-1.5f, -3.0f, 0.0f}, // 9
+      {0.0f, -3.0f, 0.0f},  // 10
+      {1.5f, -3.0f, 0.0f},  // 11
+      {0.0f, 0.0f, 0.0f},   // ----12
+      {0.0f, 0.0f, 0.0f}};  // ----13
+  uint8_t SQURE3_3_NUM = 9; // 3阶段转圈的无人机数量+1（0号无人机）
+  uint8_t SQURE3_4_NUM = 11;
+  static const uint8_t targetSquere3_3[15] = {
+      0, 1, 2, 3, 4, 5, 6, 7, 8 // 8个位置,为了使得索引和值一一对应，所以有0
   };
-  static const uint8_t targetSquere3_4[15]={
-    9,1,2,3,4,5,6,7,11,10
+  static const uint8_t indexToPosi3_4[15] = {
+      0, 1, 2, 3, 4, 5, 6, 7, 11, 10, 9 // 11个位置
   };
+  static const int8_t posiToIndex3_4[15] = {// -1代码无效
+                                            -1 , 1, 2, 3, 4, 5, 6, 7, -1, 10, 9, 8};
+  /*
+  posi  0, 1, 2, 3, 4, 5, 6, 7, 11, 10, 9
+  index 0  1  2  3  4  5  6  7  8   9   10
+  */
+
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
 
@@ -292,7 +302,7 @@ void relativeControlTask(void *arg)
             formation0asCenter(targetX, targetY);
           }
         }
-        else if (leaderStage <=30) // 第3个阶段，3*3转圈
+        else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
         {
           // DEBUG_PRINT("--3--\n");
           if (MY_UWB_ADDRESS == 0)
@@ -301,19 +311,47 @@ void relativeControlTask(void *arg)
           }
           else
           {
-            targetShift = leaderStage;
-            // 使得targetList在1~UAV_NUM之间偏移
-            int8_t index = (MY_UWB_ADDRESS + targetShift) % (UAV_NUM - 1) + 1; // 目标地址索引
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY);
-            currentPosition = index;
+            if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
+            {
+              targetShift = leaderStage;
+              // 使得targetList在1~UAV_NUM之间偏移
+              int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+              targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+              targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+              formation0asCenter(targetX, targetY);
+              currentPosition_3Stage = index;
+            }
+            else
+            {
+              formation0asCenter(targetX, targetY);
+            }
           }
-        }else if (leaderStage != LAND_STAGE){ // 第4个阶段，3*4转圈
-          if(currentPosition!=8){ // 如果不在8号位置
-
-          }else{
-            formation0asCenter(targetX, targetY);
+        }
+        else if (leaderStage != LAND_STAGE)
+        { // 第4个阶段，3*4转圈
+          if (MY_UWB_ADDRESS == 0)
+          {
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
+          }
+          else
+          {
+            // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
+            if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
+            {
+              targetShift %= SQURE3_4_NUM;
+              // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
+              int8_t index = posiToIndex3_4[currentPosition_3Stage];  // 将第3阶段地址转换为第4阶段索引
+              index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
+              index = indexToPosi3_4[index];                          // 将索引转换为地址
+              targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+              targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+              formation0asCenter(targetX, targetY);
+              currentPosition_4Stage = index;
+            }
+            else
+            {
+              formation0asCenter(targetX, targetY);
+            }
           }
         }
         else
