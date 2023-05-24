@@ -13,7 +13,7 @@
 #include "log.h"
 #include "math.h"
 #include "adhocdeck.h"
-#define RUNNING_STAGE 1 // 0代码debug阶段，1代码运行阶段
+#define RUNNING_STAGE 0 // 0代码debug阶段，1代码运行阶段
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
@@ -243,7 +243,7 @@ void relativeControlTask(void *arg)
       0, 1, 2, 3, 4, 5, 6, 7, 11, 10, 9 // 11个位置
   };
   static const int8_t posiToIndex3_4[15] = {// -1代码无效
-                                            -1 , 1, 2, 3, 4, 5, 6, 7, -1, 10, 9, 8};
+                                            -1, 1, 2, 3, 4, 5, 6, 7, -1, 10, 9, 8};
   /*
   posi  0, 1, 2, 3, 4, 5, 6, 7, 11, 10, 9
   index 0  1  2  3  4  5  6  7  8   9   10
@@ -338,7 +338,7 @@ void relativeControlTask(void *arg)
             // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
             if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
             {
-              targetShift %= SQURE3_4_NUM;
+              targetShift = leaderStage % SQURE3_4_NUM;
               // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
               int8_t index = posiToIndex3_4[currentPosition_3Stage];  // 将第3阶段地址转换为第4阶段索引
               index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
@@ -363,6 +363,74 @@ void relativeControlTask(void *arg)
       else
       {
         land();
+      }
+    }
+    else // 用于debug_print调试
+    {
+      if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
+      {
+        // DEBUG_PRINT("--0--\n");
+      }
+      else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
+      {
+        DEBUG_PRINT("--1--\n");
+      }
+      else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
+      {
+        // DEBUG_PRINT("--2--\n");
+        if (MY_UWB_ADDRESS == 0)
+        {
+        }
+        else
+        {
+          DEBUG_PRINT("--2--\n");
+        }
+      }
+      else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
+      {
+        // DEBUG_PRINT("--3--\n");
+        if (MY_UWB_ADDRESS == 0)
+        {
+        }
+        else
+        {
+          if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
+          {
+            targetShift = leaderStage;
+            // 使得targetList在1~UAV_NUM之间偏移
+            int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+
+            currentPosition_3Stage = index;
+            DEBUG_PRINT("3:%d\n", index);
+          }
+          else
+          {
+            DEBUG_PRINT("3:no attend");
+          }
+        }
+      }
+      else if (leaderStage != LAND_STAGE)
+      { // 第4个阶段，3*4转圈
+        if (MY_UWB_ADDRESS == 0)
+        {
+        }
+        else
+        {
+          // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
+          if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
+          {
+            targetShift = leaderStage % SQURE3_4_NUM;
+            // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
+            int8_t index = posiToIndex3_4[currentPosition_3Stage];  // 将第3阶段地址转换为第4阶段索引
+            index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
+            index = indexToPosi3_4[index];                          // 将索引转换为地址
+            DEBUG_PRINT("4:%d\n", index);
+          }
+          else
+          {
+            DEBUG_PRINT("4:no attend");
+          }
+        }
       }
     }
   }

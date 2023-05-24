@@ -660,7 +660,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
       stage = stage - 1;
     }
-    else if (tickInterval >= converAndFollowTick + rotationTick_3Stage && tickInterval < converAndFollowTick + rotationTick_4Stage)
+    else if (tickInterval >= converAndFollowTick + rotationTick_3Stage && tickInterval < converAndFollowTick +rotationTick_3Stage+ rotationTick_4Stage)
     {
       stage = (tickInterval-converAndFollowTick-rotationTick_3Stage)/maintainTick;
       stage += stageStartPoint_4;
