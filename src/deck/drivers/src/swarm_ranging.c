@@ -646,7 +646,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     uint32_t rotationNums_4Stage = 4;                                        // 第4阶段旋转次数
     uint32_t rotationTick_3Stage = maintainTick * (rotationNums_3Stage + 1); // 旋转总时间
     uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage);     // 旋转总时间
-    int8_t stageStartPoint_4 = 30; // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
+    int8_t stageStartPoint_4 = 33; // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
     if (tickInterval < convergeTick)
     {
       stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
