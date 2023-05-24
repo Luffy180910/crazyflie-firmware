@@ -193,7 +193,7 @@ void relativeLocoTask(void *arg)
                     uint32_t osTick = xTaskGetTickCount();
                     float dtEKF = (float)(osTick - relaVar[neighborAddress].oldTimetick) / configTICK_RATE_HZ;
                     relaVar[neighborAddress].oldTimetick = osTick;
-                    DEBUG_PRINT("%d,%f,%f,%f,%f,%d,",xTaskGetTickCount(),vxi,vyi,hi,ri,dij);
+                    DEBUG_PRINT("%d,%f,%f,%f,%f,%d\n",xTaskGetTickCount(),vxi,vyi,hi,ri,dij);
                     relativeEKF(neighborAddress, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
                 }
                 // DEBUG_PRINT("addr:%d,X:%f,Y:%f",neighborAddress,relaVar[neighborAddress].S[STATE_rlX],relaVar[neighborAddress].S[STATE_rlY]);

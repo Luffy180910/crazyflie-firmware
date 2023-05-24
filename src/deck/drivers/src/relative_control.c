@@ -23,7 +23,7 @@ static bool keepFlying = false;
 static setpoint_t setpoint;
 static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
-static float_t height = 1.0;
+static float_t height = 0.5;
 
 static float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
@@ -270,7 +270,7 @@ void relativeControlTask(void *arg)
             if(leaderStage % 2 == 0)
               setHoverSetpoint(&setpoint, 1, 0, height, 0);
             else
-              setHoverSetpoint(&setpoint, -1, 0, height, 0); 
+              setHoverSetpoint(&setpoint, 0, 0, height, 30); 
           }
         }
         else
