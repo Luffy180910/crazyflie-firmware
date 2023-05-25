@@ -216,8 +216,8 @@ void reset_estimators()
 void relativeControlTask(void *arg)
 {
   static const float_t targetList[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},   // 0
-      {-1.5f, 0.0f, 0.0f},  // 1
+      {0.0f, 0.0f, 0.0f},  // 0
+      {-1.5f, 0.0f, 0.0f}, // 1
   };
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
@@ -238,7 +238,7 @@ void relativeControlTask(void *arg)
         if (onGround)
         {
           vTaskDelay(2000); // 设定位置使得其收敛时间
-          if(MY_UWB_ADDRESS != 0)
+          if (MY_UWB_ADDRESS != 0)
             take_off();
           onGround = false;
           setMyTakeoff(true);
@@ -270,17 +270,19 @@ void relativeControlTask(void *arg)
           //   if(leaderStage % 2 == 0)
           //     setHoverSetpoint(&setpoint, 1, 0, height, 0);
           //   else
-          //     setHoverSetpoint(&setpoint, 0, 0, height, 30); 
+          //     setHoverSetpoint(&setpoint, 0, 0, height, 30);
           // }
         }
         else
         {
-          land();
+          if (MY_UWB_ADDRESS != 0)
+            land();
         }
       }
       else
       {
-        land();
+        if (MY_UWB_ADDRESS != 0)
+          land();
       }
     }
   }
