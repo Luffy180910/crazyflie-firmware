@@ -70,7 +70,7 @@ static int curi = 0;
 //正方向编队方案
 static const float_t initPositionRela0[15][STATE_DIM_rl] = {
     {0.0f, 0.0f, 0.0f},   // 0
-    {-1.0f, 0.0f, 0.0f},  // 1
+    {-1.5f, 0.0f, 0.0f},  // 1
     {-1.5f, 0.0f, 0.0f},  // 2
     {-1.5f, 1.5f, 0.0f},  // 3
     {0.0f, 1.5f, 0.0f},   // 4

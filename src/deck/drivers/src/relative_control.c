@@ -23,7 +23,7 @@ static bool keepFlying = false;
 static setpoint_t setpoint;
 static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
-static float_t height = 0.5;
+static float_t height = 0.8;
 
 static float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
@@ -118,10 +118,10 @@ static void formation0asCenter(float_t tarX, float_t tarY)
 
 void take_off()
 {
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 50; i++)
   {
     setHoverSetpoint(&setpoint, 0, 0, height, 0);
-    vTaskDelay(M2T(100));
+    vTaskDelay(M2T(10));
   }
   // for (int i = 0; i < 10 * MY_UWB_ADDRESS; i++)
   // {
@@ -217,7 +217,7 @@ void relativeControlTask(void *arg)
 {
   static const float_t targetList[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},   // 0
-      {-1.0f, 0.0f, 0.0f},  // 1
+      {-1.5f, 0.0f, 0.0f},  // 1
   };
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
