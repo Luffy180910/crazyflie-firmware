@@ -258,7 +258,8 @@ void relativeControlTask(void *arg)
         {
           float_t randomVel = 1.0;
           if (MY_UWB_ADDRESS != 0){
-            flyRandomIn1meter(randomVel);
+            // flyRandomIn1meter(randomVel);
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
           }
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
