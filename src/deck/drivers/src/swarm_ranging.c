@@ -81,7 +81,7 @@ void initNeighborStateInfoAndMedian_data()
 void initLeaderStateInfo()
 {
   leaderStateInfo.keepFlying = false;
-  leaderStateInfo.address = 0;
+  leaderStateInfo.address = 1;
   leaderStateInfo.stage = ZERO_STAGE;
   //DEBUG_PRINT("--init--%d\n",leaderStateInfo.stage);
   

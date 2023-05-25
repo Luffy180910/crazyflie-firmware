@@ -270,10 +270,10 @@ void relativeControlTask(void *arg)
           targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
           targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
           if (MY_UWB_ADDRESS != 0){
-            if(leaderStage%2==0){
-              formation0asCenter(targetX, targetY);
-            }else{
+            if(leaderStage%3==0){
               setHoverSetpoint(&setpoint, 0, 0, height, relaVarInCtrl[0][STATE_rlYaw]*180/3.14/3);
+            }else{
+              formation0asCenter(targetX, targetY);
             }
           }
           else  // 0号无人机
