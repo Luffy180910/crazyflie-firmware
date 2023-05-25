@@ -178,6 +178,7 @@ void relativeLocoTask(void *arg)
                 // rj = data[2][curi];
                 // hj = data[3][curi];
                 // curi += 1;
+                vyj=0;
 
                 //  使用固定数据
                 if (isNewAdd)
