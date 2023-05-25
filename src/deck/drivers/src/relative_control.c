@@ -216,8 +216,8 @@ void reset_estimators()
 void relativeControlTask(void *arg)
 {
   static const float_t targetList[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},   // 0
-      {-1.0f, 0.0f, 0.0f},  // 1
+      {0.0f, 0.0f, 0.0f},  // 0
+      {-1.0f, 0.0f, 0.0f}, // 1
   };
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
@@ -238,9 +238,16 @@ void relativeControlTask(void *arg)
         if (onGround)
         {
           vTaskDelay(2000); // 设定位置使得其收敛时间
+<<<<<<< HEAD
           if(MY_UWB_ADDRESS != 0)
             take_off();
           onGround = false;
+=======
+          if (MY_UWB_ADDRESS != 0)
+          {
+            take_off();
+          }
+>>>>>>> refs/remotes/origin/dev-adhocdeck-leaderfollower
           setMyTakeoff(true);
         }
         // DEBUG_PRINT("tick:%d,rlx:%f,rly:%f,rlraw:%f\n", tickInterval, relaVarInCtrl[1][STATE_rlX], relaVarInCtrl[1][STATE_rlY], relaVarInCtrl[1][STATE_rlYaw]);
@@ -249,13 +256,26 @@ void relativeControlTask(void *arg)
         {
           // DEBUG_PRINT("--0--\n");
           if (MY_UWB_ADDRESS != 0)
+<<<<<<< HEAD
             setHoverSetpoint(&setpoint, 0, 0, height, 0);
+=======
+          {
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
+          }
+>>>>>>> refs/remotes/origin/dev-adhocdeck-leaderfollower
         }
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           float_t randomVel = 1.0;
+<<<<<<< HEAD
           if (MY_UWB_ADDRESS != 0)
             flyRandomIn1meter(randomVel);
+=======
+          if (MY_UWB_ADDRESS != 0){
+            // flyRandomIn1meter(randomVel);
+            setHoverSetpoint(&setpoint, 0, 0, height, 0);
+          }
+>>>>>>> refs/remotes/origin/dev-adhocdeck-leaderfollower
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
         }
@@ -264,6 +284,7 @@ void relativeControlTask(void *arg)
           // DEBUG_PRINT("--2--\n");
           targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
           targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[MY_UWB_ADDRESS][STATE_rlY];
+<<<<<<< HEAD
           if (MY_UWB_ADDRESS != 0)
             formation0asCenter(targetX, targetY);
           // else{
@@ -272,6 +293,26 @@ void relativeControlTask(void *arg)
           //   else
           //     setHoverSetpoint(&setpoint, 0, 0, height, 30); 
           // }
+=======
+          if (MY_UWB_ADDRESS != 0){
+            if(leaderStage%3==0){
+              setHoverSetpoint(&setpoint, 0, 0, height, relaVarInCtrl[0][STATE_rlYaw]*180/3.14/3);
+            }else{
+              formation0asCenter(targetX, targetY);
+            }
+          }
+          else  // 0号无人机
+          {
+            // if (leaderStage % 2 == 0)
+            // {
+            //   setHoverSetpoint(&setpoint, 1, 0, height, 0);
+            // }
+            // else
+            // {
+            //   setHoverSetpoint(&setpoint, 0, 0, height, 30);
+            // }
+          }
+>>>>>>> refs/remotes/origin/dev-adhocdeck-leaderfollower
         }
         else
         {
