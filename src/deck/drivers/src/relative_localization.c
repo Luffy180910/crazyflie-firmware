@@ -64,22 +64,22 @@ static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 
 // 初始时，所有无人机基于0号无人机的相对位置
 // 正方向编队方案
+const float_t initDist = 1.4;
 static const float_t initPositionRela0[15][STATE_DIM_rl] = {
-    {0.0f, 0.0f, 0.0f},   // 0
-    {-1.5f, -1.5f, 0.0f}, // 1
-    {-1.5f, 0.0f, 0.0f},  // 2
-    {-1.5f, 1.5f, 0.0f},  // 3
-    {0.0f, 1.5f, 0.0f},   // 4
-    {1.5f, 1.5f, 0.0f},   // 5
-    {1.5f, 0.0f, 0.0f},   // 6
-    {1.5, -1.5f, 0.0f},   // 7
-    {0.0f, -1.5f, 0.0f},  // 8
-    {-1.5f, -3.0f, 0.0f}, // 9
-    {0.0f, -3.0f, 0.0f},  // 10
-    {1.5f, -3.0f, 0.0f},  // 11
-    {0.0f, 0.0f, 0.0f},   // ----12
-    {0.0f, 0.0f, 0.0f}};  // ----13
-
+    {0.0f, 0.0f, 0.0f},               // 0
+    {-initDist, -initDist, 0.0f},     // 1
+    {-initDist, 0.0f, 0.0f},          // 2
+    {-initDist, initDist, 0.0f},      // 3
+    {0.0f, initDist, 0.0f},           // 4
+    {initDist, initDist, 0.0f},       // 5
+    {initDist, 0.0f, 0.0f},           // 6
+    {initDist, -initDist, 0.0f},      // 7
+    {0.0f, -initDist, 0.0f},          // 8
+    {-initDist, -2 * initDist, 0.0f}, // 9
+    {0.0f, -2 * initDist, 0.0f},      // 10
+    {initDist, -2 * initDist, 0.0f},  // 11
+    {0.0f, 0.0f, 0.0f},               // ----12
+    {0.0f, 0.0f, 0.0f}};              // ----13
 // 八边形编队方案
 // static const float_t initPositionRela0[15][STATE_DIM_rl] = {
 //     {0.0f, 0.0f, 0.0f},   // 0
