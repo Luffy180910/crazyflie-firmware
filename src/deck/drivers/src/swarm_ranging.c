@@ -638,12 +638,12 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     // 分阶段控制
     tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
     // 所有邻居起飞判断
-    uint32_t convergeTick = 30000; // 收敛时间10s
+    uint32_t convergeTick = 15000; // 收敛时间10s
     uint32_t followTick = 10000;   // 跟随时间10s
     uint32_t converAndFollowTick = convergeTick + followTick;
     uint32_t maintainTick = 5000;                                            // 每转一次需要的时间
-    uint32_t rotationNums_3Stage = 8;                                        // 第3阶段旋转次数
-    uint32_t rotationNums_4Stage = 4;                                        // 第4阶段旋转次数
+    uint32_t rotationNums_3Stage = 4;                                        // 第3阶段旋转次数
+    uint32_t rotationNums_4Stage = 5;                                        // 第4阶段旋转次数
     uint32_t rotationTick_3Stage = maintainTick * (rotationNums_3Stage + 1); // 旋转总时间
     uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage);     // 旋转总时间
     int8_t stageStartPoint_4 = 68; // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
