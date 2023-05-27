@@ -337,7 +337,7 @@ void rangingInit()
   initLeaderStateInfo();
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetMutex = xSemaphoreCreateMutex();
-  srand((unsigned)time(NULL));
+  srand(MY_UWB_ADDRESS);
   /*--12添加--*/
   rangingTableSetInit(&rangingTableSet);
 
