@@ -13,7 +13,7 @@
 #include "log.h"
 #include "math.h"
 #include "adhocdeck.h"
-#define RUNNING_STAGE 0 // 0代码debug阶段，1代码运行阶段
+#define RUNNING_STAGE 1 // 0代码debug阶段，1代码运行阶段
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
@@ -338,7 +338,7 @@ void relativeControlTask(void *arg)
             // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
             if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
             {
-              targetShift = leaderStage % SQURE3_4_NUM;
+              targetShift = leaderStage % (SQURE3_4_NUM-1);
               // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
               int8_t index = posiToIndex3_4[currentPosition_3Stage];  // 将第3阶段地址转换为第4阶段索引
               index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
@@ -419,7 +419,7 @@ void relativeControlTask(void *arg)
           // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
           if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
           {
-            targetShift = leaderStage % SQURE3_4_NUM;
+            targetShift = leaderStage % (SQURE3_4_NUM-1);
             // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
             int8_t index = posiToIndex3_4[currentPosition_3Stage];  // 将第3阶段地址转换为第4阶段索引
             index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
