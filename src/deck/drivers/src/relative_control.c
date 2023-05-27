@@ -219,7 +219,7 @@ void relativeControlTask(void *arg)
 
   uint8_t currentPosition_3Stage = MY_UWB_ADDRESS; // 当前位于的位置
   uint8_t currentPosition_4Stage = MY_UWB_ADDRESS; // 当前位于的位置
-  const float_t initDist = 1.4;
+  const float_t initDist = 1.3;
   static const float_t targetList[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},               // 0
       {-initDist, -initDist, 0.0f},     // 1
