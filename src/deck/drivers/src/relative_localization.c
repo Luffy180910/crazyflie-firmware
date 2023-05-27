@@ -201,17 +201,17 @@ void relativeLocoTask(void *arg)
                 // DEBUG_PRINT("addr:%d,X:%f,Y:%f",neighborAddress,relaVar[neighborAddress].S[STATE_rlX],relaVar[neighborAddress].S[STATE_rlY]);
             }
         }
-    }
-    connectCount++;
-    // DEBUG_PRINT("%d\n", connectCount);
-    if (connectCount < 1000) // // 这里我设定的是60s没有测距，fullConnect=false
-    {
-        fullConnect = true; // disable control if there is no ranging after 1 second
-    }
-    else
-    {
-        // DEBUG_PRINT("------------");
-        fullConnect = false;
+        connectCount++;
+        // DEBUG_PRINT("%d\n", connectCount);
+        if (connectCount < 1000) // // 这里我设定的是60s没有测距，fullConnect=false
+        {
+            fullConnect = true; // disable control if there is no ranging after 1 second
+        }
+        else
+        {
+            // DEBUG_PRINT("------------");
+            fullConnect = false;
+        }
     }
 }
 
