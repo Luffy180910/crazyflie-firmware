@@ -311,24 +311,21 @@ void relativeControlTask(void *arg)
           }
           else
           {
+            int8_t index = MY_UWB_ADDRESS;
             if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
             {
               targetShift = leaderStage;
               // 使得targetList在1~UAV_NUM之间偏移
-              int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
-              targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              formation0asCenter(targetX, targetY);
-              currentPosition_3Stage = index;
+              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
             }
             else
             {
-              int8_t index = MY_UWB_ADDRESS; // 第二阶段，不做飞行的无人机，直接设置保持初始预定位置即可
-              targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              formation0asCenter(targetX, targetY);
-              currentPosition_3Stage = index;
+              index = MY_UWB_ADDRESS; // 第二阶段，不做飞行的无人机，直接设置保持初始预定位置即可
             }
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            formation0asCenter(targetX, targetY);
+            currentPosition_3Stage = index;
           }
         }
         else if (leaderStage != LAND_STAGE)
@@ -339,26 +336,24 @@ void relativeControlTask(void *arg)
           }
           else
           {
+            int8_t index = currentPosition_3Stage;
             // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
             if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
             {
               targetShift = leaderStage % (SQURE3_4_NUM - 1);
               // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
-              int8_t index = posiToIndex3_4[currentPosition_3Stage];  // 将第3阶段地址转换为第4阶段索引
+              index = posiToIndex3_4[currentPosition_3Stage];         // 将第3阶段地址转换为第4阶段索引
               index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
               index = indexToPosi3_4[index];                          // 将索引转换为地址
-              targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              formation0asCenter(targetX, targetY);
-              currentPosition_4Stage = index;
             }
             else
             {
-              int8_t index = currentPosition_3Stage; // 如果第三阶段结束后是8号位置，则目标到达8号位置即可
-              targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-              formation0asCenter(targetX, targetY);
+              index = currentPosition_3Stage; // 如果第三阶段结束后是8号位置，则目标到达8号位置即可
             }
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            formation0asCenter(targetX, targetY);
+            currentPosition_4Stage = index;
           }
         }
         else
