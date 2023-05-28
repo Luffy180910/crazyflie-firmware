@@ -638,7 +638,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     // 分阶段控制
     tickInterval = xTaskGetTickCount() - leaderStateInfo.keepFlyingTrueTick;
     // 所有邻居起飞判断
-    uint32_t convergeTick = 10000; // 收敛时间10s
+    uint32_t convergeTick = 15000; // 收敛时间10s
     uint32_t followTick = 10000;   // 跟随时间10s
     uint32_t converAndFollowTick = convergeTick + followTick;
     uint32_t maintainTick = 5000;                                            // 每转一次需要的时间

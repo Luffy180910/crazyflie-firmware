@@ -274,7 +274,7 @@ void relativeControlTask(void *arg)
         // take off
         if (onGround) // 起飞
         {
-          vTaskDelay(2000);        // 设定位置使得其收敛时间
+          vTaskDelay(5000);        // 设定位置使得其收敛时间
           if (MY_UWB_ADDRESS == 0) // 0号设置到0号高度
           {
             take_off(set_height0);
