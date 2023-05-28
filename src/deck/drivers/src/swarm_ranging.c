@@ -298,7 +298,7 @@ static void uwbRangingTxTask(void *parameters)
       notget_packet_interval = xTaskGetTickCount() - neighbor_latest_rvTime[address];
       if (notget_packet_interval > 2 * TX_PERIOD_IN_MS + 5)
       {
-        if (get_tx_rx_min_interval(address) <= 2 || notget_packet_interval > 4 * TX_PERIOD_IN_MS)
+        if (get_tx_rx_min_interval(address) <= 2 || notget_packet_interval > 3 * TX_PERIOD_IN_MS)
         {
           nextTransportPeriod = 5 + rand() % (TX_PERIOD_IN_MS - 5);
           break;
@@ -646,7 +646,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     uint32_t rotationNums_4Stage = 5;                                        // 第4阶段旋转次数
     uint32_t rotationTick_3Stage = maintainTick * (rotationNums_3Stage + 1); // 旋转总时间
     uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage);     // 旋转总时间
-    int8_t stageStartPoint_4 = 68; // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
+    int8_t stageStartPoint_4 = 68;                                           // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
     if (tickInterval < convergeTick)
     {
       stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动
@@ -660,9 +660,9 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
       stage = stage - 1;
     }
-    else if (tickInterval >= converAndFollowTick + rotationTick_3Stage && tickInterval < converAndFollowTick +rotationTick_3Stage+ rotationTick_4Stage)
+    else if (tickInterval >= converAndFollowTick + rotationTick_3Stage && tickInterval < converAndFollowTick + rotationTick_3Stage + rotationTick_4Stage)
     {
-      stage = (tickInterval-converAndFollowTick-rotationTick_3Stage)/maintainTick;
+      stage = (tickInterval - converAndFollowTick - rotationTick_3Stage) / maintainTick;
       stage = stageStartPoint_4 - stage;
     }
     else
