@@ -300,7 +300,7 @@ void relativeControlTask(void *arg)
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           // DEBUG_PRINT("--1--\n");
-          float_t randomVel = 0.4;
+          float_t randomVel = 0.3;
           if (MY_UWB_ADDRESS == 0)
           {
             flyRandomIn1meter(randomVel, set_height0);
@@ -317,7 +317,7 @@ void relativeControlTask(void *arg)
           // DEBUG_PRINT("--2--\n");
           if (MY_UWB_ADDRESS == 0)
           {
-            float_t randomVel = 0.5;
+            float_t randomVel = 0.3;
             flyRandomIn1meter(randomVel, set_height0);
           }
           else
