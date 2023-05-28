@@ -259,7 +259,7 @@ void relativeControlTask(void *arg)
     vTaskDelay(10);
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
-    relaVarInCtrl[0][STATE_rlYaw]=0;
+    relaVarInCtrl[0][STATE_rlYaw] = 0;
     int8_t leaderStage = getLeaderStage();
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
     // if(RUNNING_STAGE==0){ // 调试
@@ -322,6 +322,9 @@ void relativeControlTask(void *arg)
           }
           else
           {
+            int8_t index = MY_UWB_ADDRESS;
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
           }
         }
