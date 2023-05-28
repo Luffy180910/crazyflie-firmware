@@ -55,7 +55,8 @@ typedef struct
     bool isNewAdd[RANGING_TABLE_SIZE + 1];            // 这个邻居是否是新加入的
     bool isNewAddUsed[RANGING_TABLE_SIZE + 1];
     bool isAlreadyTakeoff[RANGING_TABLE_SIZE + 1];
-    /* 用于辅助判断这个邻居是否是新加入的（注意：这里的'新加入'指的是，是相对于EKF来说的，主要用于在EKF中判断是否需要执行初始化工作）*/
+    /* 用于辅助判断这个邻居是否是新加入的（注意：这里的'新加入'指的是，
+    是相对于EKF来说的，主要用于在EKF中判断是否需要执行初始化工作）*/
 } neighborStateInfo_t; /*存储正在和本无人机进行通信的邻居的所有信息（用于EKF）*/
 
 typedef struct
