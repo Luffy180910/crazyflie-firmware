@@ -23,7 +23,8 @@ static bool keepFlying = false;
 static setpoint_t setpoint;
 static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
-static float_t height = 0.5;
+static float_t set_height = 0.5;
+static float_t set_height0 = 0.6;
 
 static float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
@@ -45,7 +46,7 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   commanderSetSetpoint(setpoint, 3);
 }
 
-static void flyRandomIn1meter(float_t randomVel)
+static void flyRandomIn1meter(float_t randomVel, float height)
 {
   float_t randomYaw = (rand() / (float)RAND_MAX) * 6.28f; // 0-2pi rad
   // float_t randomVel = (rand() / (float)RAND_MAX) * 1;     // 0-1 m/s
@@ -73,7 +74,7 @@ static float PreErr_y = 0;
 static float IntErr_x = 0;
 static float IntErr_y = 0;
 static uint32_t PreTime;
-static void formation0asCenter(float_t tarX, float_t tarY)
+static void formation0asCenter(float_t tarX, float_t tarY, float_t height)
 {
   float dt = (float)(xTaskGetTickCount() - PreTime) / configTICK_RATE_HZ;
   PreTime = xTaskGetTickCount();
@@ -116,7 +117,7 @@ static void formation0asCenter(float_t tarX, float_t tarY)
   setHoverSetpoint(&setpoint, pid_vx, pid_vy, height, 0);
 }
 
-void take_off()
+void take_off(float_t height)
 {
   for (int i = 0; i < 5; i++)
   {
@@ -131,7 +132,7 @@ void take_off()
   onGround = false;
 }
 
-void land()
+void land(float_t height)
 {
   // landing procedure
   if (!onGround)
@@ -271,22 +272,43 @@ void relativeControlTask(void *arg)
       if (is_connect && keepFlying && !isCompleteTaskAndLand)
       {
         // take off
-        if (onGround)
+        if (onGround) // 起飞
         {
-          vTaskDelay(2000); // 设定位置使得其收敛时间
-          take_off();
+          vTaskDelay(2000);        // 设定位置使得其收敛时间
+          if (MY_UWB_ADDRESS == 0) // 0号设置到0号高度
+          {
+            take_off(set_height0);
+          }
+          else
+          {
+            take_off(set_height);
+          }
           setMyTakeoff(true);
         }
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {
           // DEBUG_PRINT("--0--\n");
-          setHoverSetpoint(&setpoint, 0, 0, height, 0);
+          if (MY_UWB_ADDRESS == 0)
+          {
+            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+          }
+          else
+          {
+            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
+          }
         }
         else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
         {
           // DEBUG_PRINT("--1--\n");
           float_t randomVel = 0.4;
-          flyRandomIn1meter(randomVel);
+          if (MY_UWB_ADDRESS == 0)
+          {
+            flyRandomIn1meter(randomVel, set_height0);
+          }
+          else
+          {
+            flyRandomIn1meter(randomVel, set_height);
+          }
           targetX = relaVarInCtrl[0][STATE_rlX];
           targetY = relaVarInCtrl[0][STATE_rlY];
         }
@@ -296,11 +318,11 @@ void relativeControlTask(void *arg)
           if (MY_UWB_ADDRESS == 0)
           {
             float_t randomVel = 0.5;
-            flyRandomIn1meter(randomVel);
+            flyRandomIn1meter(randomVel, set_height0);
           }
           else
           {
-            formation0asCenter(targetX, targetY);
+            formation0asCenter(targetX, targetY, set_height);
           }
         }
         else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
@@ -308,7 +330,7 @@ void relativeControlTask(void *arg)
           // DEBUG_PRINT("--3--\n");
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, height, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
           }
           else
           {
@@ -325,7 +347,7 @@ void relativeControlTask(void *arg)
             }
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY);
+            formation0asCenter(targetX, targetY, set_height);
             currentPosition_3Stage = index;
           }
         }
@@ -333,7 +355,7 @@ void relativeControlTask(void *arg)
         { // 第4个阶段，3*4转圈
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, height, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
           }
           else
           {
@@ -353,19 +375,20 @@ void relativeControlTask(void *arg)
             }
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY);
+            formation0asCenter(targetX, targetY, set_height);
             currentPosition_4Stage = index;
           }
         }
         else
         {
           // 运行90s之后，落地
-          land();
+
+          land(set_height);
         }
       }
       else
       {
-        land();
+        land(set_height);
       }
     }
     else // 用于debug_print调试
