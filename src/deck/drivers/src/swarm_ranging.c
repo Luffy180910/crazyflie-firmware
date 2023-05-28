@@ -298,7 +298,7 @@ static void uwbRangingTxTask(void *parameters)
       notget_packet_interval = xTaskGetTickCount() - neighbor_latest_rvTime[address];
       if (notget_packet_interval > 2 * TX_PERIOD_IN_MS + 5)
       {
-        if (get_tx_rx_min_interval(address) <= 2 || notget_packet_interval >= 180|| notget_packet_interval > 4 * TX_PERIOD_IN_MS)
+        if (get_tx_rx_min_interval(address) <= 2 || notget_packet_interval >= 190|| notget_packet_interval > 4 * TX_PERIOD_IN_MS)
         {
           nextTransportPeriod = 5 + rand() % (TX_PERIOD_IN_MS - 5);
           break;
