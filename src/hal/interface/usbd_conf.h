@@ -37,7 +37,7 @@
   */ 
 #define USBD_CFG_MAX_NUM                1
 #define USBD_ITF_MAX_NUM                1
-
+#define USE_USB_OTG_HS
 #define USBD_SELF_POWERED               
 
 #define USB_MAX_STR_DESC_SIZ            255 
@@ -49,7 +49,7 @@
 /* CDC Endpoints parameters: you can fine tune these values depending on the needed baudrates and performance. */
 #ifdef USE_USB_OTG_HS
  #define CDC_DATA_MAX_PACKET_SIZE       512  /* Endpoint IN & OUT Packet size */
- #define CDC_CMD_PACKET_SZE             8    /* Control Endpoint Packet size */
+ #define CDC_CMD_PACKET_SIZE             8    /* Control Endpoint Packet size */
 
  #define CDC_IN_FRAME_INTERVAL          40   /* Number of micro-frames between IN transfers */
  #define APP_RX_DATA_SIZE               2048 /* Total size of IN buffer: 
