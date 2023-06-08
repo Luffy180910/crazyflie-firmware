@@ -25,6 +25,7 @@
 #include "swarm_ranging.h"
 #include "flooding.h"
 #include "routing.h"
+#include "sniffer.h"
 
 #define CS_PIN DECK_GPIO_IO1
 
@@ -101,6 +102,9 @@ static void rxCallback() {
   if (listeners[msgType].rxQueue) {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
+
+  // TODO: add macro for sniffer
+  xQueueSendFromISR(listeners[SNIFFER].rxQueue, packet, &xHigherPriorityTaskWoken);
 
   dwt_forcetrxoff();
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
@@ -205,6 +209,8 @@ static void uwbTxTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t packetCache;
+  // TODO Sniffer, init mac header
+
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
@@ -346,10 +352,18 @@ static void uwbTaskInit() {
               ADHOC_DECK_TASK_PRI, &uwbTaskHandle); // TODO optimize STACK SIZE
   xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
-  rangingInit();
-//  routingInit();
-//  floodingInit();
-
+#ifdef ENABLE_RANGING
+  rangingInit(); // TODO ugly code
+#endif
+#ifdef ENABLE_ROUTING
+  routingInit(); // TODO ugly code
+#endif
+#ifdef ENABLE_FLOODING
+  floodingInit(); // TODO ugly code
+#endif
+#ifdef ENABLE_SNIFFER
+  snifferInit(); // TODO ugly code
+#endif
 }
 /*********** Deck driver initialization ***************/
 static void dwm3000Init(DeckInfo *info) {
