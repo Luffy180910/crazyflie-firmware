@@ -102,9 +102,10 @@ static void rxCallback() {
   if (listeners[msgType].rxQueue) {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
-
-  // TODO: add macro for sniffer
+  
+#ifdef ENABLE_SNIFFER
   xQueueSendFromISR(listeners[SNIFFER].rxQueue, packet, &xHigherPriorityTaskWoken);
+#endif
 
   dwt_forcetrxoff();
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
