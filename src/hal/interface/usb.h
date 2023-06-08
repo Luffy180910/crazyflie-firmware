@@ -32,7 +32,7 @@
 #include "usbd_conf.h"
 
 
-#define USB_RX_TX_PACKET_SIZE   (512)
+#define USB_RX_TX_PACKET_SIZE   (64)
 
 /* Structure used for in/out data via USB */
 typedef struct

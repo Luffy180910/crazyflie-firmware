@@ -12,8 +12,6 @@
 #include "adhocdeck.h"
 #include "ranging_struct.h"
 #include "swarm_ranging.h"
-#include "usb.h"
-#include "usblink.h"
 
 static uint16_t MY_UWB_ADDRESS;
 
@@ -78,17 +76,12 @@ static void uwbRangingTxTask(void *parameters) {
 
   UWB_Packet_t txPacketCache;
   txPacketCache.header.type = RANGING;
-  uint8_t usbData[100];
-  for (int i = 0; i < 100; i++) {
-    usbData[i] = i;
-  }
 //  txPacketCache.header.mac = ? TODO init mac header
   while (true) {
     int msgLen = generateRangingMessage((Ranging_Message_t *) &txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    usbSendData(100, usbData);
-    vTaskDelay(1000);
+    vTaskDelay(TX_PERIOD_IN_MS);
   }
 }
 
