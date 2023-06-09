@@ -1,5 +1,6 @@
 #define DEBUG_MODULE "SNIFFER"
 
+#include <string.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -16,26 +17,23 @@ static void snifferTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t rxPacketCache;
-  rxPacketCache.header.length = 0;
+  memset(&rxPacketCache, 0, sizeof(rxPacketCache));
+  rxPacketCache.header.length = FRAME_LEN_MAX;
 
   while (1) {
-    // TODO 添加分隔符
-    if (uwbReceivePacketWait(SNIFFER, &rxPacketCache, 1000)) {
-      uint16_t msgSize = rxPacketCache.header.length - sizeof(Packet_Header_t);
-      DEBUG_PRINT("type %d, len = %u \n", rxPacketCache.header.type, msgSize);
-      uint8_t *pointer = rxPacketCache.payload;
-      int remain = msgSize;
-      while (remain > 0) {
-        int sizeToSend = remain > USB_RX_TX_PACKET_SIZE ? USB_RX_TX_PACKET_SIZE : remain;
-        usbSendData(sizeToSend, pointer);
-        pointer += sizeToSend;
-        remain -= sizeToSend;
-        DEBUG_PRINT("send data, size = %d, remain = %d \n", sizeToSend, remain);
-      }
+    uint16_t msgSize = 400;
+    uint8_t *pointer = rxPacketCache.payload;
+    int remain = msgSize;
+    while (remain > 0) {
+      int sizeToSend = remain > USB_RX_TX_PACKET_SIZE ? USB_RX_TX_PACKET_SIZE : remain;
+      usbSendData(sizeToSend, pointer);
+      pointer += sizeToSend;
+      remain -= sizeToSend;
     }
+    rxPacketCache.payload[0]++;
     dwt_forcetrxoff();
     dwt_rxenable(DWT_START_RX_IMMEDIATE);
-    vTaskDelay(1); // TODO pick proper timespan
+//    vTaskDelay(1); // TODO pick proper timespan
   }
 }
 
