@@ -104,7 +104,7 @@ static void rxCallback() {
   }
   
 #ifdef ENABLE_SNIFFER
-  xQueueSendFromISR(listeners[SNIFFER].rxQueue, packet, &xHigherPriorityTaskWoken);
+  listeners[SNIFFER].rxCb(packet);
 #endif
 
   dwt_forcetrxoff();

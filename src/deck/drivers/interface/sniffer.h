@@ -5,7 +5,7 @@
 
 /* Queue Constants */
 #define SNIFFER_RX_QUEUE_SIZE 10
-#define SNIFFER_RX_QUEUE_ITEM_SIZE sizeof(UWB_Packet_t)
+#define SNIFFER_RX_QUEUE_ITEM_SIZE sizeof(UWB_Packet_With_Timestamp_t)
 
 void snifferInit();
 

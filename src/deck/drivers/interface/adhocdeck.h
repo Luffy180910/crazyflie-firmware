@@ -91,6 +91,12 @@ typedef struct {
   uint8_t payload[PAYLOAD_SIZE];
 } __attribute__((packed)) UWB_Packet_t;
 
+// only used in Sniffer
+typedef struct {
+  UWB_Packet_t uwbPacket;
+  dwTime_t rxTime;
+} __attribute__((packed)) UWB_Packet_With_Timestamp_t;
+
 typedef void (*UWBCallback)(void *);
 
 typedef struct {
