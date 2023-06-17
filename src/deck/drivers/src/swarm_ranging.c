@@ -80,6 +80,7 @@ static void uwbRangingTxTask(void *parameters) {
   while (true) {
     int msgLen = generateRangingMessage((Ranging_Message_t *) &txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
+    DEBUG_PRINT("msg len = %d, packet len = %u\n", msgLen, txPacketCache.header.length);
     uwbSendPacketBlock(&txPacketCache);
     vTaskDelay(TX_PERIOD_IN_MS);
   }
