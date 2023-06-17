@@ -33,8 +33,22 @@ static void snifferTask(void *parameters) {
   memset(&rxPacketCache, 0, sizeof(rxPacketCache));
   rxPacketCache.uwbPacket.header.length = FRAME_LEN_MAX;
 
+  Sniffer_Meta_t snifferMetaCache = {
+      .magic = 0xBB88,
+      .senderAddress = 0,
+      .seqNumber = 0,
+      .msgLength = 0,
+      .rxTime = 0
+  };
+
   while (1) {
     if (xQueueReceive(rxQueue, &rxPacketCache, 1000)) {
+      snifferMetaCache.senderAddress = rxPacketCache.uwbPacket.header.srcAddress;
+      snifferMetaCache.seqNumber = rxPacketCache.uwbPacket.header.seqNumer;
+      snifferMetaCache.msgLength = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
+      snifferMetaCache.rxTime = rxPacketCache.rxTime.full;
+
+      usbSendData(sizeof(Sniffer_Meta_t), snifferMetaCache.raw);
 
       uint16_t msgSize = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
       uint8_t *pointer = rxPacketCache.uwbPacket.payload;

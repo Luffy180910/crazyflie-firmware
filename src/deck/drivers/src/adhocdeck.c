@@ -73,7 +73,6 @@ static int packetSeqNumber = 1;
 static uint8_t rxBuffer[FRAME_LEN_MAX];
 
 static void txCallback() {
-  packetSeqNumber++;
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
     listeners[TX_MESSAGE_TYPE].txCb(NULL); // TODO no parameter passed into txCb now
   }
@@ -210,10 +209,11 @@ static void uwbTxTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t packetCache;
-  // TODO Sniffer, init mac header
 
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
+      packetCache.header.srcAddress = MY_UWB_ADDRESS;
+      packetCache.header.seqNumer = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);

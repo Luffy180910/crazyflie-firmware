@@ -79,11 +79,14 @@ typedef enum {
 } MESSAGE_TYPE;
 
 typedef struct {
-  mhr_802_15_4_t mac;    // mac header
+//  mhr_802_15_4_t mac;    // mac header
+  uint16_t srcAddress;
+  uint16_t destAddress;
+  uint16_t seqNumer;
   struct {
     MESSAGE_TYPE type: 6;
     uint16_t length: 10;
-  };
+  } __attribute__((packed));
 } __attribute__((packed)) Packet_Header_t;
 
 typedef struct {
