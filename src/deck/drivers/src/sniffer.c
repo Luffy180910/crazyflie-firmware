@@ -44,7 +44,7 @@ static void snifferTask(void *parameters) {
   while (1) {
     if (xQueueReceive(rxQueue, &rxPacketCache, 1000)) {
       snifferMetaCache.senderAddress = rxPacketCache.uwbPacket.header.srcAddress;
-      snifferMetaCache.seqNumber = rxPacketCache.uwbPacket.header.seqNumer;
+      snifferMetaCache.seqNumber = rxPacketCache.uwbPacket.header.seqNumber;
       snifferMetaCache.msgLength = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
       snifferMetaCache.rxTime = rxPacketCache.rxTime.full;
 

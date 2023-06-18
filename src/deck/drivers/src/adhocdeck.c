@@ -213,7 +213,7 @@ static void uwbTxTask(void *parameters) {
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
       packetCache.header.srcAddress = MY_UWB_ADDRESS;
-      packetCache.header.seqNumer = packetSeqNumber++;
+      packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);

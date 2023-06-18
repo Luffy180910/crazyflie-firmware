@@ -82,7 +82,7 @@ typedef struct {
 //  mhr_802_15_4_t mac;    // mac header
   uint16_t srcAddress;
   uint16_t destAddress;
-  uint16_t seqNumer;
+  uint16_t seqNumber;
   struct {
     MESSAGE_TYPE type: 6;
     uint16_t length: 10;
