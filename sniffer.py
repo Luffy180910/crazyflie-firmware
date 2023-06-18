@@ -3,6 +3,18 @@ import datetime
 import usb.util
 import struct
 import pickle
+import pandas as pd
+
+
+def loss_count(x: pd.DataFrame):
+    seq_num = list(x['seq_num'])
+    seq_num.sort()
+    received_total = len(seq_num)
+    seq_span = seq_num[-1] - seq_num[0] + 1
+    print("sender: {0}, seq_span: {1}, total_received: {2}, loss_rate: {3}".format(x.iloc[0]['sender_addr'], seq_span,
+                                                                                   received_total,
+                                                                                   received_total / seq_span))
+
 
 if __name__ == '__main__':
     vendor_id = 0x0483
@@ -44,4 +56,5 @@ if __name__ == '__main__':
 
     # with open('filename', 'rb') as file:
     #     data = pickle.load(file)
-    # print(data)
+    # df = pd.DataFrame(data)
+    # df.groupby('sender_addr').apply(loss_count)
