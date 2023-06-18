@@ -1,4 +1,5 @@
 import datetime
+import os
 
 import usb.util
 import struct
@@ -53,8 +54,12 @@ if __name__ == '__main__':
                 pickle.dump(log_data, file)
         usb.util.release_interface(dev, 0)
         usb.util.dispose_resources(dev)
-
-    # with open('filename', 'rb') as file:
-    #     data = pickle.load(file)
-    # df = pd.DataFrame(data)
-    # df.groupby('sender_addr').apply(loss_count)
+    # files = os.listdir('./data')
+    # files.sort()
+    # for file_name in files:
+    #     with open('./data/' + file_name, 'rb') as file:
+    #         data = pickle.load(file)
+    #     df = pd.DataFrame(data)
+    #     print("drone count:", file_name.split('_')[1])
+    #     df.groupby('sender_addr').apply(loss_count)
+    #     print('-----')
