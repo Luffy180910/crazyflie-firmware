@@ -25,15 +25,52 @@ static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 static float_t set_height = 0.5;
 static float_t set_height0 = 0.6;
+static paramVarId_t idMultiranger;
+static logVarId_t idUp;
+static logVarId_t idLeft;  
+static logVarId_t idRight; 
+static logVarId_t idFront; 
+static logVarId_t idBack;
+static const float velMax = 3.0f;
+static const uint16_t radius = 300;
+#define MAX(a,b) ((a>b)?a:b)
+#define MIN(a,b) ((a<b)?a:b)
 
 static float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
 static float relaCtrl_i = 0.01f;
 static float relaCtrl_d = 0.01f;
+static const float up_down_delta = 0.002f;
 // static float NDI_k = 2.0f;
 
 static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, float yawrate)
 {
+  float velFront = 0;
+  float velSide = 0;
+  float factor = velMax/radius;
+  uint8_t multirangerInit = paramGetUint(idMultiranger);
+  if(multirangerInit){
+    uint16_t up = logGetUint(idUp);
+    uint16_t left = logGetUint(idLeft);
+    uint16_t right = logGetUint(idRight);
+    uint16_t front = logGetUint(idFront);
+    uint16_t back = logGetUint(idBack);
+    uint16_t left_o = radius - MIN(left, radius);
+    uint16_t right_o = radius - MIN(right, radius);
+    float l_comp = (-1) * left_o * factor;
+    float r_comp = right_o * factor;
+    velSide = r_comp + l_comp;
+
+    uint16_t front_o = radius - MIN(front, radius);
+    uint16_t back_o = radius - MIN(back, radius);
+    float f_comp = (-1) * front_o * factor;
+    float b_comp = back_o * factor;
+    velFront = b_comp + f_comp;
+
+    if(up < radius ){
+      set_height -= 0.002f;
+    }
+  }
   setpoint->mode.z = modeAbs;
   setpoint->position.z = z;
   setpoint->mode.yaw = modeVelocity;
@@ -253,7 +290,14 @@ void relativeControlTask(void *arg)
 
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
-
+  idUp = logGetVarId("range", "up");
+  idLeft = logGetVarId("range", "left");
+  idRight = logGetVarId("range", "right");
+  idFront = logGetVarId("range", "front");
+  idBack = logGetVarId("range", "back");
+  idMultiranger = paramGetVarId("deck", "bcMultiranger");
+  uint8_t multirangerInit = paramGetUint(idMultiranger);
+  DEBUG_PRINT("multirangerInit is %d\n", multirangerInit);
   while (1)
   {
     vTaskDelay(10);
