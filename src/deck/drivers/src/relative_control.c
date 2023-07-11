@@ -84,6 +84,9 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   setpoint->velocity.y = vy;
   setpoint->velocity_body = true;
   commanderSetSetpoint(setpoint, 3);
+  if(set_height<=0.1){
+    land(set_height);
+  }
 }
 
 static void flyRandomIn1meter(float_t randomVel, float height)
