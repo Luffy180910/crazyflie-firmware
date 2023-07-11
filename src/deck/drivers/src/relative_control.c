@@ -13,7 +13,7 @@
 #include "log.h"
 #include "math.h"
 #include "adhocdeck.h"
-#define RUNNING_STAGE 0 // 0代码debug阶段，1代码运行阶段
+#define RUNNING_STAGE 1 // 0代码debug阶段，1代码运行阶段
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
@@ -263,7 +263,8 @@ void relativeControlTask(void *arg)
 
   uint8_t currentPosition_3Stage = MY_UWB_ADDRESS; // 当前位于的位置
   uint8_t currentPosition_4Stage = MY_UWB_ADDRESS; // 当前位于的位置
-  const float_t initDist = 1.3;
+  // const float_t initDist = 1.3;
+  const float_t initDist = 0.7;
   static const float_t targetList[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},           // 0
       {0.0f, -initDist, 0.0f},      // 1
@@ -291,13 +292,21 @@ void relativeControlTask(void *arg)
   index 0  1  2  3  4  5  6  7  8   9   10
   */
   /*下面是五边形，0号在中间*/
-  static const float_t target_five[15][STATE_DIM_rl] = {
+  // static const float_t target_five[15][STATE_DIM_rl] = {
+  //     {0.0f, 0.0f, 0.0f},   // 0
+  //     {0.43, -1.13, 0.0f},  // 1
+  //     {-1.13, -0.82, 0.0f}, // 2
+  //     {-1.13, 0.82, 0.0f},  // 3
+  //     {0.43, 1.33, 0.0f},   // 4
+  //     {1.4, 0.0, 0.0f},     // 5
+  // };
+    static const float_t target_five[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},   // 0
-      {0.43, -1.13, 0.0f},  // 1
-      {-1.13, -0.82, 0.0f}, // 2
-      {-1.13, 0.82, 0.0f},  // 3
-      {0.43, 1.33, 0.0f},   // 4
-      {1.4, 0.0, 0.0f},     // 5
+      {0.22, -0.6, 0.0f},  // 1
+      {-0.6, -0.41, 0.0f}, // 2
+      {-0.6, 0.41, 0.0f},  // 3
+      {0.22, 0.7, 0.0f},   // 4
+      {0.7, 0.0, 0.0f},     // 5
   };
   /*下面是三角形编队*/
   static const float_t target_trangle[15][STATE_DIM_rl] = {
