@@ -13,7 +13,7 @@
 #include "log.h"
 #include "math.h"
 #include "adhocdeck.h"
-#define RUNNING_STAGE 1 // 0代码debug阶段，1代码运行阶段
+#define RUNNING_STAGE 0 // 0代码debug阶段，1代码运行阶段
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
@@ -22,19 +22,20 @@ static bool isCompleteTaskAndLand = false; // 无人机是否已经执行了飞�
 static bool keepFlying = false;
 static setpoint_t setpoint;
 static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
+static float_t neighbor_height[RANGING_TABLE_SIZE + 1];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 static float_t set_height = 0.5;
 static float_t set_height0 = 0.6;
 static paramVarId_t idMultiranger;
 static logVarId_t idUp;
-static logVarId_t idLeft;  
-static logVarId_t idRight; 
-static logVarId_t idFront; 
+static logVarId_t idLeft;
+static logVarId_t idRight;
+static logVarId_t idFront;
 static logVarId_t idBack;
 static const float velMax = 3.0f;
 static const uint16_t radius = 300;
-#define MAX(a,b) ((a>b)?a:b)
-#define MIN(a,b) ((a<b)?a:b)
+#define MAX(a, b) ((a > b) ? a : b)
+#define MIN(a, b) ((a < b) ? a : b)
 
 static float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
@@ -47,9 +48,10 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
 {
   float velFront = 0;
   float velSide = 0;
-  float factor = velMax/radius;
+  float factor = velMax / radius;
   uint8_t multirangerInit = paramGetUint(idMultiranger);
-  if(multirangerInit){
+  if (multirangerInit)
+  {
     uint16_t up = logGetUint(idUp);
     uint16_t left = logGetUint(idLeft);
     uint16_t right = logGetUint(idRight);
@@ -67,7 +69,8 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
     float b_comp = back_o * factor;
     velFront = b_comp + f_comp;
 
-    if(up < radius ){
+    if (up < radius)
+    {
       set_height -= 0.002f;
     }
   }
@@ -259,21 +262,18 @@ void relativeControlTask(void *arg)
   uint8_t currentPosition_4Stage = MY_UWB_ADDRESS; // 当前位于的位置
   const float_t initDist = 1.3;
   static const float_t targetList[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},               // 0
-      {-initDist, -initDist, 0.0f},     // 1
-      {-initDist, 0.0f, 0.0f},          // 2
-      {-initDist, initDist, 0.0f},      // 3
-      {0.0f, initDist, 0.0f},           // 4
-      {initDist, initDist, 0.0f},       // 5
-      {initDist, 0.0f, 0.0f},           // 6
-      {initDist, -initDist, 0.0f},      // 7
-      {0.0f, -initDist, 0.0f},          // 8
-      {-initDist, -2 * initDist, 0.0f}, // 9
-      {0.0f, -2 * initDist, 0.0f},      // 10
-      {initDist, -2 * initDist, 0.0f},  // 11
-      {0.0f, 0.0f, 0.0f},               // ----12
-      {0.0f, 0.0f, 0.0f}};              // ----13
-  uint8_t SQURE3_3_NUM = 9;             // 3阶段转圈的无人机数量+1（0号无人机）
+      {0.0f, 0.0f, 0.0f},           // 0
+      {0.0f, -initDist, 0.0f},      // 1
+      {-initDist, -initDist, 0.0f}, // 2
+      {-initDist, 0.0f, 0.0f},      // 3
+      {-initDist, initDist, 0.0f},  // 4
+      {0.0f, initDist, 0.0f},       // 5
+      {initDist, initDist, 0.0f},   // 6
+      {initDist, 0.0f, 0.0f},       // 7
+      {initDist, -initDist, 0.0f},  // 8
+      {0.0f, 0.0f, 0.0f},           // ----12
+      {0.0f, 0.0f, 0.0f}};          // ----13
+  uint8_t SQURE3_3_NUM = 9;         // 3阶段转圈的无人机数量+1（0号无人机）
   uint8_t SQURE3_4_NUM = 11;
   static const uint8_t targetSquere3_3[15] = {
       0, 1, 2, 3, 4, 5, 6, 7, 8 // 8个位置,为了使得索引和值一一对应，所以有0
@@ -287,6 +287,24 @@ void relativeControlTask(void *arg)
   posi  0, 1, 2, 3, 4, 5, 6, 7, 11, 10, 9
   index 0  1  2  3  4  5  6  7  8   9   10
   */
+  /*下面是五边形，0号在中间*/
+  static const float_t target_five[15][STATE_DIM_rl] = {
+      {0.0f, 0.0f, 0.0f},   // 0
+      {0.43, -1.13, 0.0f},  // 1
+      {-1.13, -0.82, 0.0f}, // 2
+      {-1.13, 0.82, 0.0f},  // 3
+      {0.43, 1.33, 0.0f},   // 4
+      {1.4, 0.0, 0.0f},     // 5
+  };
+  /*下面是三角形编队*/
+  static const float_t target_trangle[15][STATE_DIM_rl] = {
+      {0.0f, 0.0f, 0.0f}, // 0
+      {-1.0, -0.6, 0.0f}, // 1
+      {-2.0, -1.2, 0.0f}, // 2
+      {-2.0, -0.0, 0.0f}, // 3
+      {-2.0, 1.2, 0.0f},  // 4
+      {-1.0, 0.6, 0.0f},  // 5
+  };
 
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
@@ -302,7 +320,7 @@ void relativeControlTask(void *arg)
   {
     vTaskDelay(10);
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
-    bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, &currentNeighborAddressInfo);
+    bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl,(float_t *)neighbor_height, &currentNeighborAddressInfo);
     relaVarInCtrl[0][STATE_rlYaw] = 0;
     int8_t leaderStage = getLeaderStage();
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
@@ -331,7 +349,6 @@ void relativeControlTask(void *arg)
         }
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {
-          // DEBUG_PRINT("--0--\n");
           if (MY_UWB_ADDRESS == 0)
           {
             setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
@@ -367,14 +384,11 @@ void relativeControlTask(void *arg)
           else
           {
             int8_t index = MY_UWB_ADDRESS;
-            // targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            // targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
           }
         }
         else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
         {
-          // DEBUG_PRINT("--3--\n");
           if (MY_UWB_ADDRESS == 0)
           {
             setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
@@ -382,55 +396,61 @@ void relativeControlTask(void *arg)
           else
           {
             int8_t index = MY_UWB_ADDRESS;
-            if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
-            {
-              targetShift = leaderStage;
-              // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
-            }
-            else
-            {
-              index = MY_UWB_ADDRESS; // 第二阶段，不做飞行的无人机，直接设置保持初始预定位置即可
-            }
+            targetShift = leaderStage;
+            // 使得targetList在1~UAV_NUM之间偏移
+            index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
             currentPosition_3Stage = index;
           }
         }
-        else if (leaderStage != LAND_STAGE)
-        { // 第4个阶段，3*4转圈
+        else if (leaderStage > 30 && leaderStage < 90)
+        { // 第4个阶段，五边形
           if (MY_UWB_ADDRESS == 0)
           {
             setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
           }
           else
           {
-            int8_t index = currentPosition_3Stage;
-            // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
-            if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
-            {
-              targetShift = leaderStage % (SQURE3_4_NUM - 1);
-              // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
-              index = posiToIndex3_4[currentPosition_3Stage];         // 将第3阶段地址转换为第4阶段索引
-              index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
-              index = indexToPosi3_4[index];                          // 将索引转换为地址
-            }
-            else
-            {
-              index = currentPosition_3Stage; // 如果第三阶段结束后是8号位置，则目标到达8号位置即可
-            }
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            int8_t index = MY_UWB_ADDRESS;
+            targetShift = leaderStage % 5;
+            index = (MY_UWB_ADDRESS + targetShift) % (5) + 1;
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_five[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_five[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_five[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_five[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
             currentPosition_4Stage = index;
           }
         }
+        else if (leaderStage == RESET_INIT_STAGE)
+        { // 第5个阶段，恢复初始位置
+          if (MY_UWB_ADDRESS == 0)
+          {
+            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+          }
+          else
+          {
+            int8_t index = MY_UWB_ADDRESS;
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            formation0asCenter(targetX, targetY, set_height);
+          }
+        }
         else
         {
-          // 运行90s之后，落地
-
-          land(set_height);
+          // 第6个阶段，三角形
+          if (MY_UWB_ADDRESS == 0)
+          {
+            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+          }
+          else
+          {
+            int8_t index = MY_UWB_ADDRESS;
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
+            formation0asCenter(targetX, targetY, set_height);
+            currentPosition_4Stage = index;
+          }
         }
       }
       else
@@ -482,29 +502,33 @@ void relativeControlTask(void *arg)
           DEBUG_PRINT("3:%d\n", index);
         }
       }
-      else if (leaderStage != LAND_STAGE)
+      else if (leaderStage > 30 && leaderStage < 90)
+      {
+        // 第4个阶段，变成5边形转圈
+        if (MY_UWB_ADDRESS == 0)
+        {
+        }
+        else
+        {
+          int8_t index = MY_UWB_ADDRESS;
+          targetShift = leaderStage % 5;
+          index = (MY_UWB_ADDRESS + targetShift) % (5) + 1;
+          DEBUG_PRINT("4:%d\n", index);
+        }
+      }
+      else if (leaderStage == RESET_INIT_STAGE)
       { // 第4个阶段，3*4转圈
         if (MY_UWB_ADDRESS == 0)
         {
         }
         else
         {
-          int8_t index = currentPosition_3Stage;
-          // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
-          if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
-          {
-            targetShift = leaderStage % (SQURE3_4_NUM - 1);
-            // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
-            index = posiToIndex3_4[currentPosition_3Stage];         // 将第3阶段地址转换为第4阶段索引
-            index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
-            index = indexToPosi3_4[index];                          // 将索引转换为地址
-          }
-          else
-          {
-            index = currentPosition_3Stage; // 如果第三阶段结束后是8号位置，则目标到达8号位置即可
-          }
-          DEBUG_PRINT("4:%d\n", index);
+          int8_t index = MY_UWB_ADDRESS;
+          DEBUG_PRINT("5 reset:%d\n", index);
         }
+      }else {
+        int8_t index = MY_UWB_ADDRESS;
+        DEBUG_PRINT("6:%d\n", index);
       }
     }
   }

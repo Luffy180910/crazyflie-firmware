@@ -66,20 +66,17 @@ static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 // 正方向编队方案
 const float_t initDist = 1.3;
 static const float_t initPositionRela0[15][STATE_DIM_rl] = {
-    {0.0f, 0.0f, 0.0f},               // 0
-    {-initDist, -initDist, 0.0f},     // 1
-    {-initDist, 0.0f, 0.0f},          // 2
-    {-initDist, initDist, 0.0f},      // 3
-    {0.0f, initDist, 0.0f},           // 4
-    {initDist, initDist, 0.0f},       // 5
-    {initDist, 0.0f, 0.0f},           // 6
-    {initDist, -initDist, 0.0f},      // 7
-    {0.0f, -initDist, 0.0f},          // 8
-    {-initDist, -2 * initDist, 0.0f}, // 9
-    {0.0f, -2 * initDist, 0.0f},      // 10
-    {initDist, -2 * initDist, 0.0f},  // 11
-    {0.0f, 0.0f, 0.0f},               // ----12
-    {0.0f, 0.0f, 0.0f}};              // ----13
+    {0.0f, 0.0f, 0.0f},           // 0
+    {0.0f, -initDist, 0.0f},      // 1
+    {-initDist, -initDist, 0.0f}, // 2
+    {-initDist, 0.0f, 0.0f},      // 3
+    {-initDist, initDist, 0.0f},  // 4
+    {0.0f, initDist, 0.0f},       // 5
+    {initDist, initDist, 0.0f},   // 6
+    {initDist, 0.0f, 0.0f},       // 7
+    {initDist, -initDist, 0.0f},  // 8
+    {0.0f, 0.0f, 0.0f},           // ----12
+    {0.0f, 0.0f, 0.0f}};          // ----13
 // 八边形编队方案
 // static const float_t initPositionRela0[15][STATE_DIM_rl] = {
 //     {0.0f, 0.0f, 0.0f},   // 0
@@ -154,6 +151,8 @@ void relaVarInit(relaVariable_t *relaVar, uint16_t neighborAddress)
     relaVar[neighborAddress].S[STATE_rlYaw] = 0;
     /*----------*/
     relaVar[neighborAddress].oldTimetick = xTaskGetTickCount();
+    relaVar[neighborAddress].height = 0.5; // 默认都是0.5的高度
+
     fullConnect = true;
     // DEBUG_PRINT("%f\n", relaVar[neighborAddress].S[STATE_rlX]);
 }
@@ -196,6 +195,7 @@ void relativeLocoTask(void *arg)
                     uint32_t osTick = xTaskGetTickCount();
                     float dtEKF = (float)(osTick - relaVar[neighborAddress].oldTimetick) / configTICK_RATE_HZ;
                     relaVar[neighborAddress].oldTimetick = osTick;
+                    relaVar[neighborAddress].height = hj;
                     relativeEKF(neighborAddress, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
                 }
                 // DEBUG_PRINT("addr:%d,X:%f,Y:%f",neighborAddress,relaVar[neighborAddress].S[STATE_rlX],relaVar[neighborAddress].S[STATE_rlY]);
@@ -292,7 +292,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     // DEBUG_PRINT("dis:%d\n", dij);
 }
 
-bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)
+bool relativeInfoRead(float *relaVarParam, float *neighbor_height, currentNeighborAddressInfo_t *dest)
 {
     if (fullConnect)
     {
@@ -302,6 +302,7 @@ bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)
             *(relaVarParam + neighborAddress * STATE_DIM_rl + 0) = relaVar[neighborAddress].S[STATE_rlX];
             *(relaVarParam + neighborAddress * STATE_DIM_rl + 1) = relaVar[neighborAddress].S[STATE_rlY];
             *(relaVarParam + neighborAddress * STATE_DIM_rl + 2) = relaVar[neighborAddress].S[STATE_rlYaw];
+            *(neighbor_height + neighborAddress) = relaVar[neighborAddress].height;
         }
         memcpy(dest->address, currentNeighborAddressInfo.address, sizeof(currentNeighborAddressInfo.address));
         dest->size = currentNeighborAddressInfo.size;
