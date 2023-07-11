@@ -320,7 +320,7 @@ void relativeControlTask(void *arg)
   {
     vTaskDelay(10);
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
-    bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl,(float_t *)neighbor_height, &currentNeighborAddressInfo);
+    bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, (float_t *)neighbor_height, &currentNeighborAddressInfo);
     relaVarInCtrl[0][STATE_rlYaw] = 0;
     int8_t leaderStage = getLeaderStage();
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
@@ -339,7 +339,7 @@ void relativeControlTask(void *arg)
           vTaskDelay(5000);        // 设定位置使得其收敛时间
           if (MY_UWB_ADDRESS == 0) // 0号设置到0号高度
           {
-            take_off(set_height0);
+            take_off(set_height);
           }
           else
           {
@@ -351,7 +351,7 @@ void relativeControlTask(void *arg)
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
           }
           else
           {
@@ -364,7 +364,7 @@ void relativeControlTask(void *arg)
           float_t randomVel = 0.3;
           if (MY_UWB_ADDRESS == 0)
           {
-            flyRandomIn1meter(randomVel, set_height0);
+            flyRandomIn1meter(randomVel, set_height);
           }
           else
           {
@@ -379,7 +379,7 @@ void relativeControlTask(void *arg)
           if (MY_UWB_ADDRESS == 0)
           {
             float_t randomVel = 0.3;
-            flyRandomIn1meter(randomVel, set_height0);
+            flyRandomIn1meter(randomVel, set_height);
           }
           else
           {
@@ -391,7 +391,7 @@ void relativeControlTask(void *arg)
         {
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
           }
           else
           {
@@ -409,7 +409,7 @@ void relativeControlTask(void *arg)
         { // 第4个阶段，五边形
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
           }
           else
           {
@@ -426,7 +426,7 @@ void relativeControlTask(void *arg)
         { // 第5个阶段，恢复初始位置
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
           }
           else
           {
@@ -441,14 +441,14 @@ void relativeControlTask(void *arg)
           // 第6个阶段，三角形
           if (MY_UWB_ADDRESS == 0)
           {
-            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
+            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
           }
           else
           {
             int8_t index = MY_UWB_ADDRESS;
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, set_height);
+            formation0asCenter(targetX, targetY, neighbor_height[0]);
             currentPosition_4Stage = index;
           }
         }
@@ -526,7 +526,9 @@ void relativeControlTask(void *arg)
           int8_t index = MY_UWB_ADDRESS;
           DEBUG_PRINT("5 reset:%d\n", index);
         }
-      }else {
+      }
+      else
+      {
         int8_t index = MY_UWB_ADDRESS;
         DEBUG_PRINT("6:%d\n", index);
       }
