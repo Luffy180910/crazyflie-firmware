@@ -85,7 +85,8 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   setpoint->velocity_body = true;
   commanderSetSetpoint(setpoint, 3);
   if(set_height<=0.1){
-    land(set_height);
+    isCompleteTaskAndLand = true;
+    // land(set_height);
   }
 }
 
