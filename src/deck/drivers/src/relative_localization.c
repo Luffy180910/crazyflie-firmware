@@ -64,8 +64,8 @@ static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 
 // 初始时，所有无人机基于0号无人机的相对位置
 // 正方向编队方案
-const float_t initDist = 1.3;
-// const float_t initDist = 0.7;
+// const float_t initDist = 1.3;
+const float_t initDist = 0.7;
 static const float_t initPositionRela0[15][STATE_DIM_rl] = {
     {0.0f, 0.0f, 0.0f},           // 0
     {0.0f, -initDist, 0.0f},      // 1
