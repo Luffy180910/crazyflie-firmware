@@ -84,9 +84,10 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   setpoint->velocity.y = vy + velSide;
   setpoint->velocity_body = true;
   commanderSetSetpoint(setpoint, 3);
-  if(set_height<=0.1){
-    isCompleteTaskAndLand = true;
-    // land(set_height);
+  if (set_height <= 0.1)
+  {
+    // isCompleteTaskAndLand = true;
+    land(set_height);
   }
 }
 
@@ -182,8 +183,8 @@ void land(float_t height)
   if (!onGround)
   {
     int i = 0;
-    float land_height_per_100ms = 0.02;            // 每秒下降的高度为该变量的值*10
-    while (height - i * land_height_per_100ms > 0) // 1s下降0.2s
+    float land_height_per_100ms = 0.02;                            // 每秒下降的高度为该变量的值*10
+    while (height > 0.1 && height - i * land_height_per_100ms > 0) // 1s下降0.2s
     {
       i++;
       setHoverSetpoint(&setpoint, 0, 0, height - (float)i * land_height_per_100ms, 0);
@@ -301,13 +302,13 @@ void relativeControlTask(void *arg)
   //     {0.43, 1.33, 0.0f},   // 4
   //     {1.4, 0.0, 0.0f},     // 5
   // };
-    static const float_t target_five[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},   // 0
+  static const float_t target_five[15][STATE_DIM_rl] = {
+      {0.0f, 0.0f, 0.0f},  // 0
       {0.22, -0.6, 0.0f},  // 1
       {-0.6, -0.41, 0.0f}, // 2
       {-0.6, 0.41, 0.0f},  // 3
       {0.22, 0.7, 0.0f},   // 4
-      {0.7, 0.0, 0.0f},     // 5
+      {0.7, 0.0, 0.0f},    // 5
   };
   /*下面是三角形编队*/
   // static const float_t target_trangle[15][STATE_DIM_rl] = {
@@ -318,7 +319,7 @@ void relativeControlTask(void *arg)
   //     {-2.0, 1.2, 0.0f},  // 4
   //     {-1.0, 0.6, 0.0f},  // 5
   // };
-    static const float_t target_trangle[15][STATE_DIM_rl] = {
+  static const float_t target_trangle[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f}, // 0
       {-0.8, -0.5, 0.0f}, // 1
       {-2.0, -1.2, 0.0f}, // 2
@@ -469,7 +470,8 @@ void relativeControlTask(void *arg)
             int8_t index = MY_UWB_ADDRESS;
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, neighbor_height[0]);
+            set_height = neighbor_height[0];
+            formation0asCenter(targetX, targetY, set_height);
             currentPosition_4Stage = index;
           }
         }
