@@ -263,7 +263,7 @@ void relativeControlTask(void *arg)
 
   uint8_t currentPosition_3Stage = MY_UWB_ADDRESS; // 当前位于的位置
   uint8_t currentPosition_4Stage = MY_UWB_ADDRESS; // 当前位于的位置
-  const float_t initDist = 1.3;
+  const float_t initDist = 0.9;
   // const float_t initDist = 0.7;
   static const float_t targetList[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f},           // 0
@@ -292,30 +292,38 @@ void relativeControlTask(void *arg)
   index 0  1  2  3  4  5  6  7  8   9   10
   */
   /*下面是五边形，0号在中间*/
-  static const float_t target_five[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},   // 0
-      {0.43, -1.13, 0.0f},  // 1
-      {-1.13, -0.82, 0.0f}, // 2
-      {-1.13, 0.82, 0.0f},  // 3
-      {0.43, 1.33, 0.0f},   // 4
-      {1.4, 0.0, 0.0f},     // 5
-  };
-  //   static const float_t target_five[15][STATE_DIM_rl] = {
+  // static const float_t target_five[15][STATE_DIM_rl] = {
   //     {0.0f, 0.0f, 0.0f},   // 0
-  //     {0.22, -0.6, 0.0f},  // 1
-  //     {-0.6, -0.41, 0.0f}, // 2
-  //     {-0.6, 0.41, 0.0f},  // 3
-  //     {0.22, 0.7, 0.0f},   // 4
-  //     {0.7, 0.0, 0.0f},     // 5
+  //     {0.43, -1.13, 0.0f},  // 1
+  //     {-1.13, -0.82, 0.0f}, // 2
+  //     {-1.13, 0.82, 0.0f},  // 3
+  //     {0.43, 1.33, 0.0f},   // 4
+  //     {1.4, 0.0, 0.0f},     // 5
   // };
+    static const float_t target_five[15][STATE_DIM_rl] = {
+      {0.0f, 0.0f, 0.0f},   // 0
+      {0.22, -0.6, 0.0f},  // 1
+      {-0.6, -0.41, 0.0f}, // 2
+      {-0.6, 0.41, 0.0f},  // 3
+      {0.22, 0.7, 0.0f},   // 4
+      {0.7, 0.0, 0.0f},     // 5
+  };
   /*下面是三角形编队*/
-  static const float_t target_trangle[15][STATE_DIM_rl] = {
+  // static const float_t target_trangle[15][STATE_DIM_rl] = {
+  //     {0.0f, 0.0f, 0.0f}, // 0
+  //     {-1.0, -0.6, 0.0f}, // 1
+  //     {-2.0, -1.2, 0.0f}, // 2
+  //     {-2.0, -0.0, 0.0f}, // 3
+  //     {-2.0, 1.2, 0.0f},  // 4
+  //     {-1.0, 0.6, 0.0f},  // 5
+  // };
+    static const float_t target_trangle[15][STATE_DIM_rl] = {
       {0.0f, 0.0f, 0.0f}, // 0
-      {-1.0, -0.6, 0.0f}, // 1
+      {-0.8, -0.5, 0.0f}, // 1
       {-2.0, -1.2, 0.0f}, // 2
       {-2.0, -0.0, 0.0f}, // 3
       {-2.0, 1.2, 0.0f},  // 4
-      {-1.0, 0.6, 0.0f},  // 5
+      {-0.8, 0.5, 0.0f},  // 5
   };
 
   systemWaitStart();
