@@ -91,6 +91,20 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   }
 }
 
+static void setHoverSetpoint_takeoff(setpoint_t *setpoint, float vx, float vy, float z, float yawrate)
+{
+  setpoint->mode.z = modeAbs;
+  setpoint->position.z = z;
+  setpoint->mode.yaw = modeVelocity;
+  setpoint->attitudeRate.yaw = yawrate;
+  setpoint->mode.x = modeVelocity;
+  setpoint->mode.y = modeVelocity;
+  setpoint->velocity.x = vx;
+  setpoint->velocity.y = vy;
+  setpoint->velocity_body = true;
+  commanderSetSetpoint(setpoint, 3);
+}
+
 static void flyRandomIn1meter(float_t randomVel, float height)
 {
   float_t randomYaw = (rand() / (float)RAND_MAX) * 6.28f; // 0-2pi rad
@@ -164,10 +178,10 @@ static void formation0asCenter(float_t tarX, float_t tarY, float_t height)
 
 void take_off(float_t height)
 {
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 50; i++)
   {
-    setHoverSetpoint(&setpoint, 0, 0, height, 0);
-    vTaskDelay(M2T(100));
+    setHoverSetpoint_takeoff(&setpoint, 0, 0, height, 0);
+    vTaskDelay(M2T(10));
   }
   // for (int i = 0; i < 10 * MY_UWB_ADDRESS; i++)
   // {
