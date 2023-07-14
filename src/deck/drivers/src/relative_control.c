@@ -178,10 +178,10 @@ static void formation0asCenter(float_t tarX, float_t tarY, float_t height)
 
 void take_off(float_t height)
 {
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 20; i++)
   {
-    setHoverSetpoint_takeoff(&setpoint, 0, 0, (height * i) / 50, 0);
-    vTaskDelay(M2T(50));
+    setHoverSetpoint_takeoff(&setpoint, 0, 0, (height * i) / 20, 0);
+    vTaskDelay(M2T(25));
   }
   for (int i = 0; i < 20; i++)
   {
