@@ -73,6 +73,7 @@ static int packetSeqNumber = 1;
 static uint8_t rxBuffer[FRAME_LEN_MAX];
 
 static void txCallback() {
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
     listeners[TX_MESSAGE_TYPE].txCb(NULL); // TODO no parameter passed into txCb now
   }

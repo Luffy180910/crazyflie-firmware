@@ -88,6 +88,8 @@ static void uwbRangingTxTask(void *parameters) {
 
 static void uwbRangingRxTask(void *parameters) {
   systemWaitStart();
+  dwt_forcetrxoff();
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
   Ranging_Message_With_Timestamp_t rxPacketCache;
 
