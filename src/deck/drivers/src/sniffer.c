@@ -28,6 +28,8 @@ void snifferRxCallback(void *parameters) {
 
 static void snifferTask(void *parameters) {
   systemWaitStart();
+  dwt_forcetrxoff();
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
   UWB_Packet_With_Timestamp_t rxPacketCache;
   memset(&rxPacketCache, 0, sizeof(rxPacketCache));
@@ -60,8 +62,6 @@ static void snifferTask(void *parameters) {
         remain -= sizeToSend;
       }
     }
-    dwt_forcetrxoff();
-    dwt_rxenable(DWT_START_RX_IMMEDIATE);
     vTaskDelay(1); // TODO pick proper timespan
   }
 }

@@ -79,6 +79,7 @@ static void txCallback() {
 }
 
 static void rxCallback() {
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   uint32_t dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
@@ -106,12 +107,9 @@ static void rxCallback() {
   }
 #endif
 
-  dwt_forcetrxoff();
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
 static void rxTimeoutCallback() {
-  dwt_forcetrxoff();
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
