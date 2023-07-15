@@ -17,7 +17,7 @@ void snifferRxCallback(void *parameters) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
 
-  dwTime_t rxTime;
+  dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
   UWB_Packet_With_Timestamp_t uwbPacketWithTimestamp;
   uwbPacketWithTimestamp.rxTime = rxTime;
