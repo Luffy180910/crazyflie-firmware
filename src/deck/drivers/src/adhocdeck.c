@@ -94,6 +94,9 @@ static void rxCallback() {
 
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
+#ifdef ENABLE_SNIFFER
+  listeners[SNIFFER].rxCb(packet);
+#else
   if (listeners[msgType].rxCb) {
     listeners[msgType].rxCb(packet);
   }
@@ -101,9 +104,6 @@ static void rxCallback() {
   if (listeners[msgType].rxQueue) {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
-  
-#ifdef ENABLE_SNIFFER
-  listeners[SNIFFER].rxCb(packet);
 #endif
 
   dwt_forcetrxoff();
@@ -163,6 +163,7 @@ static int uwbInit() {
   }
 
   if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
+
     return DWT_ERROR;
   }
   if (dwt_configure(&config) == DWT_ERROR) {
