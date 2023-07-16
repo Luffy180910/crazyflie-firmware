@@ -112,7 +112,7 @@ static void rxCallback(dwt_cb_data_t* cbData) {
 #endif
 */
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
-  //dwt_signal_rx_buff_free(); 
+  dwt_signal_rx_buff_free(); 
 }
 
 static void rxTimeoutCallback() {
@@ -192,8 +192,8 @@ static int uwbInit() {
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
-  // dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
-  // dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
+  dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
+  dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
   /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and

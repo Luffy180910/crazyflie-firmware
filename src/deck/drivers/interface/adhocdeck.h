@@ -9,7 +9,7 @@
 #include "flooding_struct.h"
 
 /* Function Switch */
-#define ENABLE_PHR_EXT_MODE
+//#define ENABLE_PHR_EXT_MODE
 #define ENABLE_RANGING
 //#define ENABLE_FLOODING
 //#define ENABLE_ROUTING
