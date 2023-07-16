@@ -78,11 +78,10 @@ static void txCallback() {
   }
 }
 
-static void rxCallback() {
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+static void rxCallback(dwt_cb_data_t* cbData) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  uint32_t dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
+  uint32_t dataLength = cbData->datalength;
 
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
 
@@ -106,7 +105,7 @@ static void rxCallback() {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
 #endif
-
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
 static void rxTimeoutCallback() {
@@ -114,6 +113,7 @@ static void rxTimeoutCallback() {
 }
 
 static void rxErrorCallback() {
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
 }
 

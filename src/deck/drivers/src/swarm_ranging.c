@@ -80,7 +80,6 @@ static void uwbRangingTxTask(void *parameters) {
   while (true) {
     int msgLen = generateRangingMessage((Ranging_Message_t *) &txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
-    DEBUG_PRINT("msg len = %d, packet len = %u\n", msgLen, txPacketCache.header.length);
     uwbSendPacketBlock(&txPacketCache);
     vTaskDelay(TX_PERIOD_IN_MS);
   }
@@ -88,6 +87,8 @@ static void uwbRangingTxTask(void *parameters) {
 
 static void uwbRangingRxTask(void *parameters) {
   systemWaitStart();
+  dwt_forcetrxoff();
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
   Ranging_Message_With_Timestamp_t rxPacketCache;
 
@@ -149,7 +150,7 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   if (isErrorOccurred) {
     return 0;
   }
-
+  DEBUG_PRINT("d=%d\n",distance);
   return distance;
 }
 
