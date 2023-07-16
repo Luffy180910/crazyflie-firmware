@@ -71,6 +71,7 @@ static int packetSeqNumber = 1;
 
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[FRAME_LEN_MAX];
+dwt_deviceentcnts_t counters;
 
 static void txCallback() {
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
@@ -88,11 +89,10 @@ static void rxCallback() {
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
 
-//  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
+  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
-
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
 #ifdef ENABLE_SNIFFER
@@ -106,15 +106,18 @@ static void rxCallback() {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
 #endif
-
+  dwt_signal_rx_buff_free(); 
 }
 
 static void rxTimeoutCallback() {
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
+
 static void rxErrorCallback() {
   DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
+  dwt_readeventcounters(&counters);
+  DEBUG_PRINT("OVER=%d\n", counters.OVER);
 }
 
 uint16_t getUWBAddress() {
