@@ -74,23 +74,27 @@ static uint8_t rxBuffer[FRAME_LEN_MAX];
 dwt_deviceentcnts_t counters;
 
 static void txCallback() {
+  dwTime_t txTime = {0};
+  dwt_readtxtimestamp((uint8_t *) &txTime.raw);
+  DEBUG_PRINT("txTimeStmp:%llx\n",txTime.full);
+  return;
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
     listeners[TX_MESSAGE_TYPE].txCb(NULL); // TODO no parameter passed into txCb now
   }
 }
 
-static void rxCallback() {
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+static void rxCallback(dwt_cb_data_t* cbData) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
-  uint32_t dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
+  
+  uint32_t dataLength = cbData->datalength;
 
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-
-  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
-
+  dwTime_t rxTime = {0};
+  dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
+  DEBUG_PRINT("rxTimeStmp:%llx,\tdataLength:%d,\trx_flags:%x\n",rxTime.full, dataLength, cbData->rx_flags);
+  /*
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
@@ -106,7 +110,9 @@ static void rxCallback() {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
 #endif
-  dwt_signal_rx_buff_free(); 
+*/
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+  //dwt_signal_rx_buff_free(); 
 }
 
 static void rxTimeoutCallback() {
@@ -116,6 +122,8 @@ static void rxTimeoutCallback() {
 
 static void rxErrorCallback() {
   DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
+  dwt_forcetrxoff();
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   dwt_readeventcounters(&counters);
   DEBUG_PRINT("OVER=%d\n", counters.OVER);
 }
@@ -184,8 +192,8 @@ static int uwbInit() {
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
-  dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
-  dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
+  // dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
+  // dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
   /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and
