@@ -112,7 +112,6 @@ static void rxCallback(dwt_cb_data_t* cbData) {
 #endif
 */
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
-  dwt_signal_rx_buff_free(); 
 }
 
 static void rxTimeoutCallback() {
@@ -227,6 +226,9 @@ static void uwbTxTask(void *parameters) {
       packetCache.header.srcAddress = MY_UWB_ADDRESS;
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
+      uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
+      uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
+      DEBUG_PRINT("Stx_STATUS:\t%lx\",status);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
@@ -236,6 +238,7 @@ static void uwbTxTask(void *parameters) {
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       }
+      DEBUG_PRINT("Stx_STATUS:\t%lx\",status);
       vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
     }
   }
