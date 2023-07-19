@@ -226,9 +226,11 @@ static void uwbTxTask(void *parameters) {
       packetCache.header.srcAddress = MY_UWB_ADDRESS;
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
-      uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
-      DEBUG_PRINT("Stx_STATUS:\t%lx\",status);
+      if(status)
+        DEBUG_PRINT("Stx_STATUS:\t%lx\n",status);
+      else
+        DEBUG_PRINT("Stx_STATUS:\t0\n");
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
