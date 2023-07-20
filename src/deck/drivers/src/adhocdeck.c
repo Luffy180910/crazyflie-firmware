@@ -142,14 +142,6 @@ static void rxTimeoutCallback() {
       }
     }
     else {
-      dwTime_t sysTime1 = {0};
-      dwTime_t sysTimeN = {0};
-      dwt_readsystime((uint8_t *) &sysTime1.raw);
-      for(int i=1; i<100; i++){
-        dwt_readsystime((uint8_t *) &sysTimeN.raw);
-        ;
-      }
-      DEBUG_PRINT("sysTimeStmpDiff: 0x%llx\n", sysTimeN.full-sysTime1.full);
       dwt_rxenable(DWT_START_RX_IMMEDIATE);
     }
 }
