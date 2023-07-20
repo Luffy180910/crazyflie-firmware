@@ -93,12 +93,13 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  DEBUG_PRINT("rxTimeStmp: 0x%llx,\tdataLength:%d,\trx_flags:%x\n",rxTime.full, dataLength, cbData->rx_flags);
-  /*
+
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
+  DEBUG_PRINT("rxTimeStmp: 0x%llx (%d)\n",rxTime.full, packet->header.seqNumber);
+  /*
 #ifdef ENABLE_SNIFFER
   listeners[SNIFFER].rxCb(packet);
 #else
@@ -123,11 +124,14 @@ static void rxTimeoutCallback() {
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
       if(status) {
-        DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
+        DEBUG_PRINT("Stx_STATUS:\t%lx\n",status);
       }
       else {
         DEBUG_PRINT("Stx_STATUS:\t0\n");
       }
+      dwTime_t sysTime = {0};
+      dwt_readsystime((uint8_t *) &sysTime.raw);
+      DEBUG_PRINT("sysTimeStmp: 0x%llx (%d)\n",sysTime.full, packetCache.header.seqNumber);
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
@@ -136,9 +140,18 @@ static void rxTimeoutCallback() {
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       }
-      vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
     }
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    else {
+      dwTime_t sysTime1 = {0};
+      dwTime_t sysTimeN = {0};
+      dwt_readsystime((uint8_t *) &sysTime1.raw);
+      for(int i=1; i<100; i++){
+        dwt_readsystime((uint8_t *) &sysTimeN.raw);
+        ;
+      }
+      DEBUG_PRINT("sysTimeStmpDiff: 0x%llx\n", sysTimeN.full-sysTime1.full);
+      dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    }
 }
 
 
@@ -213,7 +226,7 @@ static int uwbInit() {
   /* Auto re-enable receiver after a frame reception failure (except a frame
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
-  dwt_setrxtimeout(500); // in microseconds (1.0256 us).
+  dwt_setrxtimeout(5000); // in microseconds (1.0256 us).
   // dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
   // dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
 
