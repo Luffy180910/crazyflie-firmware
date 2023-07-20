@@ -115,6 +115,29 @@ static void rxCallback(dwt_cb_data_t* cbData) {
 }
 
 static void rxTimeoutCallback() {
+  UWB_Packet_t packetCache;
+
+    if (xQueueReceive(txQueue, &packetCache, 0)) {
+      packetCache.header.srcAddress = MY_UWB_ADDRESS;
+      packetCache.header.seqNumber = packetSeqNumber++;
+      ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
+      uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
+      if(status) {
+        DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
+      }
+      else {
+        DEBUG_PRINT("Stx_STATUS:\t0\n");
+      }
+      dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
+      dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
+      TX_MESSAGE_TYPE = packetCache.header.type;
+      /* Start transmission. */
+      if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
+          DWT_ERROR) {
+        DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
+      }
+      vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
+    }
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
@@ -190,7 +213,7 @@ static int uwbInit() {
   /* Auto re-enable receiver after a frame reception failure (except a frame
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
-  dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
+  dwt_setrxtimeout(500); // in microseconds (1.0256 us).
   // dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
   // dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
 
@@ -238,7 +261,7 @@ static void uwbTxTask(void *parameters) {
       }
       dwTime_t sysTime = {0};
       dwt_readsystime((uint8_t *) &sysTime.raw);
-      DEBUG_PRINT("sysTimeStmp: 0x%llx\n",sysTime.full<<2);
+      DEBUG_PRINT("sysTimeStmp: 0x%llx\n",sysTime.full);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
@@ -258,7 +281,6 @@ static void uwbTask(void *parameters) {
 
   while (1) {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
-      DEBUG_PRINT("NotifyTake\n");
       do {
         xSemaphoreTake(irqSemaphore, portMAX_DELAY);
         dwt_isr();
@@ -376,8 +398,8 @@ static void uwbTaskInit() {
   /* Create UWB Task */
   xTaskCreate(uwbTask, ADHOC_DECK_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbTaskHandle); // TODO optimize STACK SIZE
-  xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
-              ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
+  // xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
+              // ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
 #ifdef ENABLE_RANGING
   rangingInit(); // TODO ugly code
 #endif
