@@ -227,10 +227,15 @@ static void uwbTxTask(void *parameters) {
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
-      if(status)
-        DEBUG_PRINT("Stx_STATUS:\t%lx\n",status);
-      else
+      if(status) {
+        DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
+        vTaskNotifyGiveFromISR(uwbTaskHandle, pdFALSE);
+        DEBUG_PRINT("NotifyGive\n");
+        vTaskDelay(M2T(1));
+      }
+      else {
         DEBUG_PRINT("Stx_STATUS:\t0\n");
+      }
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
@@ -250,10 +255,13 @@ static void uwbTask(void *parameters) {
 
   while (1) {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
+      DEBUG_PRINT("NotifyTake\n");
       do {
+        DEBUG_PRINT("Take irqS\n");
         xSemaphoreTake(irqSemaphore, portMAX_DELAY);
         dwt_isr();
         xSemaphoreGive(irqSemaphore);
+        DEBUG_PRINT("Give irqS\n");
       } while (digitalRead(GPIO_PIN_IRQ) != 0);
     }
   }
