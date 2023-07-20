@@ -76,7 +76,7 @@ dwt_deviceentcnts_t counters;
 static void txCallback() {
   dwTime_t txTime = {0};
   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
-  DEBUG_PRINT("txTimeStmp:%llx\n",txTime.full);
+  DEBUG_PRINT("txTimeStmp: 0x%llx\n",txTime.full);
   return;
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
     listeners[TX_MESSAGE_TYPE].txCb(NULL); // TODO no parameter passed into txCb now
@@ -93,7 +93,7 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  DEBUG_PRINT("rxTimeStmp:%llx,\tdataLength:%d,\trx_flags:%x\n",rxTime.full, dataLength, cbData->rx_flags);
+  DEBUG_PRINT("rxTimeStmp: 0x%llx,\tdataLength:%d,\trx_flags:%x\n",rxTime.full, dataLength, cbData->rx_flags);
   /*
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
@@ -231,11 +231,14 @@ static void uwbTxTask(void *parameters) {
         DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
         vTaskNotifyGiveFromISR(uwbTaskHandle, pdFALSE);
         DEBUG_PRINT("NotifyGive\n");
-        vTaskDelay(M2T(1));
+        //vTaskDelay(M2T(1));
       }
       else {
         DEBUG_PRINT("Stx_STATUS:\t0\n");
       }
+      dwTime_t sysTime = {0};
+      dwt_readsystime((uint8_t *) &sysTime.raw);
+      DEBUG_PRINT("sysTimeStmp: 0x%llx\n",sysTime.full<<2);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
@@ -257,11 +260,9 @@ static void uwbTask(void *parameters) {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
       DEBUG_PRINT("NotifyTake\n");
       do {
-        DEBUG_PRINT("Take irqS\n");
         xSemaphoreTake(irqSemaphore, portMAX_DELAY);
         dwt_isr();
         xSemaphoreGive(irqSemaphore);
-        DEBUG_PRINT("Give irqS\n");
       } while (digitalRead(GPIO_PIN_IRQ) != 0);
     }
   }
