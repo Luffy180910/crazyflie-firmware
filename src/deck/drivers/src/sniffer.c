@@ -45,8 +45,7 @@ static void snifferTask(void *parameters) {
       .senderAddress = 0,
       .seqNumber = 0,
       .msgLength = 0,
-      .rxTime = 0,
-      .tmpTime = 0
+      .rxTime = 0
   };
 
   while (1) {
@@ -55,16 +54,15 @@ static void snifferTask(void *parameters) {
       snifferMetaCache.seqNumber = rxPacketCache.uwbPacket.header.seqNumber;
       snifferMetaCache.msgLength = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
       snifferMetaCache.rxTime = rxPacketCache.rxTime.full;
-      snifferMetaCache.tmpTime = rxPacketCache.rxTime.full;
 
-      usbSendData_debug_print(sizeof(Sniffer_Meta_t), snifferMetaCache.raw);
+      usbSendData(sizeof(Sniffer_Meta_t), snifferMetaCache.raw);
 
       uint16_t msgSize = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
       uint8_t *pointer = rxPacketCache.uwbPacket.payload;
       int remain = msgSize;
       while (remain > 0) {
         int sizeToSend = remain > USB_RX_TX_PACKET_SIZE ? USB_RX_TX_PACKET_SIZE : remain;
-        usbSendData_debug_print(sizeToSend, pointer);
+        usbSendData(sizeToSend, pointer);
         pointer += sizeToSend;
         remain -= sizeToSend;
       }
