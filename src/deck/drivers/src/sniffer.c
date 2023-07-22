@@ -40,7 +40,8 @@ static void snifferTask(void *parameters) {
       .senderAddress = 0,
       .seqNumber = 0,
       .msgLength = 0,
-      .rxTime = 0
+      .rxTime = 0,
+      .tmpTime = 0
   };
 
   while (1) {
@@ -49,6 +50,7 @@ static void snifferTask(void *parameters) {
       snifferMetaCache.seqNumber = rxPacketCache.uwbPacket.header.seqNumber;
       snifferMetaCache.msgLength = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
       snifferMetaCache.rxTime = rxPacketCache.rxTime.full;
+      snifferMetaCache.tmpTime = rxPacketCache.rxTime.full;
 
       usbSendData(sizeof(Sniffer_Meta_t), snifferMetaCache.raw);
 

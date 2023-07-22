@@ -71,6 +71,7 @@ static int packetSeqNumber = 1;
 
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[FRAME_LEN_MAX];
+dwTime_t sysTime = {0};
 
 static void txCallback() {
   if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
@@ -232,7 +233,6 @@ static void uwbTxTask(void *parameters) {
         DEBUG_PRINT("Stx_STATUS:\t0\n");
       }
       */
-      dwTime_t sysTime = {0};
       dwt_readsystime((uint8_t *) &sysTime.raw);
       DEBUG_PRINT("syTimeStmp: 0x%llx\n",sysTime.full);
       dwt_forcetrxoff();
