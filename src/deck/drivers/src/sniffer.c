@@ -26,6 +26,11 @@ void snifferRxCallback(void *parameters) {
   xQueueSendFromISR(rxQueue, &uwbPacketWithTimestamp, &xHigherPriorityTaskWoken);
 }
 
+bool usbSendData_debug_print(uint32_t size, uint8_t* data) {
+  DEBUG_PRINT("usbSendData_debug_print\t%d\n",size);
+  return true;
+}
+
 static void snifferTask(void *parameters) {
   systemWaitStart();
   dwt_forcetrxoff();
@@ -52,14 +57,14 @@ static void snifferTask(void *parameters) {
       snifferMetaCache.rxTime = rxPacketCache.rxTime.full;
       snifferMetaCache.tmpTime = rxPacketCache.rxTime.full;
 
-      usbSendData(sizeof(Sniffer_Meta_t), snifferMetaCache.raw);
+      usbSendData_debug_print(sizeof(Sniffer_Meta_t), snifferMetaCache.raw);
 
       uint16_t msgSize = rxPacketCache.uwbPacket.header.length - sizeof(Packet_Header_t);
       uint8_t *pointer = rxPacketCache.uwbPacket.payload;
       int remain = msgSize;
       while (remain > 0) {
         int sizeToSend = remain > USB_RX_TX_PACKET_SIZE ? USB_RX_TX_PACKET_SIZE : remain;
-        usbSendData(sizeToSend, pointer);
+        usbSendData_debug_print(sizeToSend, pointer);
         pointer += sizeToSend;
         remain -= sizeToSend;
       }

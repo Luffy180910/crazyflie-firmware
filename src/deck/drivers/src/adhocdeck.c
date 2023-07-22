@@ -94,8 +94,9 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   MESSAGE_TYPE msgType = packet->header.type;
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
+/*
   DEBUG_PRINT("rxTimeStmp: 0x%llx (%d)\n",rxTime.full, packet->header.seqNumber);
-  /*
+*/
 #ifdef ENABLE_SNIFFER
   listeners[SNIFFER].rxCb(packet);
 #else
@@ -107,7 +108,7 @@ static void rxCallback(dwt_cb_data_t* cbData) {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
 #endif
-*/
+
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
