@@ -231,10 +231,10 @@ static void uwbTxTask(void *parameters) {
       else {
         DEBUG_PRINT("Stx_STATUS:\t0\n");
       }
+      */
       dwTime_t sysTime = {0};
       dwt_readsystime((uint8_t *) &sysTime.raw);
-      DEBUG_PRINT("sysTimeStmp: 0x%llx\n",sysTime.full);
-      */
+      DEBUG_PRINT("syTimeStmp: 0x%llx\n",sysTime.full);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
