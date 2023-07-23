@@ -94,6 +94,15 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   MESSAGE_TYPE msgType = packet->header.type;
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
+#ifdef ENABLE_SNIFFER
+  //***** hack begin (only work for ranging message payload *****
+  packet->payload[22]=0; packet->payload[23]=0;
+  packet->payload[24]=0; packet->payload[25]=0;
+  dwt_readsystime(packet->payload+26);
+  //dwTime_t *finishRxTimestamp=(dwTime_t*)(packet->payload+22);
+  //***** hack end *****
+#endif
+
 /*
   DEBUG_PRINT("rxTimeStmp: 0x%llx (%d)\n",rxTime.full, packet->header.seqNumber);
 */
