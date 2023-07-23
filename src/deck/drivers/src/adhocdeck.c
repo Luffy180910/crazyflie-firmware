@@ -246,7 +246,7 @@ static void uwbTxTask(void *parameters) {
       }
       */
       dwt_readsystime((uint8_t *) &sysTime.raw);
-      // dwt_forcetrxoff();
+      dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
