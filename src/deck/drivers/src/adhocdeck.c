@@ -113,7 +113,7 @@ static void rxCallback(dwt_cb_data_t* cbData) {
 }
 
 static void rxTimeoutCallback() {
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+  // dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
 
@@ -235,12 +235,12 @@ static void uwbTxTask(void *parameters) {
       }
       */
       dwt_readsystime((uint8_t *) &sysTime.raw);
-      dwt_forcetrxoff();
+      // dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
-      if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
+      if (dwt_starttx(DWT_START_TX_IMMEDIATE) ==
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       }
