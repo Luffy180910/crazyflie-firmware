@@ -122,7 +122,9 @@ static void rxCallback(dwt_cb_data_t* cbData) {
 }
 
 static void rxTimeoutCallback() {
-  // dwt_rxenable(DWT_START_RX_IMMEDIATE);
+#ifdef ENABLE_SNIFFER
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+#endif
 }
 
 
