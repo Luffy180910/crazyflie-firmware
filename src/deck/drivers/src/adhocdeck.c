@@ -79,6 +79,7 @@ static void txCallback() {
   }
 }
 
+dwTime_t lastRxTime = {0};
 static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -98,10 +99,10 @@ static void rxCallback(dwt_cb_data_t* cbData) {
     if(!((rxTime_dbl_buf.full-rxTime.full) & 0xFFE0000000)) 
       dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   }
-  else {
-    DEBUG_PRINT("0x%llx\t>\t0x%llx\n",rxTime.full,rxTime_dbl_buf.full);
-  }
   dwt_signal_rx_buff_free();
+  if(!(rxTime.full-lastRxTime.full) & 0xFFE0000000)
+    DEBUG_PRINT("%llx\n",rxTime.full-lastRxTime.full);
+  lastRxTime = rxTime;
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
