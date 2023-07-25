@@ -82,8 +82,9 @@ static void txCallback()
   }
 }
 
-static void rxCallback(dwt_cb_data_t *cbData)
-{
+dwTime_t lastRxTime = {0};
+static void rxCallback(dwt_cb_data_t* cbData) {
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   uint32_t dataLength = cbData->datalength;
@@ -97,6 +98,15 @@ static void rxCallback(dwt_cb_data_t *cbData)
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
+
+#ifdef ENABLE_SNIFFER
+  //***** hack begin (only work for ranging message payload *****
+  packet->payload[22]=0; packet->payload[23]=0;
+  packet->payload[24]=0; packet->payload[25]=0;
+  dwt_readsystime(packet->payload+26);
+  //dwTime_t *finishRxTimestamp=(dwTime_t*)(packet->payload+22);
+  //***** hack end *****
+#endif
 
 /*
   DEBUG_PRINT("rxTimeStmp: 0x%llx (%d)\n",rxTime.full, packet->header.seqNumber);
@@ -115,12 +125,12 @@ static void rxCallback(dwt_cb_data_t *cbData)
   }
 #endif
 
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
-static void rxTimeoutCallback()
-{
+static void rxTimeoutCallback() {
+#ifdef ENABLE_SNIFFER
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
+#endif
 }
 
 static void rxErrorCallback()
@@ -204,8 +214,8 @@ static int uwbInit()
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT); // in microseconds (1.0256 us).
-  // dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
-  // dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
+  dwt_setdblrxbuffmode(DBL_BUF_STATE_EN,DBL_BUF_MODE_MAN);//Enable double buff - Manual mode
+  dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);//Enable diagnostic mode - minimal
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
   /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and

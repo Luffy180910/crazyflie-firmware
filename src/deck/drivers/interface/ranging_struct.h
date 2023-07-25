@@ -36,7 +36,7 @@ typedef struct {
   short velocity; // 2 byte cm/s
   uint16_t msgLength; // 2 byte
   uint16_t filter; // 16 bits bloom filter
-} __attribute__((packed)) Ranging_Message_Header_t; // 20 byte
+} __attribute__((packed)) Ranging_Message_Header_t; // 30 byte
 
 /* Ranging Message */
 typedef struct {
