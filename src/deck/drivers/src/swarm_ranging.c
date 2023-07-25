@@ -28,7 +28,9 @@ static int rangingSeqNumber = 1;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
 
-extern dwTime_t sysTime;
+// extern dwTime_t sysTime;
+extern dwTime_t sysTime1;
+extern dwTime_t sysTime2;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
@@ -274,8 +276,8 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
   rangingMessage->header.msgSequence = curSeqNumber;
-  rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
-  rangingMessage->header.starTxTimestamp.timestamp = sysTime;
+  rangingMessage->header.lastTxTimestamp.timestamp = sysTime1;
+  rangingMessage->header.starTxTimestamp.timestamp = sysTime2;
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);
