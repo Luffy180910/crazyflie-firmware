@@ -87,9 +87,21 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
+  dwTime_t rxTime = {0};
+  dwTime_t rxTime_dblbuff = {0};
+  dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
+  dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
+  if((rxTime.full-rxTime_dblbuff.full) & 0xF000000000) {
+    DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
+//    if(!((rxTime_dblbuff.full-rxTime.full) & 0xFFE0000000)) 
+      dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
+      dwt_signal_rx_buff_free();
+  }
+  else {
+    DEBUG_PRINT("0x%llx\t>\n",rxTime.full);
+  }
 
-//  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
-
+  return;
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
@@ -216,6 +228,16 @@ static void uwbTxTask(void *parameters) {
       packetCache.header.srcAddress = MY_UWB_ADDRESS;
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
+      uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
+      if(status) {
+        DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
+        vTaskNotifyGiveFromISR(uwbTaskHandle, pdFALSE);
+        DEBUG_PRINT("NotifyGive\n");
+        vTaskDelay(M2T(1));
+      }
+      else {
+        DEBUG_PRINT("Stx_STATUS:\t0\n");
+      }
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
