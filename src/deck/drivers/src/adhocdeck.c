@@ -91,12 +91,15 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
   dwTime_t rxTime_dblbuff = {0};
   dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
+  DEBUG_PRINT("0x%llx\n",rxTime_dblbuff.full-rxTime.full);
   if(rxTime_dblbuff.full-rxTime.full < 0x0FFFFFFFFF) {
     DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
-    dwt_signal_rx_buff_free();
     //dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
-    dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
+    dwt_readrxdata_dblbuff(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
     rxTime = rxTime_dblbuff;
+    dwt_signal_rx_buff_free();
+    dwt_signal_rx_buff_free();
+    dwt_signal_rx_buff_free();
   } 
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
@@ -123,8 +126,10 @@ static void rxTimeoutCallback() {
 }
 
 static void rxErrorCallback() {
+  uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
+  uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
+  DEBUG_PRINT("FINT: 0x%lx\tSYS_S: 0x%lx\n", fstat, status);
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
-  DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
 }
 
 uint16_t getUWBAddress() {
