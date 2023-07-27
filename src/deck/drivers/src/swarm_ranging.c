@@ -37,8 +37,9 @@ void rangingRxCallback(void *parameters) {
 
   UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
 
-  dwTime_t rxTime;
+  dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
+  DEBUG_PRINT("RX:0x%llx\n",rxTime.full);
   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
   rxMessageWithTimestamp.rxTime = rxTime;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
@@ -48,8 +49,9 @@ void rangingRxCallback(void *parameters) {
 }
 
 void rangingTxCallback(void *parameters) {
-  dwTime_t txTime;
+  dwTime_t txTime = {0};
   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
+  DEBUG_PRINT("TX:0x%llx\n",txTime.full);
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
@@ -198,7 +200,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       }
     }
   }
-
+  printRangingTable(neighborRangingTable);
   if (neighborRf.timestamp.full) {
     neighborRangingTable->Rf = neighborRf;
     // TODO it is possible that can not find corresponding Tf
