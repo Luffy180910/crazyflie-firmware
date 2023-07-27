@@ -51,7 +51,6 @@ void rangingRxCallback(void *parameters) {
 void rangingTxCallback(void *parameters) {
   dwTime_t txTime = {0};
   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
-  DEBUG_PRINT("TX:0x%llx\n",txTime.full);
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
