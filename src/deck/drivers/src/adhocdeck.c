@@ -91,22 +91,21 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
   dwTime_t rxTime_dblbuff = {0};
   dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
-  DEBUG_PRINT("0x%llx\n",rxTime_dblbuff.full-rxTime.full);
   if(rxTime_dblbuff.full-rxTime.full < 0x0FFFFFFFFF) {
     DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
     //dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
     dwt_readrxdata_dblbuff(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
     rxTime = rxTime_dblbuff;
     dwt_signal_rx_buff_free();
-    dwt_signal_rx_buff_free();
-    dwt_signal_rx_buff_free();
   } 
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
-  if(msgType >= MESSAGE_TYPE_COUNT)
+  if(msgType >= MESSAGE_TYPE_COUNT) {
+    DEBUG_PRINT("msgType >= MESSAGE_TYPE_COUNT");
     return;
+  }
 
 #ifdef ENABLE_SNIFFER
   listeners[SNIFFER].rxCb(packet);
@@ -231,9 +230,16 @@ static void uwbTxTask(void *parameters) {
       packetCache.header.srcAddress = MY_UWB_ADDRESS;
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
-      uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
+      uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
+      uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
       if(status) {
-        //DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
+        DEBUG_PRINT("FINT: 0x%lx\tSYS_S: 0x%lx\n", fstat, status);
+        if(status & SYS_STATUS_RXOVRR_BIT_MASK) {
+          DEBUG_PRINT("SYS_STATUS_RXOVRR_BIT_MASK\n");
+          dwt_signal_rx_buff_free();
+          dwt_signal_rx_buff_free();
+          dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXOVRR_BIT_MASK);
+        }
         vTaskNotifyGiveFromISR(uwbTaskHandle, pdTRUE);
         //DEBUG_PRINT("NotifyGive\n");
         taskYIELD();
