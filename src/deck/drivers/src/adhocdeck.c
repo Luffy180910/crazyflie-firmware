@@ -79,6 +79,7 @@ static void txCallback() {
 }
 
 static void rxCallback(dwt_cb_data_t* cbData) {
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   uint32_t dataLength = cbData->datalength;
@@ -105,7 +106,6 @@ static void rxCallback(dwt_cb_data_t* cbData) {
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
 #endif
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
 static void rxTimeoutCallback() {
