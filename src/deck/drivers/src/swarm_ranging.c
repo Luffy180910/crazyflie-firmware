@@ -200,7 +200,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       }
     }
   }
-  printRangingTable(neighborRangingTable);
+  //printRangingTable(neighborRangingTable);
   if (neighborRf.timestamp.full) {
     neighborRangingTable->Rf = neighborRf;
     // TODO it is possible that can not find corresponding Tf
