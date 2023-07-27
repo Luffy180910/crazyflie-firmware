@@ -88,20 +88,10 @@ static void rxCallback(dwt_cb_data_t* cbData) {
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwTime_t rxTime = {0};
-  dwTime_t rxTime_dblbuff = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
-  if((rxTime.full-rxTime_dblbuff.full) & 0xF000000000) {
-    DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
-//    if(!((rxTime_dblbuff.full-rxTime.full) & 0xFFE0000000)) 
-      dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-      dwt_signal_rx_buff_free();
-  }
-  else {
-    DEBUG_PRINT("0x%llx\t>\n",rxTime.full);
-  }
-
+  DEBUG_PRINT("0x%llx\t>\n",rxTime.full);
   return;
+
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
