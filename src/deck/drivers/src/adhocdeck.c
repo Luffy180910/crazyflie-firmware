@@ -91,8 +91,10 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
   dwTime_t rxTime_dblbuff = {0};
   dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
-  if((rxTime.full-rxTime_dblbuff.full) & 0xF000000000) {
+  if(rxTime_dblbuff.full-rxTime.full < 0x0876543210) {
+    DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
     dwt_signal_rx_buff_free();
+    //dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
     dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
     rxTime = rxTime_dblbuff;
   }
@@ -100,8 +102,7 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
-  //ASSERT(msgType < MESSAGE_TYPE_COUNT);
-  DEBUG_PRINT("msgType=%d\n", msgType);
+  ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
   return;
 #ifdef ENABLE_SNIFFER
