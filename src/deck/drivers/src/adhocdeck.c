@@ -100,8 +100,10 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
-  ASSERT(msgType < MESSAGE_TYPE_COUNT);
+  //ASSERT(msgType < MESSAGE_TYPE_COUNT);
+  DEBUG_PRINT("msgType=%d\n", msgType);
 
+  return;
 #ifdef ENABLE_SNIFFER
   listeners[SNIFFER].rxCb(packet);
 #else
