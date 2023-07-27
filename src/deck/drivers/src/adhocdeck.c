@@ -89,11 +89,11 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  DEBUG_PRINT("0x%llx\t>\n",rxTime.full);
-  return;
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
+  DEBUG_PRINT("0x%llx\t(%d)>\n",rxTime.full, packet->header.seqNumber);
+  return;
 
   ASSERT(msgType < MESSAGE_TYPE_COUNT);
 
@@ -221,9 +221,9 @@ static void uwbTxTask(void *parameters) {
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID); // Read status register low 32bits
       if(status) {
         DEBUG_PRINT("Stx_STATUS:\t%lx\t",status);
-        vTaskNotifyGiveFromISR(uwbTaskHandle, pdFALSE);
+        vTaskNotifyGiveFromISR(uwbTaskHandle, pdTRUE);
         DEBUG_PRINT("NotifyGive\n");
-        vTaskDelay(M2T(1));
+        taskYIELD();
       }
       else {
         DEBUG_PRINT("Stx_STATUS:\t0\n");
