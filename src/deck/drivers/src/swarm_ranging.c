@@ -39,7 +39,6 @@ void rangingRxCallback(void *parameters) {
 
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  DEBUG_PRINT("RX:0x%llx\n",rxTime.full);
   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
   rxMessageWithTimestamp.rxTime = rxTime;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
