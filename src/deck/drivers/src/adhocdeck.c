@@ -85,20 +85,30 @@ static void rxCallback(dwt_cb_data_t* cbData) {
   uint32_t dataLength = cbData->datalength;
 
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
+  //TODO
+  uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID,0);
+  // 说明两块缓冲区都有数据
+  
+  if ((statusDB & 0x11) == 0x11) {
+    DEBUG_PRINT("(statusDB & 0x11) == 0x11");
+    dwt_signal_rx_buff_free();
+  }
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
-  dwTime_t rxTime_dblbuff = {0};
-  dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
-  if(rxTime_dblbuff.full-rxTime.full < 0x0FFFFFFFFF) {
-    DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
-    //dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
-    dwt_readrxdata_dblbuff(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-    rxTime = rxTime_dblbuff;
-    dwt_signal_rx_buff_free();
-  } 
-
+  // /*预取*/ 
+ 
+  // dwTime_t rxTime_dblbuff = {0};
+  // dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
+  // if(rxTime_dblbuff.full-rxTime.full < 0x0FFFFFFFFF) {
+  //   DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
+  //   //dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
+  //   dwt_readrxdata_dblbuff(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
+  //   rxTime = rxTime_dblbuff;
+  //   dwt_signal_rx_buff_free();
+  // } 
+  // /*===*/
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
@@ -232,7 +242,10 @@ static void uwbTxTask(void *parameters) {
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
       uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
+      // uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID,0);
+      // DEBUG_PRINT("DB: %02X\n", statusDB);
       if(status) {
+        // DEBUG_PRINT("=====================\n");
         DEBUG_PRINT("FINT: 0x%lx\tSYS_S: 0x%lx\n", fstat, status);
         if(status & SYS_STATUS_RXOVRR_BIT_MASK) {
           DEBUG_PRINT("SYS_STATUS_RXOVRR_BIT_MASK\n");
