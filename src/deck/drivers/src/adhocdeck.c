@@ -71,7 +71,6 @@ static int packetSeqNumber = 1;
 
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[FRAME_LEN_MAX];
-static uint8_t rxBuffer2[FRAME_LEN_MAX];
 
 static void txCallback()
 {
@@ -88,50 +87,19 @@ static void rxCallback(dwt_cb_data_t *cbData)
 
   uint32_t dataLength = cbData->datalength;
 
-  ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
-  // TODO
-  // 说明两块缓冲区都有数据
   uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
-  // DEBUG_PRINT("DB: %02X\n", statusDB);
   if ((statusDB == 0x70 || statusDB == 0x07 || statusDB == 0x77))
   {
-    dwTime_t rxTime1 = {0};
-    // dwt_write8bitoffsetreg(RDB_STATUS_ID, 0, RDB_STATUS_CLEAR_BUFF1_EVENTS);
-    // dwt_write8bitoffsetreg(RDB_STATUS_ID, 0, RDB_STATUS_CLEAR_BUFF0_EVENTS);
-
-    DEBUG_PRINT("---------DB------------------------: %02X\n", statusDB);
     dwt_signal_rx_buff_free();
-
-    dwt_readrxtimestamp((uint8_t *)&rxTime1.raw);
-
-    // dwt_signal_rx_buff_free();
-    dwTime_t rxTime2 = {0};
-    dwt_readrxtimestamp_dblbuff((uint8_t *)&rxTime2.raw);
-    
-    dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0);
-    
-    dwt_readrxdata_dblbuff(rxBuffer2, dataLength - FCS_LEN, 0);
-    UWB_Packet_t *packet1 = (UWB_Packet_t *)&rxBuffer;
-    UWB_Packet_t *packet2 = (UWB_Packet_t *)&rxBuffer2;
-    DEBUG_PRINT("0x%llx:(%u)\n%llx:(%u)\n", rxTime1.full, packet1->header.seqNumber, rxTime2.full, packet2->header.seqNumber);
+    dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
   }
+
+  ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
 
-  // /*预取*/
-
-  // dwTime_t rxTime_dblbuff = {0};
-  // dwt_readrxtimestamp_dblbuff((uint8_t *) &rxTime_dblbuff.raw);
-  // if(rxTime_dblbuff.full-rxTime.full < 0x0FFFFFFFFF) {
-  //   DEBUG_PRINT("0x%llx\t<\t0x%llx\n",rxTime.full,rxTime_dblbuff.full);
-  //   //dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
-  //   dwt_readrxdata_dblbuff(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-  //   rxTime = rxTime_dblbuff;
-  //   dwt_signal_rx_buff_free();
-  // }
-  // /*===*/
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
