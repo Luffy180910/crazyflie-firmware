@@ -150,7 +150,7 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   if (isErrorOccurred) {
     return 0;
   }
-  DEBUG_PRINT("d=%d\n",distance);
+  // DEBUG_PRINT("d=%d\n",distance);
   return distance;
 }
 
