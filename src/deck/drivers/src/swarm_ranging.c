@@ -272,9 +272,11 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16);
     }
   }
+  
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
-  rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
+  // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
+  rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * 12;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp.timestamp = rxTime1;
   rangingMessage->header.starTxTimestamp.timestamp = rxTime2;

@@ -9,11 +9,11 @@
 #include "flooding_struct.h"
 
 /* Function Switch */
-//#define ENABLE_PHR_EXT_MODE
-#define ENABLE_RANGING
+#define ENABLE_PHR_EXT_MODE
+// #define ENABLE_RANGING
 //#define ENABLE_FLOODING
 //#define ENABLE_ROUTING
-// #define ENABLE_SNIFFER
+#define ENABLE_SNIFFER
 
 #define SPEED_OF_LIGHT 299702547
 #define MAX_TIMESTAMP 1099511627776  // 2**40
