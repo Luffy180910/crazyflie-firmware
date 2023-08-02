@@ -91,9 +91,8 @@ static void rxCallback(dwt_cb_data_t *cbData)
 
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
 
-  dwt_readsystime((uint8_t *)&rxTime2.raw);
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-  dwt_readsystime((uint8_t *)&rxTime1.raw);
+  
   // dwt_readrxtimestamp((uint8_t *)&rxTime1.raw);
   
   // DEBUG_PRINT("%llu,%llu\n", rxTime1.full, rxTime2.full);
@@ -270,11 +269,13 @@ static void uwbTxTask(void *parameters)
       */
       // dwt_readsystime((uint8_t *)&sysTime.raw);
       dwt_forcetrxoff();
+      dwt_readsystime((uint8_t *)&rxTime1.raw);
       dwt_writetxdata(packetCache.header.length, (uint8_t *)&packetCache, 0);
+      dwt_readsystime((uint8_t *)&rxTime2.raw);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
-      if (dwt_starttx(DWT_START_TX_IMMEDIATE|DWT_RESPONSE_EXPECTED) ==
+      if (dwt_starttx(DWT_START_TX_IMMEDIATE) ==
           DWT_ERROR)
       {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
