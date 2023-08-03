@@ -32,10 +32,12 @@ typedef struct {
   uint16_t srcAddress; // 2 byte
   uint16_t msgSequence; // 2 byte
   Timestamp_Tuple_t lastTxTimestamp; // 10 byte
+  // uint16_t totalRangingCount; // 2 byte
+  // uint16_t validRangingCount; // 2 byte
   short velocity; // 2 byte cm/s
   uint16_t msgLength; // 2 byte
   uint16_t filter; // 16 bits bloom filter
-} __attribute__((packed)) Ranging_Message_Header_t; // 20 byte
+} __attribute__((packed)) Ranging_Message_Header_t; // 20 byte / 22 byte
 
 /* Ranging Message */
 typedef struct {

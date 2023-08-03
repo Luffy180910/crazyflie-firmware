@@ -30,6 +30,10 @@ static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
+// Test value
+static int totalRangingCount = 0;
+static int validRangingCount = 0;
+
 void rangingRxCallback(void *parameters) {
   // DEBUG_PRINT("rangingRxCallback \n");
 
@@ -155,6 +159,10 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
 }
 
 void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithTimestamp) {
+  // DEBUG_PRINT("Total: %u, Valid: %u", totalRangingCount, validRangingCount);
+  // count total ranging number
+  totalRangingCount++;
+
   Ranging_Message_t *rangingMessage = &rangingMessageWithTimestamp->rangingMessage;
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
   set_index_t neighborIndex = findInRangingTableSet(&rangingTableSet, neighborAddress);
@@ -221,6 +229,8 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       if (distance > 0) {
         neighborRangingTable->distance = distance;
         setDistance(neighborRangingTable->neighborAddress, distance);
+        // count valid ranging number
+        validRangingCount++;
       } else {
         // DEBUG_PRINT("distance is not updated since some error occurs\n");
       }
@@ -273,6 +283,10 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
+  // Test
+  // rangingMessage->header.totalRangingCount = totalRangingCount;
+  // rangingMessage->header.validRangingCount = validRangingCount;
+
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);
