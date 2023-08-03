@@ -275,7 +275,7 @@ static void uwbTxTask(void *parameters)
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
-      if (dwt_starttx(DWT_START_TX_IMMEDIATE) ==
+      if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
           DWT_ERROR)
       {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
