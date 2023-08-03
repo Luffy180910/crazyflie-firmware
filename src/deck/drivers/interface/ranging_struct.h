@@ -32,7 +32,8 @@ typedef struct {
   uint16_t srcAddress; // 2 byte
   uint16_t msgSequence; // 2 byte
   Timestamp_Tuple_t lastTxTimestamp; // 10 byte
-  // Timestamp_Tuple_t starTxTimestamp; // 10 byte
+  Timestamp_Tuple_t starTxTimestamp; // 10 byte
+  uint16_t fullBlank;
   short velocity; // 2 byte cm/s
   uint16_t msgLength; // 2 byte
   uint16_t filter; // 16 bits bloom filter

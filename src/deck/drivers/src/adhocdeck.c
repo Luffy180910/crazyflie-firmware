@@ -90,11 +90,11 @@ static void rxCallback(dwt_cb_data_t *cbData)
   uint32_t dataLength = cbData->datalength;
 
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
-
+  dwt_readsystime((uint8_t *)&rxTime1.raw);
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-  
+  dwt_readsystime((uint8_t *)&rxTime2.raw);
   // dwt_readrxtimestamp((uint8_t *)&rxTime1.raw);
-  
+
   // DEBUG_PRINT("%llu,%llu\n", rxTime1.full, rxTime2.full);
 
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
