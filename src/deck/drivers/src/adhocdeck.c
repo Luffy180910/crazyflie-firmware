@@ -269,9 +269,9 @@ static void uwbTxTask(void *parameters)
       */
       // dwt_readsystime((uint8_t *)&sysTime.raw);
       dwt_forcetrxoff();
-      dwt_readsystime((uint8_t *)&rxTime1.raw);
+      // dwt_readsystime((uint8_t *)&rxTime1.raw);
       dwt_writetxdata(packetCache.header.length, (uint8_t *)&packetCache, 0);
-      dwt_readsystime((uint8_t *)&rxTime2.raw);
+      // dwt_readsystime((uint8_t *)&rxTime2.raw);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
@@ -308,7 +308,7 @@ static void uwbTask(void *parameters)
 
 static uint8_t spiTxBuffer[FRAME_LEN_MAX];
 static uint8_t spiRxBuffer[FRAME_LEN_MAX];
-static uint16_t spiSpeed = SPI_BaudRatePrescaler_2;
+static uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
 
 static void spiWrite(const void *header, size_t headerLength, const void *data,
                      size_t dataLength)

@@ -279,7 +279,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * 5;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp.timestamp = rxTime1;
-  rangingMessage->header.starTxTimestamp.timestamp = rxTime2;
+  // rangingMessage->header.starTxTimestamp.timestamp = rxTime2;
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);
