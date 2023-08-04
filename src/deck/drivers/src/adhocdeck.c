@@ -1,4 +1,4 @@
-// #define DEBUG_MODULE "DWM3k"
+#define DEBUG_MODULE "DWM3k"
 
 #include <stdint.h>
 #include <string.h>
@@ -108,7 +108,7 @@ static void rxCallback(dwt_cb_data_t *cbData)
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
 
-  DEBUG_PRINT("0x%llx:(%u)\n", rxTime.full, packet->header.seqNumber);
+  // DEBUG_PRINT("0x%llx:(%u)\n", rxTime.full, packet->header.seqNumber);
   if (msgType >= MESSAGE_TYPE_COUNT)
   {
     DEBUG_PRINT("msgType >= MESSAGE_TYPE_COUNT");
