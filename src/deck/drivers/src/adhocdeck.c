@@ -82,22 +82,22 @@ static void txCallback()
 
 static void rxCallback(dwt_cb_data_t *cbData)
 {
-  #ifdef ENABLE_DBL
-    dwt_rxenable(DWT_START_RX_IMMEDIATE);
-  #endif
+#ifdef ENABLE_RX_DBL_BUFF
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+#endif
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   uint32_t dataLength = cbData->datalength;
 
-  #ifdef ENABLE_DBL
-    uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
-    if ((statusDB == 0x70 || statusDB == 0x07 || statusDB == 0x77))
-    {
-      dwt_signal_rx_buff_free();
-      dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
-    }
-  #endif
+#ifdef ENABLE_RX_DBL_BUFF
+  uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
+  if ((statusDB == 0x70 || statusDB == 0x07 || statusDB == 0x77))
+  {
+    dwt_signal_rx_buff_free();
+    dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
+  }
+#endif
 
   ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
 
@@ -129,8 +129,8 @@ static void rxCallback(dwt_cb_data_t *cbData)
   }
 #endif
 
-#ifndef ENABLE_DBL
-    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+#ifndef ENABLE_RX_DBL_BUFF
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
 #endif
 }
 
@@ -222,10 +222,10 @@ static int uwbInit()
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);                     // in microseconds (1.0256 us).
 
-  #ifdef ENABLE_DBL
-    dwt_setdblrxbuffmode(DBL_BUF_STATE_EN, DBL_BUF_MODE_MAN); // Enable double buff - Manual mode
-    dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);                   // Enable diagnostic mode - minimal
-  #endif
+#ifdef ENABLE_RX_DBL_BUFF
+  dwt_setdblrxbuffmode(DBL_BUF_STATE_EN, DBL_BUF_MODE_MAN); // Enable double buff - Manual mode
+  dwt_configciadiag(DW_CIA_DIAG_LOG_MIN);                   // Enable diagnostic mode - minimal
+#endif
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
   /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and
@@ -263,27 +263,27 @@ static void uwbTxTask(void *parameters)
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
 
-      #ifdef ENABLE_DBL
-        uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
-        uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
-        uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
-        // DEBUG_PRINT("tx-DB: %02X\n", statusDB);
-        if (status)
+#ifdef ENABLE_RX_DBL_BUFF
+      uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
+      uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
+      uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
+      // DEBUG_PRINT("tx-DB: %02X\n", statusDB);
+      if (status)
+      {
+        // DEBUG_PRINT("=====================\n");
+        // DEBUG_PRINT("FINT: 0x%lx\tSYS_S: 0x%lx\n", fstat, status);
+        if (status & SYS_STATUS_RXOVRR_BIT_MASK)
         {
-          // DEBUG_PRINT("=====================\n");
-          // DEBUG_PRINT("FINT: 0x%lx\tSYS_S: 0x%lx\n", fstat, status);
-          if (status & SYS_STATUS_RXOVRR_BIT_MASK)
-          {
-            DEBUG_PRINT("SYS_STATUS_RXOVRR_BIT_MASK\n");
-            dwt_signal_rx_buff_free();
-            dwt_signal_rx_buff_free();
-            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXOVRR_BIT_MASK);
-          }
-          vTaskNotifyGiveFromISR(uwbTaskHandle, pdTRUE);
-          // DEBUG_PRINT("NotifyGive\n");
-          taskYIELD();
+          DEBUG_PRINT("SYS_STATUS_RXOVRR_BIT_MASK\n");
+          dwt_signal_rx_buff_free();
+          dwt_signal_rx_buff_free();
+          dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXOVRR_BIT_MASK);
         }
-      #endif
+        vTaskNotifyGiveFromISR(uwbTaskHandle, pdTRUE);
+        // DEBUG_PRINT("NotifyGive\n");
+        taskYIELD();
+      }
+#endif
 
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *)&packetCache, 0);
