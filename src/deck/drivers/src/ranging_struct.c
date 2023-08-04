@@ -272,12 +272,12 @@ void printRangingMessage(Ranging_Message_t *rangingMessage) {
     DEBUG_PRINT("===printRangingMessage: wrong body unit number occurs===\n");
     return;
   }
-  for (int i = 0; i < body_unit_number; i++) {
-    DEBUG_PRINT("body_unit_address=%u, body_unit_seq=%u\n",
-                rangingMessage->bodyUnits[i].address,
-                rangingMessage->bodyUnits[i].timestamp.seqNumber);
-    DEBUG_PRINT("body_unit_timestamp=%2x%8lx\n",
-                rangingMessage->bodyUnits[i].timestamp.timestamp.high8,
-                rangingMessage->bodyUnits[i].timestamp.timestamp.low32);
-  }
+  // for (int i = 0; i < body_unit_number; i++) {
+  //   DEBUG_PRINT("body_unit_address=%u, body_unit_seq=%u\n",
+  //               rangingMessage->bodyUnits[i].address,
+  //               rangingMessage->bodyUnits[i].timestamp.seqNumber);
+  //   DEBUG_PRINT("body_unit_timestamp=%2x%8lx\n",
+  //               rangingMessage->bodyUnits[i].timestamp.timestamp.high8,
+  //               rangingMessage->bodyUnits[i].timestamp.timestamp.low32);
+  // }
 }
