@@ -128,6 +128,10 @@ static void rxCallback(dwt_cb_data_t *cbData)
     xQueueSendFromISR(listeners[msgType].rxQueue, packet, &xHigherPriorityTaskWoken);
   }
 #endif
+
+#ifndef ENABLE_DBL
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+#endif
 }
 
 static void rxTimeoutCallback()
