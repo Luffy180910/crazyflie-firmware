@@ -26,4 +26,4 @@ obj-$(CONFIG_DECK_ADHOC)         += routing.o
 obj-$(CONFIG_DECK_ADHOC)         += flooding_struct.o
 obj-$(CONFIG_DECK_ADHOC)         += flooding.o
 obj-$(CONFIG_DECK_ADHOC)         += sniffer.o
-obj-$(CONFIG_DECK_ADHOC)         += sendData.o
+obj-$(CONFIG_DECK_ADHOC)         += usb_tran_data.o
