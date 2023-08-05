@@ -48,8 +48,8 @@ static uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE + 1] = {0}; // 上次邻�
 
 static uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1];  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
 static uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
-static uint32_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {0};                                    // 收到其他无人机数据包的次数
-static uint32_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {0};                                 // 与其他无人机成功测距的次数
+static uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {0};                                    // 收到其他无人机数据包的次数
+static uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {0};                                 // 与其他无人机成功测距的次数
 /*-----------------------------------------------*/
 
 void rangingRxCallback(void *parameters)
