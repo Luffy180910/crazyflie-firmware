@@ -9,6 +9,7 @@
 #include "autoconf.h"
 #include "debug.h"
 #include "log.h"
+#include "param.h"
 #include "assert.h"
 #include "adhocdeck.h"
 #include "ranging_struct.h"
@@ -35,13 +36,17 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 // 设置parameter: period，jitter，spispeed
 // 设置parameter,如果为真，则开始
 
-static int16_t jitter=0;
+#define MAX_STATISTIC_LOSS_NUM 149
+static int16_t jitter = 0;
 static bool startStatistic = 0;
-uint16_t lastSuccRangingSeq[RANGING_TABLE_SIZE];              // 上次邻居成功测距的序号，辅助
-uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE];             // 上次邻居成功测距的序号，辅助
-uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE][150];  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
-uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE][150]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
-uint16_t rxPacketCount[RANGING_TABLE_SIZE];                   // 收到其他无人机数据包的次数
+static bool firstStatisticSuccRx[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};
+static bool firstStatisticSuccRanging[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};
+static uint16_t lastSuccRangingSeq[RANGING_TABLE_SIZE + 1] = {0};                               // 上次邻居成功测距的序号，辅助
+static uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE + 1] = {0};                              // 上次邻居成功测距的序号，辅助
+static uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1];  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
+static uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
+static uint32_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {0};                                    // 收到其他无人机数据包的次数
+static uint32_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {0};                                 // 与其他无人机成功测距的次数
 /*-----------------------------------------------*/
 
 void rangingRxCallback(void *parameters)
@@ -262,6 +267,35 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       {
         neighborRangingTable->distance = distance;
         setDistance(neighborRangingTable->neighborAddress, distance);
+        /*--------------------------------------------------*/
+        if (startStatistic)
+        {
+          uint32_t lastSeqNumber = lastSuccRangingSeq[neighborAddress];
+          uint32_t curSeqNumber = rangingMessage->header.msgSequence;
+          if (firstStatisticSuccRanging[neighborAddress]) // 第一次统计
+          {
+            firstStatisticSuccRanging[neighborAddress] = false;
+          }
+          else
+          {
+            // 计算距离上次成功测距的数量
+            uint32_t loss_num = 0;
+            if (curSeqNumber < lastSeqNumber)
+            {
+              loss_num = (curSeqNumber + 1) + 65535 - lastSeqNumber - 1;
+            }
+            else
+            {
+              loss_num = curSeqNumber - lastSeqNumber - 1;
+            }
+            // 判断距离上次成功测距的数量是否超出了最大值
+            loss_num = loss_num > MAX_STATISTIC_LOSS_NUM ? MAX_STATISTIC_LOSS_NUM : loss_num;
+            continuousRangingFailCount[neighborAddress][loss_num]++;
+          }
+          lastSuccRangingSeq[neighborAddress] = rangingMessage->header.msgSequence;
+          rangingSuccCount[neighborAddress]++;
+        }
+        /*--------------------------------------------------*/
       }
       else
       {
@@ -283,6 +317,35 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   neighborRangingTable->expirationTime = xTaskGetTickCount() + M2T(RANGING_TABLE_HOLD_TIME);
 
   neighborRangingTable->state = RECEIVED;
+  /*------------------------------------------------------*/
+  if (startStatistic)
+  {
+    uint32_t lastSeqNumber = lastSuccRxPacketSeq[neighborAddress];
+    uint32_t curSeqNumber = rangingMessage->header.msgSequence;
+    if (firstStatisticSuccRx[neighborAddress])
+    {
+      firstStatisticSuccRx[neighborAddress] = false;
+    }
+    else
+    {
+      // 计算丢包数量
+      uint32_t loss_num = 0;
+      if (curSeqNumber < lastSeqNumber)
+      {
+        loss_num = (curSeqNumber + 1) + 65535 - lastSeqNumber - 1;
+      }
+      else
+      {
+        loss_num = curSeqNumber - lastSeqNumber - 1;
+      }
+      // 判断丢包数量是否超出了最大值
+      loss_num = loss_num > MAX_STATISTIC_LOSS_NUM ? MAX_STATISTIC_LOSS_NUM : loss_num;
+      continuousLossPacketCount[neighborAddress][loss_num]++;
+    }
+    lastSuccRxPacketSeq[neighborAddress] = curSeqNumber;
+    rxPacketCount[neighborAddress]++;
+  }
+  /*------------------------------------------------------*/
 }
 
 int generateRangingMessage(Ranging_Message_t *rangingMessage)
@@ -343,3 +406,9 @@ LOG_ADD(LOG_INT16, distTo8, distanceTowards + 8)
 LOG_ADD(LOG_INT16, distTo9, distanceTowards + 9)
 LOG_ADD(LOG_INT16, distTo10, distanceTowards + 10)
 LOG_GROUP_STOP(Ranging)
+
+PARAM_GROUP_START(Statistic)
+PARAM_ADD(PARAM_INT16, jitter, &jitter)
+PARAM_ADD(PARAM_UINT8, startStatistic, &startStatistic)
+// PARAM_ADD(PARAM_UINT8, period, &TX_PERIOD_IN_MS)
+PARAM_GROUP_STOP(Statistic)
