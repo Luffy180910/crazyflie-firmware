@@ -14,6 +14,7 @@
 #include "adhocdeck.h"
 #include "ranging_struct.h"
 #include "swarm_ranging.h"
+#include <stdlib.h>
 
 static uint16_t MY_UWB_ADDRESS;
 
@@ -106,7 +107,12 @@ static void uwbRangingTxTask(void *parameters)
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    vTaskDelay(TX_PERIOD_IN_MS);
+    if (jitter != 0)
+    {
+      vTaskDelay(TX_PERIOD_IN_MS + rand() % (jitter + 1));
+    }else{
+      vTaskDelay(TX_PERIOD_IN_MS);
+    }
   }
 }
 
@@ -132,6 +138,7 @@ void rangingInit()
 {
   MY_UWB_ADDRESS = getUWBAddress();
   DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
+  srand(MY_UWB_ADDRESS);
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetInit(&rangingTableSet);
 
