@@ -31,6 +31,19 @@ static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
+/*-------------------------------------------------*/
+// 设置parameter: period，jitter，spispeed
+// 设置parameter,如果为真，则开始
+
+static int16_t jitter=0;
+static bool startStatistic = 0;
+uint16_t lastSuccRangingSeq[RANGING_TABLE_SIZE];              // 上次邻居成功测距的序号，辅助
+uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE];             // 上次邻居成功测距的序号，辅助
+uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE][150];  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
+uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE][150]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
+uint16_t rxPacketCount[RANGING_TABLE_SIZE];                   // 收到其他无人机数据包的次数
+/*-----------------------------------------------*/
+
 void rangingRxCallback(void *parameters)
 {
   // DEBUG_PRINT("rangingRxCallback \n");
