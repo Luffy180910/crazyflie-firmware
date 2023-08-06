@@ -275,6 +275,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       int16_t distance = computeDistance(neighborRangingTable->Tp, neighborRangingTable->Rp,
                                          Tr_Rr_Candidate.Tr, Tr_Rr_Candidate.Rr,
                                          neighborRangingTable->Tf, neighborRangingTable->Rf);
+      if(distance==0) invalidpackageCount[neighborAddress]++;
       if (distance > 0)
       {
         neighborRangingTable->distance = distance;
@@ -296,6 +297,14 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
             loss_num = loss_num > MAX_STATISTIC_LOSS_NUM ? MAX_STATISTIC_LOSS_NUM : loss_num;
             continuousRangingFailCount[neighborAddress][loss_num]++;
           }
+          int times =0;
+          for(int i=1; i<MAX_STATISTIC_LOSS_NUM;i++){
+            if(continuousRangingFailCount[neighborAddress][i]>0){
+              times+=continuousRangingFailCount[neighborAddress][i];
+              continuousRangingFailtimes[neighborAddress]+=continuousRangingFailCount[neighborAddress][i]*i;
+            }
+          }
+          continuousRangingFailtimes[neighborAddress]=continuousRangingFailtimes[neighborAddress]/times;
           lastSuccRangingSeq[neighborAddress] = rangingMessage->header.msgSequence;
           rangingSuccCount[neighborAddress]++;
         }
@@ -392,15 +401,8 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
 
 LOG_GROUP_START(Ranging)
 LOG_ADD(LOG_INT16, distTo1, distanceTowards + 1)
-LOG_ADD(LOG_INT16, distTo2, distanceTowards + 2)
-LOG_ADD(LOG_INT16, distTo3, distanceTowards + 3)
-LOG_ADD(LOG_INT16, distTo4, distanceTowards + 4)
-LOG_ADD(LOG_INT16, distTo5, distanceTowards + 5)
-LOG_ADD(LOG_INT16, distTo6, distanceTowards + 6)
-LOG_ADD(LOG_INT16, distTo7, distanceTowards + 7)
-LOG_ADD(LOG_INT16, distTo8, distanceTowards + 8)
-LOG_ADD(LOG_INT16, distTo9, distanceTowards + 9)
-LOG_ADD(LOG_INT16, distTo10, distanceTowards + 10)
+LOG_ADD(LOG_INT16, avetimes, continuousRangingFailtimes+1)
+LOG_ADD(LOG_INT16, invalidpackage, invalidpackageCount+1)
 LOG_GROUP_STOP(Ranging)
 
 PARAM_GROUP_START(Statistic)
