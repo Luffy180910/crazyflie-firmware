@@ -44,7 +44,8 @@ static void crtpTxOlsrTask(void *parameters)
       // 300KB每秒
       crtpSendData_Meta.jitter = getJitter();
       crtpSendData_Meta.period = getPeriod();
-
+      crtpSendData_Meta.rangingTableSize = RANGING_TABLE_SIZE;
+      crtpSendData_Meta.maxStastisticLossNum = MAX_STATISTIC_LOSS_NUM;
       // 1. 传送continuousLossPacketCount
       uint16_t msgSize = sizeof(continuousLossPacketCount);
       msgSize = sizeof(continuousLossPacketCount);

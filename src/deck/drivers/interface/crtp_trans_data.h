@@ -20,7 +20,7 @@ typedef union olsrPacket_u
 
 typedef union
 {
-    uint8_t raw[13];
+    uint8_t raw[17];
     struct
     {
         uint32_t magic;     // 4 bytes 4
@@ -29,6 +29,8 @@ typedef union
         uint8_t type;       // 1 bytes 用于区分是第几个数组 9
         uint16_t block;     // 2 bytes 因为要分块传输数据，所以要确定是第几块 11
         uint16_t msgLength; // 2 bytes 传输的数据块的长度 13
+        uint16_t rangingTableSize; // 2 bytes 测距表的存储数量 15
+        uint16_t maxStastisticLossNum; // 2bytes, 最大的连续丢包的数量 17
     } __attribute__((packed));
 } __attribute__((packed)) CrtpSendData_Meta_t;
 
