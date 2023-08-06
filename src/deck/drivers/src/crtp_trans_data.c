@@ -44,7 +44,6 @@ static void crtpTxOlsrTask(void *parameters)
   {
     vTaskDelay(1000);
     int16_t startStatistic = getStartStatistic();
-    // DEBUG_PRINT("%d\n", startStatistic);
     while (getStartStatistic() == 2)
     {
       vTaskDelay(1000);
@@ -69,7 +68,6 @@ static void crtpTxOlsrTask(void *parameters)
       crtpSendData_Meta.type = 3;
       crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
       crtpSendData_Meta.secondDim = 0;
-      // DEBUG_PRINT("--%d,%d\n",rxPacketCount[1],rxPacketCount[6]);
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, rxPacketCount);
       // 4. 传送rangingSuccCount
       msgSize = sizeof(rangingSuccCount);
@@ -96,21 +94,18 @@ void crtpSendDataWithArray(CrtpSendData_Meta_t sendData_Meta, uint16_t msgSize, 
   vTaskDelay(20);
   uint8_t *pointer_send = pointer;
   int remain = msgSize;
-  DEBUG_PRINT("remain:%d\n", remain);
   while (remain > 0)
   {
     block++;
     sendData_Meta.block = block;
 
     int sizeToSend = remain > CRTP_MAX_DATA_SIZE ? CRTP_MAX_DATA_SIZE : remain;
-    DEBUG_PRINT("send:%d\n", sizeToSend);
     crtpPacket.size = sizeToSend;
     memcpy(crtpPacket.data, pointer_send, sizeToSend);
     crtpSendPacket(&crtpPacket);
     vTaskDelay(20);
     pointer_send += sizeToSend;
     remain -= sizeToSend;
-    DEBUG_PRINT("remain:%d\n", remain);
   }
 }
 
