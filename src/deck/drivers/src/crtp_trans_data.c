@@ -24,6 +24,11 @@ typedef enum
 
 static TaskHandle_t crtpTxHandle = 0;
 
+extern uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1];  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
+extern uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
+extern uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1];                                    // 收到其他无人机数据包的次数
+extern uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1];  
+
 static void crtpTxOlsrTask(void *parameters)
 {
   CRTPPacket packet;
@@ -32,7 +37,9 @@ static void crtpTxOlsrTask(void *parameters)
       .magic = 0xBB88,
       .jitter = 0,
       .period = 0,
-      .type = 0};
+      .type = 0,
+      .firstDim = 0,
+      .secondDim = 0};
   while (true)
   {
     vTaskDelay(1000);
@@ -44,26 +51,31 @@ static void crtpTxOlsrTask(void *parameters)
       // 300KB每秒
       crtpSendData_Meta.jitter = getJitter();
       crtpSendData_Meta.period = getPeriod();
-      crtpSendData_Meta.rangingTableSize = RANGING_TABLE_SIZE;
-      crtpSendData_Meta.maxStastisticLossNum = MAX_STATISTIC_LOSS_NUM;
       // 1. 传送continuousLossPacketCount
       uint16_t msgSize = sizeof(continuousLossPacketCount);
       msgSize = sizeof(continuousLossPacketCount);
       crtpSendData_Meta.type = 1;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
+      crtpSendData_Meta.secondDim = MAX_STATISTIC_LOSS_NUM+1;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, (uint8_t *)&continuousLossPacketCount[0][0]);
       // 2. 传送continuousRangingFailCount
       msgSize = sizeof(continuousRangingFailCount);
       crtpSendData_Meta.type = 2;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
+      crtpSendData_Meta.secondDim = MAX_STATISTIC_LOSS_NUM+1;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, &continuousRangingFailCount[0][0]);
       // 3. 传送rxPacketCount
       msgSize = sizeof(rxPacketCount);
       crtpSendData_Meta.type = 3;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
+      crtpSendData_Meta.secondDim = 0;
+      // DEBUG_PRINT("--%d,%d\n",rxPacketCount[1],rxPacketCount[6]);
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, rxPacketCount);
       // 4. 传送rangingSuccCount
       msgSize = sizeof(rangingSuccCount);
-      // DEBUG_PRINT("msgSize:%d\n", msgSize);
-      // vTaskDelay(10);
       crtpSendData_Meta.type = 4;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
+      crtpSendData_Meta.secondDim = 0;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, rangingSuccCount);
     }
   }
@@ -84,21 +96,21 @@ void crtpSendDataWithArray(CrtpSendData_Meta_t sendData_Meta, uint16_t msgSize, 
   vTaskDelay(20);
   uint8_t *pointer_send = pointer;
   int remain = msgSize;
-  DEBUG_PRINT("remain:%d\n",remain);
+  DEBUG_PRINT("remain:%d\n", remain);
   while (remain > 0)
   {
     block++;
     sendData_Meta.block = block;
 
     int sizeToSend = remain > CRTP_MAX_DATA_SIZE ? CRTP_MAX_DATA_SIZE : remain;
-    DEBUG_PRINT("send:%d\n",sizeToSend);
+    DEBUG_PRINT("send:%d\n", sizeToSend);
     crtpPacket.size = sizeToSend;
     memcpy(crtpPacket.data, pointer_send, sizeToSend);
     crtpSendPacket(&crtpPacket);
     vTaskDelay(20);
     pointer_send += sizeToSend;
     remain -= sizeToSend;
-    DEBUG_PRINT("remain:%d\n",remain);
+    DEBUG_PRINT("remain:%d\n", remain);
   }
 }
 
