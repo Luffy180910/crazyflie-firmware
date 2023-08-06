@@ -20,14 +20,15 @@ typedef union olsrPacket_u
 
 typedef union
 {
-    uint8_t raw[11];
+    uint8_t raw[13];
     struct
     {
-        uint32_t magic;     // 4 bytes
-        int16_t jitter;     // 2 bytes
-        uint16_t period;    // 2 bytes
-        uint8_t type;       // 1 bytes 用于区分是第几个数组
-        uint16_t block;     // 2 bytes 因为要分块传输数据，所以要确定是第几块
+        uint32_t magic;     // 4 bytes 4
+        int16_t jitter;     // 2 bytes 6
+        uint16_t period;    // 2 bytes 8
+        uint8_t type;       // 1 bytes 用于区分是第几个数组 9
+        uint16_t block;     // 2 bytes 因为要分块传输数据，所以要确定是第几块 11
+        uint16_t msgLength; // 2 bytes 传输的数据块的长度 13
     } __attribute__((packed));
 } __attribute__((packed)) CrtpSendData_Meta_t;
 

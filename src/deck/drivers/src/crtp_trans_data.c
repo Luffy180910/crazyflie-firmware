@@ -74,6 +74,7 @@ void crtpSendDataWithArray(CrtpSendData_Meta_t sendData_Meta, uint16_t msgSize, 
   int block = 0; // 传输该数据的第几块
   // 先传头部数据
   sendData_Meta.block = block;
+  sendData_Meta.msgLength = msgSize;
   uint16_t length = sizeof(CrtpSendData_Meta_t);
   crtpPacket.size = length;
   crtpPacket.header = CRTP_HEADER(CRTP_PORT_TRANSFER_DATA, TOTAL_TRANS);
