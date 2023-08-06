@@ -30,7 +30,7 @@ static int rangingSeqNumber = 1;
 
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
-
+static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS;
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
 /*-------------------------------------------------*/
@@ -110,14 +110,8 @@ static void uwbRangingTxTask(void *parameters)
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    if (jitter != 0)
-    {
-      vTaskDelay(TX_PERIOD_IN_MS + rand() % (jitter + 1));
-    }
-    else
-    {
-      vTaskDelay(TX_PERIOD_IN_MS);
-    }
+    nextTransportPeriod = TX_PERIOD_IN_MS + rand()%(1);
+    vTaskDelay(nextTransportPeriod);
   }
 }
 
