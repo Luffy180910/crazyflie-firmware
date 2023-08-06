@@ -45,10 +45,10 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
   return candidate;
 }
 
-void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
+void rangingTableInit(Ranging_Table_t *rangingTable, address_t address,uint16_t period) {
   memset(rangingTable, 0, sizeof(Ranging_Table_t));
   rangingTable->neighborAddress = address;
-  rangingTable->period = TX_PERIOD_IN_MS;
+  rangingTable->period = period;
   rangingTable->nextDeliveryTime = xTaskGetTickCount() + rangingTable->period;
   rangingTable->expirationTime = xTaskGetTickCount() + M2T(RANGING_TABLE_HOLD_TIME);
   rangingTable->state = RECEIVED;

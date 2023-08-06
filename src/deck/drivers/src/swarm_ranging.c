@@ -34,7 +34,24 @@ static float velocity;
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
 /*-------------------------------------------------*/
+int16_t startStatistic = 0; // 等于1开始统计，等于2结束统计
+int16_t jitter = 0;
+uint16_t TX_PERIOD_IN_MS = 20;
+
+int16_t getStartStatistic(){
+  return startStatistic;
+}
+
+int16_t getJitter(){
+  return jitter;
+}
+
+uint16_t getPeriod(){
+  return TX_PERIOD_IN_MS;
+}
+
 /*-----------------------------------------------*/
+
 
 void rangingRxCallback(void *parameters)
 {
@@ -197,7 +214,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       return;
     }
     Ranging_Table_t table;
-    rangingTableInit(&table, neighborAddress);
+    rangingTableInit(&table, neighborAddress,TX_PERIOD_IN_MS);
     neighborIndex = rangingTableSetInsert(&rangingTableSet, &table);
   }
 
@@ -388,6 +405,6 @@ LOG_GROUP_STOP(Ranging)
 
 PARAM_GROUP_START(Statistic)
 PARAM_ADD(PARAM_INT16, jitter, &jitter)
-PARAM_ADD(PARAM_INT16, start, &startStatistic)
+PARAM_ADD(PARAM_INT16, statistic, &startStatistic)
 PARAM_ADD(PARAM_UINT16, period, &TX_PERIOD_IN_MS)
 PARAM_GROUP_STOP(Statistic)

@@ -110,7 +110,7 @@ typedef struct {
   RANGING_TABLE_STATE state;
 } __attribute__((packed)) Ranging_Table_t;
 
-void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);
+void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address,uint16_t period);
 void rangingTableShift(Ranging_Table_t *rangingTable);
 
 typedef struct {

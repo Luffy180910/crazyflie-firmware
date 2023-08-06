@@ -220,7 +220,7 @@ static int uwbInit()
   /* Auto re-enable receiver after a frame reception failure (except a frame
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
-  dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);                     // in microseconds (1.0256 us).
+  dwt_setrxtimeout(DEFAULT_RX_TIMEOUT); // in microseconds (1.0256 us).
 
 #ifdef ENABLE_RX_DBL_BUFF
   dwt_setdblrxbuffmode(DBL_BUF_STATE_EN, DBL_BUF_MODE_MAN); // Enable double buff - Manual mode
@@ -449,6 +449,9 @@ static void uwbTaskInit()
 #endif
 #ifdef ENABLE_SNIFFER
   snifferInit(); // TODO ugly code
+#endif
+#ifdef ENABLE_CRTP_TRANS_DATA
+  crtpTransDataInit();
 #endif
 }
 /*********** Deck driver initialization ***************/

@@ -16,13 +16,9 @@
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
 // #define TX_PERIOD_IN_MS 20
 /*---------------------------------------------*/
-static uint16_t TX_PERIOD_IN_MS = 20;
 #define MAX_STATISTIC_LOSS_NUM 149
 // 设置parameter: period，jitter，spispeed
 // 设置parameter,如果为真，则开始
-
-static int16_t jitter = 0;
-static int16_t startStatistic = 0; // 等于1开始统计，等于2结束统计
 static bool firstStatisticSuccRx[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};
 static bool firstStatisticSuccRanging[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};
 
@@ -33,7 +29,9 @@ static uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_
 static uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
 static uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {0};                                    // 收到其他无人机数据包的次数
 static uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {0};                                 // 与其他无人机成功测距的次数
-
+int16_t getStartStatistic();
+int16_t getJitter();
+uint16_t getPeriod();
 /*---------------------------------------------*/
 
 /* Ranging Operations */
