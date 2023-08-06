@@ -339,6 +339,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     if (firstStatisticSuccRx[neighborAddress])
     {
       firstStatisticSuccRx[neighborAddress] = false;
+      firstStatisticSuccRanging[neighborAddress] = false; // 这里添加处理是为了解决开始统计即丢包，导致这段即使丢包了也不算测距失败的问题
     }
     else
     {
