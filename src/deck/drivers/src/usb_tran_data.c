@@ -23,6 +23,7 @@ static void sendDataTask(void *parameters)
     while (1)
     {
         vTaskDelay(1000);
+        int16_t startStatistic = getstartStatistic();
         while (startStatistic == 2)
         {
             vTaskDelay(1);
@@ -45,13 +46,13 @@ static void sendDataTask(void *parameters)
             msgSize = sizeof(continuousLossPacketCount);
             sendData_Meta.msgLength = msgSize;
             sendData_Meta.type = 3;
-            sendDataWithArray(sendData_Meta, msgSize, continuousLossPacketCount);
+            sendDataWithArray(sendData_Meta, msgSize, &continuousLossPacketCount[0][0]);
 
             // 4. 传送continuousRangingFailCount
             msgSize = sizeof(continuousRangingFailCount);
             sendData_Meta.msgLength = msgSize;
             sendData_Meta.type = 4;
-            sendDataWithArray(sendData_Meta, msgSize, continuousRangingFailCount);
+            sendDataWithArray(sendData_Meta, msgSize, &continuousRangingFailCount[0][0]);
             // 5. 传送rxPacketCount
             msgSize = sizeof(rxPacketCount);
             sendData_Meta.msgLength = msgSize;
