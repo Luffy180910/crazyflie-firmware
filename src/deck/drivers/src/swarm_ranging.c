@@ -37,31 +37,35 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 int16_t startStatistic = 0; // 等于1开始统计，等于2结束统计
 int16_t jitter = 0;
 uint16_t TX_PERIOD_IN_MS = 20;
-static bool firstStatisticSuccRx[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};
-static bool firstStatisticSuccRanging[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};
+static bool firstStatisticSuccRx[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};      // 辅助
+static bool firstStatisticSuccRanging[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true}; // 辅助
+int8_t lastUseTfBufferIndex[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};             // 用于辅助判断是否发生了无效数据包
 
-uint16_t lastSuccRangingSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE]=0};  // 上次邻居成功测距的序号，辅助
-uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE]=0}; // 上次邻居成功测距的序号，辅助
-uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]={0};  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
-uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]={0}; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
-uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE]=0};                                    // 收到其他无人机数据包的次数
-uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE]=0};                                 // 与其他无人机成功测距的次数
+uint16_t lastSuccRangingSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};  // 上次邻居成功测距的序号，辅助
+uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 上次邻居成功测距的序号，辅助
 
+uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1] = {0};  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
+uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1] = {0}; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
+uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};             // 收到其他无人机数据包的次数
+uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};          // 与其他无人机成功测距的次数
+uint16_t invalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};        // 收到邻居无效数据包总数
 
-int16_t getStartStatistic(){
+int16_t getStartStatistic()
+{
   return startStatistic;
 }
 
-int16_t getJitter(){
+int16_t getJitter()
+{
   return jitter;
 }
 
-uint16_t getPeriod(){
+uint16_t getPeriod()
+{
   return TX_PERIOD_IN_MS;
 }
 
 /*-----------------------------------------------*/
-
 
 void rangingRxCallback(void *parameters)
 {
@@ -126,7 +130,7 @@ static void uwbRangingTxTask(void *parameters)
     }
     else
     {
-      vTaskDelay(TX_PERIOD_IN_MS);
+      vTaskDelay(TX_PERIOD_IN_MS+rand()%3);
     }
   }
 }
@@ -224,7 +228,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       return;
     }
     Ranging_Table_t table;
-    rangingTableInit(&table, neighborAddress,TX_PERIOD_IN_MS);
+    rangingTableInit(&table, neighborAddress, TX_PERIOD_IN_MS);
     neighborIndex = rangingTableSetInsert(&rangingTableSet, &table);
   }
 
@@ -272,6 +276,13 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       if (TfBuffer[i].seqNumber == neighborRf.seqNumber)
       {
         neighborRangingTable->Tf = TfBuffer[i];
+        /*----------------------------------------------------*/
+        if (lastUseTfBufferIndex[neighborAddress] == i)
+        {
+          invalidPacketCount[neighborAddress]++;
+          lastUseTfBufferIndex[neighborAddress] = i;
+        }
+        /*----------------------------------------------------*/
       }
     }
 
@@ -290,7 +301,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
         neighborRangingTable->distance = distance;
         setDistance(neighborRangingTable->neighborAddress, distance);
         /*--------------------------------------------------*/
-        if (startStatistic==1)
+        if (startStatistic == 1)
         {
           uint16_t lastSeqNumber = lastSuccRangingSeq[neighborAddress];
           uint16_t curSeqNumber = rangingMessage->header.msgSequence;
@@ -353,7 +364,9 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     // DEBUG_PRINT("%d:%d\n",neighborAddress,rxPacketCount[neighborAddress]);
     lastSuccRxPacketSeq[neighborAddress] = curSeqNumber;
     rxPacketCount[neighborAddress]++; // 主要为了更新这个
-  }else{
+  }
+  else
+  {
     // DEBUG_PRINT("%d:%d\n",neighborAddress,rxPacketCount[neighborAddress]);
   }
   /*------------------------------------------------------*/

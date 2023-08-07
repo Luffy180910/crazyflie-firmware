@@ -26,8 +26,9 @@ static TaskHandle_t crtpTxHandle = 0;
 
 extern uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1];  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
 extern uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1]; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
-extern uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1];                                    // 收到其他无人机数据包的次数
-extern uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1];  
+extern uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1];                                          // 收到其他无人机数据包的次数
+extern uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1];
+extern uint16_t invalidPacketCount[RANGING_TABLE_SIZE + 1];
 
 static void crtpTxOlsrTask(void *parameters)
 {
@@ -54,27 +55,33 @@ static void crtpTxOlsrTask(void *parameters)
       uint16_t msgSize = sizeof(continuousLossPacketCount);
       msgSize = sizeof(continuousLossPacketCount);
       crtpSendData_Meta.type = 1;
-      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
-      crtpSendData_Meta.secondDim = MAX_STATISTIC_LOSS_NUM+1;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
+      crtpSendData_Meta.secondDim = MAX_STATISTIC_LOSS_NUM + 1;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, (uint8_t *)&continuousLossPacketCount[0][0]);
       // 2. 传送continuousRangingFailCount
       msgSize = sizeof(continuousRangingFailCount);
       crtpSendData_Meta.type = 2;
-      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
-      crtpSendData_Meta.secondDim = MAX_STATISTIC_LOSS_NUM+1;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
+      crtpSendData_Meta.secondDim = MAX_STATISTIC_LOSS_NUM + 1;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, &continuousRangingFailCount[0][0]);
       // 3. 传送rxPacketCount
       msgSize = sizeof(rxPacketCount);
       crtpSendData_Meta.type = 3;
-      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
       crtpSendData_Meta.secondDim = 0;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, rxPacketCount);
       // 4. 传送rangingSuccCount
       msgSize = sizeof(rangingSuccCount);
       crtpSendData_Meta.type = 4;
-      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE+1;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
       crtpSendData_Meta.secondDim = 0;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, rangingSuccCount);
+      // 5. 传送rangingSuccCount
+      msgSize = sizeof(invalidPacketCount);
+      crtpSendData_Meta.type = 5;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
+      crtpSendData_Meta.secondDim = 0;
+      crtpSendDataWithArray(crtpSendData_Meta, msgSize, invalidPacketCount);
     }
   }
 }
