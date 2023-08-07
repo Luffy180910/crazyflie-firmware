@@ -130,7 +130,7 @@ static void uwbRangingTxTask(void *parameters)
     }
     else
     {
-      vTaskDelay(TX_PERIOD_IN_MS+rand()%3);
+      vTaskDelay(TX_PERIOD_IN_MS);
     }
   }
 }
@@ -327,8 +327,11 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
         // DEBUG_PRINT("distance is not updated since some error occurs\n");
       }
     }
+  }else{
+    DEBUG_PRINT("-----\n");
   }
 
+  
   /* Tp <- Tf, Rp <- Rf */
   if (neighborRangingTable->Tf.timestamp.full && neighborRangingTable->Rf.timestamp.full)
   {
