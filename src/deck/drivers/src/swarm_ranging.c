@@ -110,7 +110,7 @@ static void uwbRangingTxTask(void *parameters)
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    nextTransportPeriod = TX_PERIOD_IN_MS + rand()%(1);
+    nextTransportPeriod = 9 + rand()%3;
     vTaskDelay(nextTransportPeriod);
   }
 }
@@ -255,6 +255,10 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     {
       if (TfBuffer[i].seqNumber == neighborRf.seqNumber)
       {
+        if(i!=TfBufferIndex){
+          invalidpackageCount[neighborAddress]++;
+        }
+
         neighborRangingTable->Tf = TfBuffer[i];
       }
     }
@@ -269,7 +273,6 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       int16_t distance = computeDistance(neighborRangingTable->Tp, neighborRangingTable->Rp,
                                          Tr_Rr_Candidate.Tr, Tr_Rr_Candidate.Rr,
                                          neighborRangingTable->Tf, neighborRangingTable->Rf);
-      if(distance==0) invalidpackageCount[neighborAddress]++;
       if (distance > 0)
       {
         neighborRangingTable->distance = distance;
@@ -294,10 +297,10 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
           int times =0;
           for(int i=1; i<MAX_STATISTIC_LOSS_NUM;i++){
             if(continuousRangingFailCount[neighborAddress][i]>0){
-              times+=continuousRangingFailCount[neighborAddress][i];
-              continuousRangingFailtimes[neighborAddress]+=continuousRangingFailCount[neighborAddress][i]*i;
+                continuousRangingFailtimes[neighborAddress]+=continuousRangingFailCount[neighborAddress][i]*i;
             }
           }
+          if(times !=0)
           continuousRangingFailtimes[neighborAddress]=continuousRangingFailtimes[neighborAddress]/times;
           lastSuccRangingSeq[neighborAddress] = rangingMessage->header.msgSequence;
           rangingSuccCount[neighborAddress]++;
@@ -305,9 +308,11 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
         /*--------------------------------------------------*/
       }
       else
-      {
+      {invalidpackageCount[neighborAddress]++;
         // DEBUG_PRINT("distance is not updated since some error occurs\n");
       }
+    }else{
+      DEBUG_PRINT("failure--\n");
     }
   }
 
