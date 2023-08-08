@@ -16,7 +16,7 @@
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
 // #define TX_PERIOD_IN_MS 20
 /*---------------------------------------------*/
-#define MAX_STATISTIC_LOSS_NUM 149
+#define MAX_STATISTIC_LOSS_NUM 130
 // 设置parameter: period，jitter，spispeed
 // 设置parameter,如果为真，则开始
 int16_t getStartStatistic();

@@ -39,7 +39,6 @@ int16_t jitter = 0;
 uint16_t TX_PERIOD_IN_MS = 20;
 static bool firstStatisticSuccRx[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};      // 辅助
 static bool firstStatisticSuccRanging[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true}; // 辅助
-int8_t lastUseTfBufferIndex[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};             // 用于辅助判断是否发生了无效数据包
 
 uint16_t lastSuccRangingSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};  // 上次邻居成功测距的序号，辅助
 uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 上次邻居成功测距的序号，辅助
@@ -48,7 +47,7 @@ uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NU
 uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1] = {0}; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
 uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};             // 收到其他无人机数据包的次数
 uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};          // 与其他无人机成功测距的次数
-uint16_t invalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};        // 收到邻居无效数据包总数
+uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 收到邻居无效数据包总数
 
 int16_t getStartStatistic()
 {
@@ -276,13 +275,6 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       if (TfBuffer[i].seqNumber == neighborRf.seqNumber)
       {
         neighborRangingTable->Tf = TfBuffer[i];
-        /*----------------------------------------------------*/
-        if (lastUseTfBufferIndex[neighborAddress] == i)
-        {
-          invalidPacketCount[neighborAddress]++;
-          lastUseTfBufferIndex[neighborAddress] = i;
-        }
-        /*----------------------------------------------------*/
       }
     }
 
@@ -327,11 +319,18 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
         // DEBUG_PRINT("distance is not updated since some error occurs\n");
       }
     }
-  }else{
-    DEBUG_PRINT("-----\n");
+  }
+  else
+  {
+    // DEBUG_PRINT("-----\n");
+    /*----------------------------------------------------*/
+    if (startStatistic == 1)
+    {
+      lossAndinvalidPacketCount[neighborAddress]++;
+    }
+    /*----------------------------------------------------*/
   }
 
-  
   /* Tp <- Tf, Rp <- Rf */
   if (neighborRangingTable->Tf.timestamp.full && neighborRangingTable->Rf.timestamp.full)
   {
@@ -402,6 +401,10 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
       /* It is possible that Re is not the newest timestamp, because the newest may be in rxQueue
        * waiting to be handled.
        */
+      /*--------------------------------------*/
+
+      /*--------------------------------------*/
+
       bodyUnitNumber++;
       table->state = TRANSMITTED;
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16);
