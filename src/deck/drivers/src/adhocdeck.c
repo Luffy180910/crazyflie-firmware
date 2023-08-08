@@ -322,7 +322,7 @@ static void uwbTask(void *parameters)
 
 static uint8_t spiTxBuffer[FRAME_LEN_MAX];
 static uint8_t spiRxBuffer[FRAME_LEN_MAX];
-static uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
+uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
 
 static void spiWrite(const void *header, size_t headerLength, const void *data,
                      size_t dataLength)
@@ -512,4 +512,5 @@ PARAM_GROUP_STOP(deck)
 
 PARAM_GROUP_START(ADHOC)
 PARAM_ADD_CORE(PARAM_UINT16 | PARAM_PERSISTENT, MY_UWB_ADDRESS, &MY_UWB_ADDRESS)
+PARAM_ADD(PARAM_UINT16, spiSpeed, &spiSpeed)
 PARAM_GROUP_STOP(ADHOC)
