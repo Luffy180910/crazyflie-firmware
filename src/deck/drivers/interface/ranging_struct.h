@@ -11,6 +11,7 @@
 //#define MAX_BODY_UNIT_NUMBER (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
 #define RANGING_TABLE_SIZE 25
 #define RANGING_TABLE_HOLD_TIME 10000
+#define RX_TX_MAX_NUM 4000
 
 typedef portTickType Time_t;
 typedef short set_index_t;
@@ -41,9 +42,10 @@ typedef struct {
   uint16_t msgSequence; // 2 byte
   Timestamp_Tuple_t lastTxTimestamp; // 10 byte
   short velocity; // 2 byte cm/s
+  uint32_t blank; // 4 bytes
   uint16_t msgLength; // 2 byte
   uint16_t filter; // 16 bits bloom filter
-} __attribute__((packed)) Ranging_Message_Header_t; // 20 byte
+} __attribute__((packed)) Ranging_Message_Header_t; // 24 byte
 
 /* Ranging Message */
 typedef struct {

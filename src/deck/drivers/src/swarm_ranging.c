@@ -50,6 +50,10 @@ uint16_t allSendPacketNum[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] 
 uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};          // 与其他无人机成功测距的次数
 uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 收到邻居无效数据包总数
 
+uint64_t rx_tx[RX_TX_MAX_NUM] = {0};
+uint16_t rx_tx_index = 0;
+dwTime_t lastRxTimeStamp = {0};
+
 int16_t getStartStatistic()
 {
   return startStatistic;
@@ -89,12 +93,19 @@ void rangingTxCallback(void *parameters)
 {
   dwTime_t txTime = {0};
   dwt_readtxtimestamp((uint8_t *)&txTime.raw);
+
+  /*------------------------------------*/
+  if (startStatistic == 1 && rx_tx_index < RX_TX_MAX_NUM)
+  {
+    rx_tx[rx_tx_index] = txTime.full - lastRxTimeStamp.full;
+    rx_tx_index++;
+  }
+  /*------------------------------------*/
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
   TfBuffer[TfBufferIndex].timestamp = txTime;
 }
-
 int16_t getDistance(uint16_t neighborAddress)
 {
   ASSERT(neighborAddress <= RANGING_TABLE_SIZE);
@@ -415,6 +426,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
+  // rangingMessage->header.msgLength = 12;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
   float velocityX = logGetFloat(idVelocityX);

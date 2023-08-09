@@ -30,6 +30,7 @@ extern uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1];                          
 extern uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1];
 extern uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1];
 extern uint16_t allSendPacketNum[RANGING_TABLE_SIZE + 1];
+extern uint64_t rx_tx[RX_TX_MAX_NUM];
 static void crtpTxOlsrTask(void *parameters)
 {
   CRTPPacket packet;
@@ -82,13 +83,18 @@ static void crtpTxOlsrTask(void *parameters)
       crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
       crtpSendData_Meta.secondDim = 0;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, lossAndinvalidPacketCount);
-      // 5. 传送rangingSuccCount
+      // 6. 传送rangingSuccCount
       msgSize = sizeof(allSendPacketNum);
       crtpSendData_Meta.type = 6;
       crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
       crtpSendData_Meta.secondDim = 0;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, allSendPacketNum);
-
+      // 7. 
+      msgSize = sizeof(rx_tx);
+      crtpSendData_Meta.type = 7;
+      crtpSendData_Meta.firstDim = RX_TX_MAX_NUM;
+      crtpSendData_Meta.secondDim = 0;
+      crtpSendDataWithArray(crtpSendData_Meta, msgSize, rx_tx);
 
     }
   }
