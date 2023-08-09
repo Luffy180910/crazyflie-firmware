@@ -46,6 +46,7 @@ uint16_t lastSuccRxPacketSeq[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZ
 uint16_t continuousLossPacketCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1] = {0};  // [i][j],两次成功收包j代表间隔的次数，值就是事件发生的次数
 uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC_LOSS_NUM + 1] = {0}; // [i][j],两次成功测距j代表间隔的次数，值就是事件发生的次数
 uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};             // 收到其他无人机数据包的次数
+uint16_t allSendPacketNum[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};          // 发送的所有数据包
 uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};          // 与其他无人机成功测距的次数
 uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 收到邻居无效数据包总数
 
@@ -362,6 +363,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       // 判断丢包数量是否超出了最大值
       loss_num = loss_num > MAX_STATISTIC_LOSS_NUM ? MAX_STATISTIC_LOSS_NUM : loss_num;
       continuousLossPacketCount[neighborAddress][loss_num]++; // 主要为了更新这个
+      allSendPacketNum[neighborAddress] += (loss_num + 1);
     }
     // DEBUG_PRINT("%d:%d\n",neighborAddress,rxPacketCount[neighborAddress]);
     lastSuccRxPacketSeq[neighborAddress] = curSeqNumber;

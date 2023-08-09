@@ -29,7 +29,7 @@ extern uint16_t continuousRangingFailCount[RANGING_TABLE_SIZE + 1][MAX_STATISTIC
 extern uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1];                                          // 收到其他无人机数据包的次数
 extern uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1];
 extern uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1];
-
+extern uint16_t allSendPacketNum[RANGING_TABLE_SIZE + 1];
 static void crtpTxOlsrTask(void *parameters)
 {
   CRTPPacket packet;
@@ -82,6 +82,14 @@ static void crtpTxOlsrTask(void *parameters)
       crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
       crtpSendData_Meta.secondDim = 0;
       crtpSendDataWithArray(crtpSendData_Meta, msgSize, lossAndinvalidPacketCount);
+      // 5. 传送rangingSuccCount
+      msgSize = sizeof(allSendPacketNum);
+      crtpSendData_Meta.type = 6;
+      crtpSendData_Meta.firstDim = RANGING_TABLE_SIZE + 1;
+      crtpSendData_Meta.secondDim = 0;
+      crtpSendDataWithArray(crtpSendData_Meta, msgSize, allSendPacketNum);
+
+
     }
   }
 }
