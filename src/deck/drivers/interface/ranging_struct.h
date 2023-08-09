@@ -11,7 +11,6 @@
 //#define MAX_BODY_UNIT_NUMBER (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
 #define RANGING_TABLE_SIZE 25
 #define RANGING_TABLE_HOLD_TIME 10000
-#define RX_TX_MAX_NUM 4000
 
 typedef portTickType Time_t;
 typedef short set_index_t;

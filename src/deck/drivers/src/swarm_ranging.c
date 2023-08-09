@@ -50,7 +50,7 @@ uint16_t allSendPacketNum[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] 
 uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0};          // 与其他无人机成功测距的次数
 uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 收到邻居无效数据包总数
 
-uint64_t rx_tx[RX_TX_MAX_NUM] = {0};
+uint32_t rx_tx[RX_TX_MAX_NUM] = {0};
 uint16_t rx_tx_index = 0;
 dwTime_t lastRxTimeStamp = {0};
 
@@ -97,7 +97,9 @@ void rangingTxCallback(void *parameters)
   /*------------------------------------*/
   if (startStatistic == 1 && rx_tx_index < RX_TX_MAX_NUM)
   {
-    rx_tx[rx_tx_index] = txTime.full - lastRxTimeStamp.full;
+    uint64_t diff = txTime.full - lastRxTimeStamp.full;
+    if(diff>0&&diff<0xFFFFFFFF)
+    rx_tx[rx_tx_index] = diff;
     rx_tx_index++;
   }
   /*------------------------------------*/
