@@ -30,7 +30,7 @@ extern uint16_t rxPacketCount[RANGING_TABLE_SIZE + 1];                          
 extern uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1];
 extern uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1];
 extern uint16_t allSendPacketNum[RANGING_TABLE_SIZE + 1];
-extern uint64_t tx_rx[RX_TX_MAX_NUM];
+extern uint32_t tx_rx[RX_TX_MAX_NUM];
 static void crtpTxOlsrTask(void *parameters)
 {
   CRTPPacket packet;
