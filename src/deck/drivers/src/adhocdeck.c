@@ -74,6 +74,8 @@ static uint8_t rxBuffer[FRAME_LEN_MAX];
 dwTime_t sysTime = {0};
 dwTime_t rxTime1 = {0};
 dwTime_t rxTime2 = {0};
+uint64_t diff_write=0;
+uint64_t diff_read=0;
 
 static void txCallback()
 {
@@ -93,6 +95,7 @@ static void rxCallback(dwt_cb_data_t *cbData)
   dwt_readsystime((uint8_t *)&rxTime1.raw);
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
   dwt_readsystime((uint8_t *)&rxTime2.raw);
+  diff_read = rxTime2.full - rxTime1.full;
   // dwt_readrxtimestamp((uint8_t *)&rxTime1.raw);
 
   // DEBUG_PRINT("%llu,%llu\n", rxTime1.full, rxTime2.full);
@@ -269,9 +272,9 @@ static void uwbTxTask(void *parameters)
       */
       // dwt_readsystime((uint8_t *)&sysTime.raw);
       dwt_forcetrxoff();
-      // dwt_readsystime((uint8_t *)&rxTime1.raw);
+      dwt_readsystime((uint8_t *)&rxTime1.raw);
       dwt_writetxdata(packetCache.header.length, (uint8_t *)&packetCache, 0);
-      // dwt_readsystime((uint8_t *)&rxTime2.raw);
+      dwt_readsystime((uint8_t *)&rxTime2.raw);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
@@ -282,6 +285,7 @@ static void uwbTxTask(void *parameters)
       }
       // dwt_readsystime((uint8_t *)&sysTime2.raw);
       vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
+      diff_write = rxTime2.full-rxTime1.full;
     }
   }
 }
@@ -308,7 +312,7 @@ static void uwbTask(void *parameters)
 
 static uint8_t spiTxBuffer[FRAME_LEN_MAX];
 static uint8_t spiRxBuffer[FRAME_LEN_MAX];
-static uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
+uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
 
 static void spiWrite(const void *header, size_t headerLength, const void *data,
                      size_t dataLength)
@@ -495,4 +499,5 @@ PARAM_GROUP_STOP(deck)
 
 PARAM_GROUP_START(ADHOC)
 PARAM_ADD_CORE(PARAM_UINT16 | PARAM_PERSISTENT, MY_UWB_ADDRESS, &MY_UWB_ADDRESS)
+PARAM_ADD(PARAM_UINT16, spiSpeed, &spiSpeed)
 PARAM_GROUP_STOP(ADHOC)

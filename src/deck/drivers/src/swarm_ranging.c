@@ -5,6 +5,7 @@
 #include "task.h"
 #include "system.h"
 
+#include "param.h"
 #include "autoconf.h"
 #include "debug.h"
 #include "log.h"
@@ -31,6 +32,9 @@ static float velocity;
 extern dwTime_t sysTime;
 extern dwTime_t rxTime1;
 extern dwTime_t rxTime2;
+extern uint64_t diff_write;
+extern uint64_t diff_read;
+uint16_t pklen=0;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
@@ -276,16 +280,17 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
-  rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * 10;
+  rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + pklen;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp.timestamp = rxTime1;
-  rangingMessage->header.starTxTimestamp.timestamp = rxTime2;
+  rangingMessage->header.diff_readSPI = diff_read;
+  rangingMessage->header.diff_writeSPI = diff_write;
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
-  rangingMessage->header.velocity = (short) (velocity * 100);
+  // rangingMessage->header.velocity = (short) (velocity * 100);
   return rangingMessage->header.msgLength;
 }
 
@@ -301,3 +306,7 @@ LOG_GROUP_START(Ranging)
         LOG_ADD(LOG_INT16, distTo9, distanceTowards + 9)
         LOG_ADD(LOG_INT16, distTo10, distanceTowards + 10)
 LOG_GROUP_STOP(Ranging)
+
+PARAM_GROUP_START(Statistic)
+PARAM_ADD(PARAM_UINT16, pklen, &pklen)
+PARAM_GROUP_STOP(Statistic)

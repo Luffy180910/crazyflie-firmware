@@ -31,13 +31,13 @@ typedef struct {
 typedef struct {
   uint16_t srcAddress; // 2 byte
   uint16_t msgSequence; // 2 byte
-  Timestamp_Tuple_t lastTxTimestamp; // 10 byte
-  Timestamp_Tuple_t starTxTimestamp; // 10 byte
-  uint16_t fullBlank;
-  short velocity; // 2 byte cm/s
-  uint16_t msgLength; // 2 byte
-  uint16_t filter; // 16 bits bloom filter
-} __attribute__((packed)) Ranging_Message_Header_t; // 30 byte
+  Timestamp_Tuple_t lastTxTimestamp; // 10 byte -14
+  uint64_t diff_readSPI;  // 8 byte -14+8=22
+  uint64_t diff_writeSPI; // 8 byte -22+8= 30
+  uint16_t msgLength; // 2 byte -30+2=32
+  uint16_t filter; // 16 bits bloom filter = 32+2=34
+  uint16_t velocity; // 2 bytes -34+2=36
+} __attribute__((packed)) Ranging_Message_Header_t; // 36 byte
 
 /* Ranging Message */
 typedef struct {
