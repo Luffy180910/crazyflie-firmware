@@ -52,7 +52,7 @@ uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TAB
 
 uint32_t tx_rx[RX_TX_MAX_NUM] = {0};
 uint16_t tx_rx_index = 0;
-dwTime_t lastTxTimeStamp = {0};
+dwTime_t lastRxTimeStamp = {0};
 
 int16_t getStartStatistic()
 {
@@ -95,7 +95,16 @@ void rangingTxCallback(void *parameters)
   dwt_readtxtimestamp((uint8_t *)&txTime.raw);
 
   /*------------------------------------*/
-  lastTxTimeStamp.full=txTime.full;
+  if (startStatistic == 1 && tx_rx_index < RX_TX_MAX_NUM)
+  {
+    uint32_t diff = txTime.full - lastRxTimeStamp.full;
+    if (diff > 0 && diff < 0xFFFFFFFF)
+    {
+      tx_rx[tx_rx_index] = diff;
+      
+    }
+    tx_rx_index++;
+  }
   /*------------------------------------*/
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
