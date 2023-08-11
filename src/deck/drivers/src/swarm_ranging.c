@@ -422,7 +422,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
-  rangingMessage->header.msgLength = 28;
+  rangingMessage->header.msgLength = 32;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
   float velocityX = logGetFloat(idVelocityX);

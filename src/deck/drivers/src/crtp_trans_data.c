@@ -124,7 +124,7 @@ void crtpSendDataWithArray(CrtpSendData_Meta_t sendData_Meta, uint16_t msgSize, 
     crtpPacket.size = sizeToSend;
     memcpy(crtpPacket.data, pointer_send, sizeToSend);
     crtpSendPacket(&crtpPacket);
-    vTaskDelay(20);
+    vTaskDelay(5);
     pointer_send += sizeToSend;
     remain -= sizeToSend;
   }
