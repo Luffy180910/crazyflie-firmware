@@ -97,13 +97,13 @@ void rangingTxCallback(void *parameters)
   /*------------------------------------*/
   if (startStatistic == 1 && tx_rx_index < RX_TX_MAX_NUM)
   {
-    uint32_t diff = txTime.full - lastRxTimeStamp.full;
-    if (diff > 0 && diff < 0xFFFFFFFF)
+    uint64_t diff = txTime.full - lastRxTimeStamp.full;
+    // if (diff > 0 && diff < 0xFFFFFFFF)
+    if (diff > 0 && diff < 0x9FFFFFF) // 2.6256410099909857
     {
       tx_rx[tx_rx_index] = diff;
-      
+      tx_rx_index++; 
     }
-    tx_rx_index++;
   }
   /*------------------------------------*/
   TfBufferIndex++;
@@ -431,7 +431,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
-  rangingMessage->header.msgLength = 32;
+  rangingMessage->header.msgLength = 28;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
   float velocityX = logGetFloat(idVelocityX);
