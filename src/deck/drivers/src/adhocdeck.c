@@ -112,12 +112,14 @@ static void rxCallback(dwt_cb_data_t *cbData)
   dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
 
   /*-------------------------------------------------*/
-  if (startStatistic == 1 && tx_rx_index< RX_TX_MAX_NUM)
+  if (startStatistic == 1 && tx_rx_index < RX_TX_MAX_NUM)
   {
-    uint64_t diff = rxTime.full - lastTxTimeStamp.full;
-    if (diff > 0 && diff < 0xFFFFFFFF)
+    uint32_t diff = rxTime.full - lastTxTimeStamp.full;
+    if (diff > 0 && diff < 0x2FFFFFF)
+    {
       tx_rx[tx_rx_index] = diff;
-    tx_rx_index++;
+      tx_rx_index++;
+    }
   }
   /*-------------------------------------------------*/
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
@@ -337,7 +339,7 @@ static void uwbTask(void *parameters)
 
 static uint8_t spiTxBuffer[FRAME_LEN_MAX];
 static uint8_t spiRxBuffer[FRAME_LEN_MAX];
-uint16_t spiSpeed = SPI_BAUDRATE_2MHZ;
+uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
 
 static void spiWrite(const void *header, size_t headerLength, const void *data,
                      size_t dataLength)

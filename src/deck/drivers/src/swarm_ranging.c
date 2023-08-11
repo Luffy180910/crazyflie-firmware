@@ -36,7 +36,7 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 /*-------------------------------------------------*/
 int16_t startStatistic = 0; // 等于1开始统计，等于2结束统计
 int16_t jitter = 0;
-uint16_t TX_PERIOD_IN_MS = 20;
+uint16_t TX_PERIOD_IN_MS = 10;
 static bool firstStatisticSuccRx[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true};      // 辅助
 static bool firstStatisticSuccRanging[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = true}; // 辅助
 
@@ -421,8 +421,8 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   }
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
-  rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
-  // rangingMessage->header.msgLength = 12;
+  // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
+  rangingMessage->header.msgLength = 28;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
   float velocityX = logGetFloat(idVelocityX);
