@@ -47,7 +47,7 @@ static void crtpTxOlsrTask(void *parameters)
     int16_t startStatistic = getStartStatistic();
     while (getStartStatistic() == 2)
     {
-      vTaskDelay(1000);
+      vTaskDelay(5);
       // 300KB每秒
       crtpSendData_Meta.jitter = getJitter();
       crtpSendData_Meta.period = getPeriod();
@@ -106,7 +106,7 @@ void crtpSendDataWithArray(CrtpSendData_Meta_t sendData_Meta, uint16_t msgSize, 
   crtpPacket.header = CRTP_HEADER(CRTP_PORT_TRANSFER_DATA, TOTAL_TRANS);
   memcpy(crtpPacket.data, sendData_Meta.raw, length);
   crtpSendPacket(&crtpPacket);
-  vTaskDelay(20);
+  vTaskDelay(5);
   uint8_t *pointer_send = pointer;
   int remain = msgSize;
   while (remain > 0)
@@ -118,7 +118,7 @@ void crtpSendDataWithArray(CrtpSendData_Meta_t sendData_Meta, uint16_t msgSize, 
     crtpPacket.size = sizeToSend;
     memcpy(crtpPacket.data, pointer_send, sizeToSend);
     crtpSendPacket(&crtpPacket);
-    vTaskDelay(20);
+    vTaskDelay(5);
     pointer_send += sizeToSend;
     remain -= sizeToSend;
   }
