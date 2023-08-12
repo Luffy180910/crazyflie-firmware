@@ -7,7 +7,7 @@
 #include "dwTypes.h"
 #include "adhocdeck.h"
 
-#define MAX_BODY_UNIT_NUMBER 15
+#define MAX_BODY_UNIT_NUMBER 29
 //#define MAX_BODY_UNIT_NUMBER (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
 #define RANGING_TABLE_SIZE 25
 #define RANGING_TABLE_HOLD_TIME 10000
