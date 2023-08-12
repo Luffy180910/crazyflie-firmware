@@ -264,9 +264,9 @@ static void uwbTxTask(void *parameters)
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
 
 #ifdef ENABLE_RX_DBL_BUFF
-      uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
+      // uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
-      uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
+      // uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
       // DEBUG_PRINT("tx-DB: %02X\n", statusDB);
       if (status)
       {
