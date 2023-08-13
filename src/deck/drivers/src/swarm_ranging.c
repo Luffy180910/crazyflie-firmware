@@ -53,7 +53,7 @@ uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TAB
 uint32_t tx_rx[RX_TX_MAX_NUM] = {0};
 uint16_t tx_rx_index = 0;
 dwTime_t lastRxTimeStamp = {0};
-
+uint16_t pklen = 36;
 int16_t getStartStatistic()
 {
   return startStatistic;
@@ -431,7 +431,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
-  rangingMessage->header.msgLength = 28;
+  rangingMessage->header.msgLength = pklen;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
   float velocityX = logGetFloat(idVelocityX);
@@ -460,4 +460,5 @@ PARAM_GROUP_START(Statistic)
 PARAM_ADD(PARAM_INT16, jitter, &jitter)
 PARAM_ADD(PARAM_INT16, statistic, &startStatistic)
 PARAM_ADD(PARAM_UINT16, period, &TX_PERIOD_IN_MS)
+PARAM_ADD(PARAM_UINT16, pklen, &pklen)
 PARAM_GROUP_STOP(Statistic)
