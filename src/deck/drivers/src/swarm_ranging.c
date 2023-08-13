@@ -51,8 +51,10 @@ uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] 
 uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 收到邻居无效数据包总数
 
 uint32_t tx_rx[RX_TX_MAX_NUM] = {0};
+uint16_t rx_seq[RX_TX_MAX_NUM] = {0};
 uint16_t tx_rx_index = 0;
 dwTime_t lastRxTimeStamp = {0};
+uint16_t lastRxSeq = 0;
 uint16_t pklen = 36;
 int16_t getStartStatistic()
 {
@@ -99,9 +101,10 @@ void rangingTxCallback(void *parameters)
   {
     uint64_t diff = txTime.full - lastRxTimeStamp.full;
     // if (diff > 0 && diff < 0xFFFFFFFF)
-    if (diff > 0 && diff < 0x9FFFFFF) // 2.6256410099909857
+    if (diff > 0 && diff < 0xFFFFFFFF) // 2.6256410099909857
     {
       tx_rx[tx_rx_index] = diff;
+      rx_seq[tx_rx_index] = lastRxSeq;
       tx_rx_index++; 
     }
   }

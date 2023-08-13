@@ -17,7 +17,7 @@
 // #define TX_PERIOD_IN_MS 20
 /*---------------------------------------------*/
 #define MAX_STATISTIC_LOSS_NUM 10
-#define RX_TX_MAX_NUM 8000
+#define RX_TX_MAX_NUM 4000
 // 设置parameter: period，jitter，spispeed
 // 设置parameter,如果为真，则开始
 int16_t getStartStatistic();

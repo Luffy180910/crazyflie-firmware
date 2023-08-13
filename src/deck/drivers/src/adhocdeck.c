@@ -77,6 +77,7 @@ extern uint16_t tx_rx_index;
 extern dwTime_t lastTxTimeStamp;
 extern int16_t startStatistic;
 extern dwTime_t lastRxTimeStamp;
+extern uint16_t lastRxSeq;
 /*-----------------------------------------------*/
 
 static void txCallback()
@@ -117,6 +118,9 @@ static void rxCallback(dwt_cb_data_t *cbData)
   /*-------------------------------------------------*/
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
+  /*------------------------------------------------*/
+  lastRxSeq = packet->header.seqNumber;
+  /*------------------------------------------------*/
 
   // DEBUG_PRINT("0x%llx:(%u)\n", rxTime.full, packet->header.seqNumber);
   if (msgType >= MESSAGE_TYPE_COUNT)
@@ -334,7 +338,7 @@ static void uwbTask(void *parameters)
 
 static uint8_t spiTxBuffer[FRAME_LEN_MAX];
 static uint8_t spiRxBuffer[FRAME_LEN_MAX];
-uint16_t spiSpeed = SPI_BAUDRATE_2MHZ;
+uint16_t spiSpeed = SPI_BAUDRATE_21MHZ;
 
 static void spiWrite(const void *header, size_t headerLength, const void *data,
                      size_t dataLength)
