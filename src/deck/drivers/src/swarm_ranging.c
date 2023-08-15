@@ -255,9 +255,6 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     {
       if (TfBuffer[i].seqNumber == neighborRf.seqNumber)
       {
-        if(i!=TfBufferIndex){
-          invalidpackageCount[neighborAddress]++;
-        }
 
         neighborRangingTable->Tf = TfBuffer[i];
       }
@@ -297,6 +294,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
           int times =0;
           for(int i=1; i<MAX_STATISTIC_LOSS_NUM;i++){
             if(continuousRangingFailCount[neighborAddress][i]>0){
+              
                 continuousRangingFailtimes[neighborAddress]+=continuousRangingFailCount[neighborAddress][i]*i;
             }
           }
@@ -312,8 +310,11 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
         // DEBUG_PRINT("distance is not updated since some error occurs\n");
       }
     }else{
+      invalidpackageCount[neighborAddress]++;
       DEBUG_PRINT("failure--\n");
     }
+  }else{
+    invalidpackageCount[neighborAddress]++;
   }
 
   /* Tp <- Tf, Rp <- Rf */
