@@ -263,7 +263,6 @@ static void uwbTxTask(void *parameters)
       packetCache.header.seqNumber = packetSeqNumber++;
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
 
-#ifdef ENABLE_RX_DBL_BUFF
       // uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
       // uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
@@ -272,6 +271,7 @@ static void uwbTxTask(void *parameters)
       {
         // DEBUG_PRINT("=====================\n");
         // DEBUG_PRINT("FINT: 0x%lx\tSYS_S: 0x%lx\n", fstat, status);
+#ifdef ENABLE_RX_DBL_BUFF
         if (status & SYS_STATUS_RXOVRR_BIT_MASK)
         {
           DEBUG_PRINT("SYS_STATUS_RXOVRR_BIT_MASK\n");
@@ -279,11 +279,12 @@ static void uwbTxTask(void *parameters)
           dwt_signal_rx_buff_free();
           dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXOVRR_BIT_MASK);
         }
+#endif
         vTaskNotifyGiveFromISR(uwbTaskHandle, pdTRUE);
         // DEBUG_PRINT("NotifyGive\n");
         taskYIELD();
       }
-#endif
+
 
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *)&packetCache, 0);
