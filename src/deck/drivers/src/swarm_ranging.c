@@ -290,9 +290,9 @@ static void uwbRangingTxTask(void *parameters)
     getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
     uint16_t notget_packet_interval = 0;
 
-    nextTransportPeriod = TX_PERIOD_IN_MS;
+    nextTransportPeriod = 36 + rand() % 5;
 
-    for (int i = 0; i < currentNeighborAddressInfo.size; i++)
+    /*for (int i = 0; i < currentNeighborAddressInfo.size; i++)
     {
       address_t address = currentNeighborAddressInfo.address[i];
       notget_packet_interval = xTaskGetTickCount() - neighbor_latest_rvTime[address];
@@ -306,7 +306,7 @@ static void uwbRangingTxTask(void *parameters)
         // nextTransportPeriod = TX_PERIOD_IN_MS / 4 + rand() % 25;
         // break;
       }
-    }
+    }*/
     // nextTransportPeriod = 20;
     vTaskDelay(nextTransportPeriod);
   }
