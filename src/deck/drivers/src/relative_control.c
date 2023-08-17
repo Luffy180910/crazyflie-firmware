@@ -19,13 +19,13 @@ static uint16_t MY_UWB_ADDRESS;
 static bool isInit;
 static bool onGround = true;               // 无人机当前是否在地面上?
 static bool isCompleteTaskAndLand = false; // 无人机是否已经执行了飞行任务并落地?
-static bool keepFlying = false;
+bool keepFlying = false;
 static setpoint_t setpoint;
 static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static float_t neighbor_height[RANGING_TABLE_SIZE + 1];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 static float_t set_height = 0.5;
-static float_t set_height0 = 0.6;
+static float_t set_height0 = 0.5;
 static paramVarId_t idMultiranger;
 static logVarId_t idUp;
 static logVarId_t idLeft;
@@ -471,20 +471,7 @@ void relativeControlTask(void *arg)
         }
         else
         {
-          // 第6个阶段，三角形
-          if (MY_UWB_ADDRESS == 0)
-          {
-            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
-          }
-          else
-          {
-            int8_t index = MY_UWB_ADDRESS;
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * target_trangle[index][STATE_rlY];
-            set_height = neighbor_height[0];
-            formation0asCenter(targetX, targetY, set_height);
-            currentPosition_4Stage = index;
-          }
+          land(set_height);
         }
       }
       else
