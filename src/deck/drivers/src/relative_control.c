@@ -220,22 +220,34 @@ void relativeControlTask(void *arg)
 
   uint8_t currentPosition_3Stage = MY_UWB_ADDRESS; // 当前位于的位置
   uint8_t currentPosition_4Stage = MY_UWB_ADDRESS; // 当前位于的位置
-  const float_t initDist = 1.3;
-  static const float_t targetList[15][STATE_DIM_rl] = {
-      {0.0f, 0.0f, 0.0f},               // 0
-      {-initDist, -initDist, 0.0f},     // 1
-      {-initDist, 0.0f, 0.0f},          // 2
-      {-initDist, initDist, 0.0f},      // 3
-      {0.0f, initDist, 0.0f},           // 4
-      {initDist, initDist, 0.0f},       // 5
-      {initDist, 0.0f, 0.0f},           // 6
-      {initDist, -initDist, 0.0f},      // 7
-      {0.0f, -initDist, 0.0f},          // 8
-      {-initDist, -2 * initDist, 0.0f}, // 9
-      {0.0f, -2 * initDist, 0.0f},      // 10
-      {initDist, -2 * initDist, 0.0f},  // 11
-      {0.0f, 0.0f, 0.0f},               // ----12
-      {0.0f, 0.0f, 0.0f}};              // ----13
+  const float_t initDist = 1;
+  const float_t doubInitDist = 2;
+  static const float_t targetList[25][STATE_DIM_rl] = {
+    {0.0f, 0.0f, 0.0f},                   // 0
+    {0.0f, -initDist, 0.0f},              // 1
+    {-initDist, -initDist, 0.0f},         // 2
+    {-initDist, 0.0f, 0.0f},              // 3
+    {-initDist, initDist, 0.0f},          // 4
+    {0.0f, initDist, 0.0f},               // 5
+    {initDist, initDist, 0.0f},           // 6
+    {initDist, 0.0f, 0.0f},               // 7
+    {initDist, -initDist, 0.0f},          // 8
+    {doubInitDist, initDist, 0.0f},       // 9
+    {doubInitDist, 0.0f, 0.0f},           // 10
+    {doubInitDist, -initDist, 0.0f},      // 11
+    {doubInitDist, -doubInitDist, 0.0f},  // 12 
+    {initDist, -doubInitDist, 0.0f},      // 13
+    {0.0f, -doubInitDist, 0.0f},          // 14
+    {-initDist, -doubInitDist, 0.0f},     // 15
+    {-doubInitDist, -doubInitDist, 0.0f}, // 16
+    {-doubInitDist, -initDist, 0.0f},     // 17
+    {-doubInitDist, 0.0f, 0.0f},          // 18
+    {-doubInitDist, initDist, 0.0f},      // 19
+    {-doubInitDist, doubInitDist 0.0f},   // 20
+    {-initDist, -doubInitDist, 0.0f},     // 21
+    {0.0f, -doubInitDist, 0.0f},          // 22
+    {initDist, -doubInitDist, 0.0f},      // 23
+    {doubInitDist, doubInitDist, 0.0f}};  // 24
   uint8_t SQURE3_3_NUM = 9;             // 3阶段转圈的无人机数量+1（0号无人机）
   uint8_t SQURE3_4_NUM = 11;
   static const uint8_t targetSquere3_3[15] = {
@@ -346,40 +358,14 @@ void relativeControlTask(void *arg)
             }
             else
             {
-              index = MY_UWB_ADDRESS; // 第二阶段，不做飞行的无人机，直接设置保持初始预定位置即可
+              targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
+              // 使得targetList在1~UAV_NUM之间偏移
+              index = (MY_UWB_ADDRESS + targetShift) % (25 - 1) + 1; // 目标地址索引
+              if(index < 9) index += 9;
             }
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
-            currentPosition_3Stage = index;
-          }
-        }
-        else if (leaderStage != LAND_STAGE)
-        { // 第4个阶段，3*4转圈
-          if (MY_UWB_ADDRESS == 0)
-          {
-            setHoverSetpoint(&setpoint, 0, 0, set_height0, 0);
-          }
-          else
-          {
-            int8_t index = currentPosition_3Stage;
-            // 到了这里currentPosition已经是第三阶段结束时，无人机停下的位置
-            if (currentPosition_3Stage != 8) // 如果不在8号位置,则进行第4个阶段
-            {
-              targetShift = leaderStage % (SQURE3_4_NUM - 1);
-              // int8_t index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_4_NUM - 1) + 1; // 目标地址索引
-              index = posiToIndex3_4[currentPosition_3Stage];         // 将第3阶段地址转换为第4阶段索引
-              index = (index + targetShift) % (SQURE3_4_NUM - 1) + 1; // 索引偏移
-              index = indexToPosi3_4[index];                          // 将索引转换为地址
-            }
-            else
-            {
-              index = currentPosition_3Stage; // 如果第三阶段结束后是8号位置，则目标到达8号位置即可
-            }
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, set_height);
-            currentPosition_4Stage = index;
           }
         }
         else

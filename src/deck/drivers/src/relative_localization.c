@@ -64,22 +64,33 @@ static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 
 // 初始时，所有无人机基于0号无人机的相对位置
 // 正方向编队方案
-const float_t initDist = 1.3;
-static const float_t initPositionRela0[15][STATE_DIM_rl] = {
+// const float_t initDist = 1.3;
+const float_t initDist = 1;
+const float_t doubInitDist = 2;
+static const float_t initPositionRela0[25][STATE_DIM_rl] = {
     {0.0f, 0.0f, 0.0f},               // 0
-    {-initDist, -initDist, 0.0f},     // 1
-    {-initDist, 0.0f, 0.0f},          // 2
-    {-initDist, initDist, 0.0f},      // 3
-    {0.0f, initDist, 0.0f},           // 4
-    {initDist, initDist, 0.0f},       // 5
-    {initDist, 0.0f, 0.0f},           // 6
-    {initDist, -initDist, 0.0f},      // 7
-    {0.0f, -initDist, 0.0f},          // 8
-    {-initDist, -2 * initDist, 0.0f}, // 9
-    {0.0f, -2 * initDist, 0.0f},      // 10
-    {initDist, -2 * initDist, 0.0f},  // 11
-    {0.0f, 0.0f, 0.0f},               // ----12
-    {0.0f, 0.0f, 0.0f}};              // ----13
+    {0.0f, -initDist, 0.0f},          // 1
+    {-initDist, -initDist, 0.0f},     // 2
+    {-initDist, 0.0f, 0.0f},          // 3
+    {-initDist, initDist, 0.0f},      // 4
+    {0.0f, initDist, 0.0f},           // 5
+    {initDist, initDist, 0.0f},       // 6
+    {initDist, 0.0f, 0.0f},           // 7
+    {initDist, -initDist, 0.0f},      // 8
+    {doubInitDist, initDist, 0.0f},   // 9
+    {doubInitDist, 0.0f, 0.0f},       // 10
+    {doubInitDist, -initDist, 0.0f},  // 11
+    {initDist, -doubInitDist, 0.0f},  // 12
+    {0.0f, -doubInitDist, 0.0f},      // 13
+    {-initDist, -doubInitDist, 0.0f}, // 14
+    {-doubInitDist, -initDist, 0.0f}, // 15
+    {-doubInitDist, 0.0f, 0.0f},      // 16
+    {-doubInitDist, initDist, 0.0f},  // 17
+    {-initDist, -doubInitDist, 0.0f},      // 18
+    {0.0f, -doubInitDist, 0.0f},      // 19
+    {initDist, -doubInitDist, 0.0f},               // 20
+    {0.0f, 0.0f, 0.0f}
+    };        
 // 八边形编队方案
 // static const float_t initPositionRela0[15][STATE_DIM_rl] = {
 //     {0.0f, 0.0f, 0.0f},   // 0
@@ -154,6 +165,7 @@ void relaVarInit(relaVariable_t *relaVar, uint16_t neighborAddress)
     relaVar[neighborAddress].S[STATE_rlYaw] = 0;
     /*----------*/
     relaVar[neighborAddress].oldTimetick = xTaskGetTickCount();
+
     fullConnect = true;
     // DEBUG_PRINT("%f\n", relaVar[neighborAddress].S[STATE_rlX]);
 }

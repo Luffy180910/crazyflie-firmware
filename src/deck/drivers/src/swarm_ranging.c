@@ -642,7 +642,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     uint32_t followTick = 10000;   // 跟随时间10s
     uint32_t converAndFollowTick = convergeTick + followTick;
     uint32_t maintainTick = 5000;                                            // 每转一次需要的时间
-    uint32_t rotationNums_3Stage = 4;                                        // 第3阶段旋转次数
+    uint32_t rotationNums_3Stage = 8;                                        // 第3阶段旋转次数
     uint32_t rotationNums_4Stage = 5;                                        // 第4阶段旋转次数
     uint32_t rotationTick_3Stage = maintainTick * (rotationNums_3Stage + 1); // 旋转总时间
     uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage);     // 旋转总时间
@@ -655,15 +655,10 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     {
       stage = SECOND_STAGE; // 1阶段，[收敛时间，收敛+跟随时间 )，做跟随运动
     }
-    else if (tickInterval < converAndFollowTick + rotationTick_3Stage)
+    else if (tickInterval >= converAndFollowTick && tickInterval < converAndFollowTick + rotationTick_3Stage)
     {
       stage = (tickInterval - converAndFollowTick) / maintainTick; // 计算旋转次数
       stage = stage - 1;
-    }
-    else if (tickInterval >= converAndFollowTick + rotationTick_3Stage && tickInterval < converAndFollowTick + rotationTick_3Stage + rotationTick_4Stage)
-    {
-      stage = (tickInterval - converAndFollowTick - rotationTick_3Stage) / maintainTick;
-      stage = stageStartPoint_4 - stage;
     }
     else
     {

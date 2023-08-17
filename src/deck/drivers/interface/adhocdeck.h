@@ -10,6 +10,12 @@
 
 /* Function Switch */
 #define ENABLE_PHR_EXT_MODE
+#define ENABLE_RANGING
+//#define ENABLE_FLOODING
+//#define ENABLE_ROUTING
+// #define ENABLE_SNIFFER
+
+// #define ENABLE_RX_DBL_BUFF
 
 #define SPEED_OF_LIGHT 299702547
 #define MAX_TIMESTAMP 1099511627776  // 2**40
@@ -17,7 +23,7 @@
 #define RX_ANT_DLY 16385
 
 #define FRAME_LEN_STD 127
-#define FRAME_LEN_EXT 1023
+#define FRAME_LEN_EXT 256 //TODO: this value should be furthe optimaized, the original value is 1023
 #ifdef ENABLE_PHR_EXT_MODE
 #define FRAME_LEN_MAX FRAME_LEN_EXT
 #else
@@ -70,21 +76,31 @@ typedef enum {
   RANGING = 0,
   FLOODING = 1,
   DATA = 2,
+  SNIFFER = 3,
   MESSAGE_TYPE_COUNT, /* only used for counting message types. */
 } MESSAGE_TYPE;
 
 typedef struct {
 //  mhr_802_15_4_t mac;    // mac header
+  uint16_t srcAddress;
+  uint16_t destAddress;
+  uint16_t seqNumber;
   struct {
     MESSAGE_TYPE type: 6;
     uint16_t length: 10;
-  };
+  } __attribute__((packed));
 } __attribute__((packed)) Packet_Header_t;
 
 typedef struct {
   Packet_Header_t header; // Packet header
   uint8_t payload[PAYLOAD_SIZE];
 } __attribute__((packed)) UWB_Packet_t;
+
+// only used in Sniffer
+typedef struct {
+  UWB_Packet_t uwbPacket;
+  dwTime_t rxTime;
+} __attribute__((packed)) UWB_Packet_With_Timestamp_t;
 
 typedef void (*UWBCallback)(void *);
 
