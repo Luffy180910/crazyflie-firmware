@@ -307,7 +307,7 @@ void relativeControlTask(void *arg)
     {-doubInitDist, -initDist, 0.0f},     // 17
     {-doubInitDist, 0.0f, 0.0f},          // 18
     {-doubInitDist, initDist, 0.0f},      // 19
-    {-doubInitDist, doubInitDist 0.0f},   // 20
+    {-doubInitDist, doubInitDist, 0.0f},  // 20
     {-initDist, -doubInitDist, 0.0f},     // 21
     {0.0f, -doubInitDist, 0.0f},          // 22
     {initDist, -doubInitDist, 0.0f},      // 23
