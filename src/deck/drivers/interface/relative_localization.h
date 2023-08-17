@@ -26,13 +26,14 @@ typedef struct
 {
   float S[STATE_DIM_rl];
   float P[STATE_DIM_rl][STATE_DIM_rl];
+  float height;
   uint32_t oldTimetick;
   bool receiveFlag;
 } relaVariable_t;
 
 /*--用于初始位置设定--*/
 static uint8_t CONTROL_MODE = 1;
-const static uint8_t ARRAY_LENGTH=15;
+const static uint8_t ARRAY_LENGTH = 15;
 // static  float_t TARGETLIST0[ARRAY_LENGTH][STATE_DIM_rl] = {
 //     {0.0f, 0.0f, 0.0f},   // 0
 //     {-1.5f, -1.5f, 0.0f}, // 1
@@ -57,13 +58,12 @@ const static uint8_t ARRAY_LENGTH=15;
 //     {-0.9f, -1.8f, 0.0f}, // 8
 //     {0.0f, 0.0f, 0.0f},   // 9
 //     {0.0f, 0.0f, 0.0f}};  // 10
-void copyTargetList(float_t *dest,float_t *src);
+void copyTargetList(float_t *dest, float_t *src);
 /*--用于初始位置设定--*/
-
 
 void relativeLocoInit(void);
 void relativeLocoTask(void *arg);
 void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, float vyj, float rj, float hj, uint16_t dij, float dt);
-bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest);
+bool relativeInfoRead(float *relaVarParam, float *neighbor_height, currentNeighborAddressInfo_t *dest);
 void relaVarInit(relaVariable_t *relaVar, uint16_t neighborAddress); // // Initialize EKF for relative localization
 #endif

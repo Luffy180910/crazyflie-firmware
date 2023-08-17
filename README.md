@@ -16,4 +16,4 @@
     ![image](https://user-images.githubusercontent.com/126245721/226830006-ef31ba7c-3a65-4f37-a955-1fd2e6c4d3b0.png)
 *******
 
-* 将编号为1的无人机    设置keepflying=1,其他与之进行通信的无人机就全部飞起来了（执行relative_control.c中的飞控逻辑）![img_v2_38e0179a-12ab-480f-a495-8e90674125fg](https://user-images.githubusercontent.com/126245721/226830209-21f08524-4961-4c9a-bba7-41fef374c346.jpg)
+* 将编号为0的无人机    设置keepflying=1,其他与之进行通信的无人机就全部飞起来了（执行relative_control.c中的飞控逻辑）![img_v2_38e0179a-12ab-480f-a495-8e90674125fg](https://user-images.githubusercontent.com/126245721/226830209-21f08524-4961-4c9a-bba7-41fef374c346.jpg)

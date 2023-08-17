@@ -208,6 +208,7 @@ void relativeLocoTask(void *arg)
                     uint32_t osTick = xTaskGetTickCount();
                     float dtEKF = (float)(osTick - relaVar[neighborAddress].oldTimetick) / configTICK_RATE_HZ;
                     relaVar[neighborAddress].oldTimetick = osTick;
+                    relaVar[neighborAddress].height = hj;
                     relativeEKF(neighborAddress, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
                 }
                 // DEBUG_PRINT("addr:%d,X:%f,Y:%f",neighborAddress,relaVar[neighborAddress].S[STATE_rlX],relaVar[neighborAddress].S[STATE_rlY]);
@@ -304,7 +305,7 @@ void relativeEKF(int n, float vxi, float vyi, float ri, float hi, float vxj, flo
     // DEBUG_PRINT("dis:%d\n", dij);
 }
 
-bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)
+bool relativeInfoRead(float *relaVarParam, float *neighbor_height, currentNeighborAddressInfo_t *dest)
 {
     if (fullConnect)
     {
@@ -314,6 +315,7 @@ bool relativeInfoRead(float *relaVarParam, currentNeighborAddressInfo_t *dest)
             *(relaVarParam + neighborAddress * STATE_DIM_rl + 0) = relaVar[neighborAddress].S[STATE_rlX];
             *(relaVarParam + neighborAddress * STATE_DIM_rl + 1) = relaVar[neighborAddress].S[STATE_rlY];
             *(relaVarParam + neighborAddress * STATE_DIM_rl + 2) = relaVar[neighborAddress].S[STATE_rlYaw];
+            *(neighbor_height + neighborAddress) = relaVar[neighborAddress].height;
         }
         memcpy(dest->address, currentNeighborAddressInfo.address, sizeof(currentNeighborAddressInfo.address));
         dest->size = currentNeighborAddressInfo.size;
