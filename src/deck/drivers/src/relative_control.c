@@ -308,9 +308,9 @@ void relativeControlTask(void *arg)
     {-doubInitDist, 0.0f, 0.0f},          // 18
     {-doubInitDist, initDist, 0.0f},      // 19
     {-doubInitDist, doubInitDist, 0.0f},  // 20
-    {-initDist, -doubInitDist, 0.0f},     // 21
-    {0.0f, -doubInitDist, 0.0f},          // 22
-    {initDist, -doubInitDist, 0.0f},      // 23
+    {-initDist, doubInitDist, 0.0f},     // 21
+    {0.0f, doubInitDist, 0.0f},          // 22
+    {initDist, doubInitDist, 0.0f},      // 23
     {doubInitDist, doubInitDist, 0.0f}};  // 24
   uint8_t SQURE3_3_NUM = 9;             // 3阶段转圈的无人机数量+1（0号无人机）
   uint8_t SQURE3_4_NUM = 11;
