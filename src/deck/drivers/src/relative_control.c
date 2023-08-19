@@ -401,7 +401,7 @@ void relativeControlTask(void *arg)
           {
             take_off(set_height);
           }
-          setMyTakeoff(true);
+          // setMyTakeoff(true);
         }
         if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
         {

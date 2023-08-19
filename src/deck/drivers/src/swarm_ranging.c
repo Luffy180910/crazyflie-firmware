@@ -108,7 +108,6 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   neighborStateInfo.gyroZ[neighborAddress] = rangingMessageHeader->gyroZ;
   neighborStateInfo.positionZ[neighborAddress] = rangingMessageHeader->positionZ;
   neighborStateInfo.refresh[neighborAddress] = true;
-  neighborStateInfo.isAlreadyTakeoff[neighborAddress] = rangingMessageHeader->isAlreadyTakeoff;
   if (neighborAddress == leaderStateInfo.address)
   { /*无人机的keep_flying都是由0号无人机来设置的*/
     leaderStateInfo.keepFlying = rangingMessageHeader->keep_flying;
@@ -642,7 +641,6 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
                               &rangingMessage->header.gyroZ,
                               &rangingMessage->header.positionZ);
   rangingMessage->header.keep_flying = leaderStateInfo.keepFlying;
-  rangingMessage->header.isAlreadyTakeoff = MYisAlreadyTakeoff;
   // 如果是leader则进行阶段控制
   stage = ZERO_STAGE;
   if (MY_UWB_ADDRESS == leaderStateInfo.address && leaderStateInfo.keepFlying)

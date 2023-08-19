@@ -52,7 +52,7 @@ typedef struct
   uint16_t positionZ;     // 2 byte cm/s
   bool keep_flying;       // 无人机的飞行状态
   int8_t stage;           // 飞行阶段
-  bool isAlreadyTakeoff;  // 是否起飞
+  // bool isAlreadyTakeoff;  // 是否起飞
   /*--1添加--*/
   uint16_t msgLength;                               // 2 byte
   uint16_t filter;                                  // 16 bits bloom filter
