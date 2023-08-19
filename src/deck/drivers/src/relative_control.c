@@ -369,7 +369,8 @@ void relativeControlTask(void *arg)
   idFront = logGetVarId("range", "front");
   idBack = logGetVarId("range", "back");
   idMultiranger = paramGetVarId("deck", "bcMultiranger");
-  uint8_t multirangerInit = paramGetUint(idMultiranger);
+  // uint8_t multirangerInit = paramGetUint(idMultiranger);
+  uint8_t multirangerInit = false;
   DEBUG_PRINT("multirangerInit is %d\n", multirangerInit);
   while (1)
   {
