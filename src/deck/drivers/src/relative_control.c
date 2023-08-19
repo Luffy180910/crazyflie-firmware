@@ -463,7 +463,7 @@ void relativeControlTask(void *arg)
             {
               targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
               // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift) % (25 - 1) + 1; // 目标地址索引
+              index = (MY_UWB_ADDRESS + targetShift) % (25) + 1; // 目标地址索引
               if(index < 9) index += 9;
             }
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
