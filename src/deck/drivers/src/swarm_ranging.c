@@ -518,7 +518,9 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
     {
       if (rangingMessage->bodyUnits[i].address == getUWBAddress())
       {
-        neighborRf = rangingMessage->bodyUnits[i].timestamp;
+        // neighborRf = rangingMessage->bodyUnits[i].timestamp;
+        neighborRf.timestamp = rangingMessage->bodyUnits[i].timestamp;
+        neighborRf.seqNumber = rangingMessage->bodyUnits[i].seqNumber;
         break;
       }
     }
@@ -603,11 +605,12 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     }
     if (table->state == RECEIVED)
     {
+      rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->Re.timestamp;
+      rangingMessage->bodyUnits[bodyUnitNumber].seqNumber = table->Re.seqNumber;
       rangingMessage->bodyUnits[bodyUnitNumber].address = table->neighborAddress;
       /* It is possible that Re is not the newest timestamp, because the newest may be in rxQueue
        * waiting to be handled.
        */
-      rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->Re; // 为什么是re???
       bodyUnitNumber++;
       table->state = TRANSMITTED;
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16); // 应该是用来识别地址的吧
@@ -645,9 +648,9 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
     uint32_t rotationNums_3Stage = 8;                                        // 第3阶段旋转次数
     uint32_t rotationNums_4Stage = 5;                                        // 第4阶段旋转次数
     uint32_t rotationTick_3Stage = maintainTick * (rotationNums_3Stage + 1); // 旋转总时间
-    uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage + 1);   
+    uint32_t rotationTick_4Stage = maintainTick * (rotationNums_4Stage + 1);
 
-    int8_t stageStartPoint_4 = 64;                                           // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
+    int8_t stageStartPoint_4 = 64; // 第4阶段起始stage值，因为阶段的区分靠的是stage的值域,(-30,30)为第三阶段
     if (tickInterval < convergeTick)
     {
       stage = FIRST_STAGE; // 0阶段，[0，收敛时间 )，做随机运动

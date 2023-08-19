@@ -22,12 +22,21 @@ typedef struct
   uint16_t seqNumber;                        // 2 byte
 } __attribute__((packed)) Timestamp_Tuple_t; // 10 byte
 
-/* Body Unit */
-typedef struct
-{
-  uint16_t address;                    // 2 byte
-  Timestamp_Tuple_t timestamp;         // 10 byte
-} __attribute__((packed)) Body_Unit_t; // 12 byte
+// /* Body Unit */
+// typedef struct
+// {
+//   uint16_t address;                    // 2 byte
+//   Timestamp_Tuple_t timestamp;         // 10 byte
+// } __attribute__((packed)) Body_Unit_t; // 12 byte
+
+typedef union{
+  struct {
+    uint8_t rawtime[5];//低5位字节
+    uint8_t address; //最高1位字节
+    uint16_t seqNumber; //最高2-3位字节
+  }__attribute__((packed));
+  dwTime_t timestamp; // 8 byte, 后5字节有用，高3字节未使用
+} Body_Unit_t;
 
 /* Ranging Message Header*/
 typedef struct
