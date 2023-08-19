@@ -52,7 +52,7 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
   return candidate;
 }
 
-void rangingTableInit(Ranging_Table_t *rangingTable, address_t address)
+void rangingTableInit(Ranging_Table_t *rangingTable, address_t address,uint16_t TX_PERIOD_IN_MS)
 {
   memset(rangingTable, 0, sizeof(Ranging_Table_t));
   rangingTable->neighborAddress = address;

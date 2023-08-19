@@ -440,7 +440,7 @@ void relativeControlTask(void *arg)
           else
           { int8_t index = MY_UWB_ADDRESS;
             if( MY_UWB_ADDRESS > 8 )
-            int8_t index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
+              index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);

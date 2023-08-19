@@ -7,7 +7,7 @@
 #include "system.h"
 #include "time.h"
 #include "math.h"
-
+#include "param.h"
 #include "autoconf.h"
 #include "debug.h"
 #include "log.h"
@@ -17,7 +17,10 @@
 #include "swarm_ranging.h"
 #include "estimator_kalman.h"
 
+
 static uint16_t MY_UWB_ADDRESS;
+int16_t jitter = 0;
+uint16_t TX_PERIOD_IN_MS = 20;
 /*用于计算丢包率*/
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
@@ -39,7 +42,7 @@ static uint32_t last_swapPeriod_Time;                                           
 static uint32_t last_swapPeriod_period;                                         // 上一次变化的周期值
 static tx_rv_interval_history_t tx_rv_interval_history[RANGING_TABLE_SIZE + 1]; //  两次的漂移差
 static uint8_t tx_rv_interval[RANGING_TABLE_SIZE + 1] = {0};                    // 两次漂移时间差
-static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS;                           // 发送数据包周期
+// static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS;                           // 发送数据包周期
 
 static SemaphoreHandle_t rangingTableSetMutex;            // 用于互斥访问rangingTableSet
 static median_data_t median_data[RANGING_TABLE_SIZE + 1]; // 存储测距的历史值
@@ -290,7 +293,14 @@ static void uwbRangingTxTask(void *parameters)
     getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
     uint16_t notget_packet_interval = 0;
 
-    nextTransportPeriod = 36 + rand() % 5;
+    if (jitter != 0)
+    {
+      vTaskDelay(TX_PERIOD_IN_MS + rand() % (jitter + 1));
+    }
+    else
+    {
+      vTaskDelay(TX_PERIOD_IN_MS);
+    }
 
     /*for (int i = 0; i < currentNeighborAddressInfo.size; i++)
     {
@@ -308,7 +318,6 @@ static void uwbRangingTxTask(void *parameters)
       }
     }*/
     // nextTransportPeriod = 20;
-    vTaskDelay(nextTransportPeriod);
   }
 }
 
@@ -484,7 +493,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       return;
     }
     Ranging_Table_t table;
-    rangingTableInit(&table, neighborAddress);
+    rangingTableInit(&table, neighborAddress,TX_PERIOD_IN_MS+jitter/2);
     /*--10添加--*/
     xSemaphoreTake(rangingTableSetMutex, portMAX_DELAY);
     neighborIndex = rangingTableSetInsert(&rangingTableSet, &table);
@@ -744,6 +753,10 @@ LOG_ADD(LOG_UINT16, interval3, rv_data_interval + 3)
 LOG_ADD(LOG_UINT16, interval4, rv_data_interval + 4)
 LOG_ADD(LOG_UINT16, interval5, rv_data_interval + 5)
 LOG_ADD(LOG_UINT16, interval6, rv_data_interval + 6)
-LOG_ADD(LOG_UINT8, period, &nextTransportPeriod)
 LOG_ADD(LOG_UINT8, seq, &rangingSeqNumber)
 LOG_GROUP_STOP(Ranging)
+
+PARAM_GROUP_START(Statistic)
+PARAM_ADD(PARAM_INT16, jitter, &jitter)
+PARAM_ADD(PARAM_UINT16, period, &TX_PERIOD_IN_MS)
+PARAM_GROUP_STOP(Statistic)
