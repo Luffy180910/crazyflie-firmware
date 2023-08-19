@@ -19,8 +19,8 @@
 
 
 static uint16_t MY_UWB_ADDRESS;
-int16_t jitter = 0;
-uint16_t TX_PERIOD_IN_MS = 20;
+int16_t jitter = 10;
+uint16_t TX_PERIOD_IN_MS = 55;
 /*用于计算丢包率*/
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
