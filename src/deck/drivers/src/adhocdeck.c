@@ -76,6 +76,8 @@ extern uint32_t tx_rx[RX_TX_MAX_NUM];
 extern uint16_t tx_rx_index;
 extern dwTime_t lastTxTimeStamp;
 extern int16_t startStatistic;
+uint64_t diff=0;
+bool refresh = false;
 /*-----------------------------------------------*/
 
 static void txCallback()
@@ -112,15 +114,8 @@ static void rxCallback(dwt_cb_data_t *cbData)
   dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
 
   /*-------------------------------------------------*/
-  if (startStatistic == 1 && tx_rx_index < RX_TX_MAX_NUM)
-  {
-    uint32_t diff = rxTime.full - lastTxTimeStamp.full;
-    if (diff > 0 && diff < 0x2FFFFFF)
-    {
-      tx_rx[tx_rx_index] = diff;
-      tx_rx_index++;
-    }
-  }
+    diff = rxTime.full - lastTxTimeStamp.full;
+    refresh = true;
   /*-------------------------------------------------*/
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
