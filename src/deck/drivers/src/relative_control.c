@@ -440,7 +440,7 @@ void relativeControlTask(void *arg)
           else
           { int8_t index = MY_UWB_ADDRESS;
             if( MY_UWB_ADDRESS > 8 )
-              index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
+            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
@@ -465,7 +465,7 @@ void relativeControlTask(void *arg)
             {
               targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
               // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift+1) %25; // 目标地址索引
+              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
               if(index < 9) index += 9;
             }
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
@@ -495,37 +495,48 @@ void relativeControlTask(void *arg)
       }
       else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
       {
-        // DEBUG_PRINT("--2--\n");
         if (MY_UWB_ADDRESS == 0)
-        {
-        }
-        else
-        {
-          DEBUG_PRINT("--2--\n");
-        }
+          {
+          //  float_t randomVel = 0.3;
+          //  flyRandomIn1meter(randomVel, set_height);
+          }
+          else
+          { int8_t index = MY_UWB_ADDRESS;
+            if( MY_UWB_ADDRESS > 8 )
+            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
+            DEBUG_PRINT("3:%d\n", index);
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+          //  formation0asCenter(targetX, targetY, set_height);
+          }
       }
       else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
       {
-        // DEBUG_PRINT("--3--\n");
-        if (MY_UWB_ADDRESS == 0)
-        {
-        }
-        else
-        {
-          int8_t index = MY_UWB_ADDRESS;
-          if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
+       if (MY_UWB_ADDRESS == 0)
           {
-            targetShift = leaderStage;
-            // 使得targetList在1~UAV_NUM之间偏移
-            index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+           
           }
           else
           {
-            index = MY_UWB_ADDRESS; // 第二阶段，不做飞行的无人机，直接设置保持初始预定位置即可
+            int8_t index = MY_UWB_ADDRESS;
+            if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
+            {
+              targetShift = leaderStage;
+              // 使得targetList在1~UAV_NUM之间偏移
+              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+            }
+            else
+            {
+              targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
+              // 使得targetList在1~UAV_NUM之间偏移
+              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
+              if(index < 9) index += 9;
+              DEBUG_PRINT("3:%d\n", index);
+            }
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+           // formation0asCenter(targetX, targetY, set_height);
           }
-          currentPosition_3Stage = index;
-          DEBUG_PRINT("3:%d\n", index);
-        }
       }
       else if (leaderStage > 30 && leaderStage < 90)
       {
