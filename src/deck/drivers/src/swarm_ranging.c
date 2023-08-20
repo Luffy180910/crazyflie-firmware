@@ -383,7 +383,7 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
   /*--7添加--*/
   /*这里暂时采用和李树帅twr中一样的形式*/
   // DEBUG_PRINT("%d\n",calcDist);
-  if (calcDist > 0 && calcDist < 1000)
+  if (calcDist > 0 && calcDist < 400)
   {
     return calcDist;
 

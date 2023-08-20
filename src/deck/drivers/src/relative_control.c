@@ -426,8 +426,8 @@ void relativeControlTask(void *arg)
           {
             flyRandomIn1meter(randomVel, set_height);
           }
-          targetX = relaVarInCtrl[0][STATE_rlX];
-          targetY = relaVarInCtrl[0][STATE_rlY];
+        //  targetX = relaVarInCtrl[0][STATE_rlX];
+        // targetY = relaVarInCtrl[0][STATE_rlY];
         }
         else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
         {
@@ -504,7 +504,7 @@ void relativeControlTask(void *arg)
           { int8_t index = MY_UWB_ADDRESS;
             if( MY_UWB_ADDRESS > 8 )
             index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
-            DEBUG_PRINT("3:%d\n", index);
+            DEBUG_PRINT("2:%d\n", index);
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
           //  formation0asCenter(targetX, targetY, set_height);
