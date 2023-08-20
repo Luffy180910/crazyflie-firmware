@@ -362,10 +362,10 @@ LOG_ADD(LOG_FLOAT, rlY5, &relaVar[5].S[STATE_rlY])
 LOG_ADD(LOG_FLOAT, rlYaw5, &relaVar[5].S[STATE_rlYaw])
 LOG_GROUP_STOP(relative_pos)
 
-PARAM_GROUP_START(arelative_pos)
-PARAM_ADD(PARAM_FLOAT, noiFlow, &Qv) // make sure the name is not too long
-PARAM_ADD(PARAM_FLOAT, noiGyroZ, &Qr)
-PARAM_ADD(PARAM_FLOAT, noiUWB, &Ruwb)
-PARAM_ADD(PARAM_FLOAT, Ppos, &InitCovPos)
-PARAM_ADD(PARAM_FLOAT, Pyaw, &InitCovYaw)
-PARAM_GROUP_STOP(arelative_pos)
+// PARAM_GROUP_START(arelative_pos)
+// PARAM_ADD(PARAM_FLOAT, noiFlow, &Qv) // make sure the name is not too long
+// PARAM_ADD(PARAM_FLOAT, noiGyroZ, &Qr)
+// PARAM_ADD(PARAM_FLOAT, noiUWB, &Ruwb)
+// PARAM_ADD(PARAM_FLOAT, Ppos, &InitCovPos)
+// PARAM_ADD(PARAM_FLOAT, Pyaw, &InitCovYaw)
+// PARAM_GROUP_STOP(arelative_pos)

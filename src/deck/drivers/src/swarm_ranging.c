@@ -19,7 +19,7 @@
 
 
 static uint16_t MY_UWB_ADDRESS;
-int16_t jitter = 10;
+int16_t TX_jitter = 10;
 uint16_t TX_PERIOD_IN_MS = 55;
 /*用于计算丢包率*/
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
@@ -292,9 +292,9 @@ static void uwbRangingTxTask(void *parameters)
     getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
     uint16_t notget_packet_interval = 0;
 
-    if (jitter != 0)
+    if (TX_jitter != 0)
     {
-      vTaskDelay(TX_PERIOD_IN_MS + rand() % (jitter + 1));
+      vTaskDelay(TX_PERIOD_IN_MS + rand() % (TX_jitter + 1));
     }
     else
     {
@@ -492,7 +492,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
       return;
     }
     Ranging_Table_t table;
-    rangingTableInit(&table, neighborAddress,TX_PERIOD_IN_MS+jitter/2);
+    rangingTableInit(&table, neighborAddress,TX_PERIOD_IN_MS+TX_jitter/2);
     /*--10添加--*/
     xSemaphoreTake(rangingTableSetMutex, portMAX_DELAY);
     neighborIndex = rangingTableSetInsert(&rangingTableSet, &table);
@@ -698,63 +698,63 @@ LOG_ADD(LOG_INT16, distTo8, distanceTowards + 8)
 
 // LOG_ADD(LOG_UINT8, t0index, &test_0_index)
 // LOG_ADD(LOG_UINT8, t0inter, &test_0_interval)
-LOG_ADD(LOG_UINT32, lossNum0, LOSS_COUNT + 0) // 丢包数量
-LOG_ADD(LOG_UINT32, lossNum1, LOSS_COUNT + 1)
-LOG_ADD(LOG_UINT32, lossNum2, LOSS_COUNT + 2)
-LOG_ADD(LOG_UINT32, lossNum3, LOSS_COUNT + 3)
-LOG_ADD(LOG_UINT32, lossNum4, LOSS_COUNT + 4)
-LOG_ADD(LOG_UINT32, lossNum5, LOSS_COUNT + 5)
-LOG_ADD(LOG_UINT32, lossNum6, LOSS_COUNT + 6)
-LOG_ADD(LOG_UINT32, lossNum7, LOSS_COUNT + 7)
+// LOG_ADD(LOG_UINT32, lossNum0, LOSS_COUNT + 0) // 丢包数量
+// LOG_ADD(LOG_UINT32, lossNum1, LOSS_COUNT + 1)
+// LOG_ADD(LOG_UINT32, lossNum2, LOSS_COUNT + 2)
+// LOG_ADD(LOG_UINT32, lossNum3, LOSS_COUNT + 3)
+// LOG_ADD(LOG_UINT32, lossNum4, LOSS_COUNT + 4)
+// LOG_ADD(LOG_UINT32, lossNum5, LOSS_COUNT + 5)
+// LOG_ADD(LOG_UINT32, lossNum6, LOSS_COUNT + 6)
+// LOG_ADD(LOG_UINT32, lossNum7, LOSS_COUNT + 7)
 
-LOG_ADD(LOG_UINT32, tick, &tickInterval) // 记录起飞时间
+// LOG_ADD(LOG_UINT32, tick, &tickInterval) // 记录起飞时间
 LOG_ADD(LOG_INT8, stage, &stage)
 
-LOG_ADD(LOG_UINT32, recvNum0, RECEIVE_COUNT + 0) // 总包数
-LOG_ADD(LOG_UINT32, recvNum1, RECEIVE_COUNT + 1)
-LOG_ADD(LOG_UINT32, recvNum2, RECEIVE_COUNT + 2)
-LOG_ADD(LOG_UINT32, recvNum3, RECEIVE_COUNT + 3)
-LOG_ADD(LOG_UINT32, recvNum4, RECEIVE_COUNT + 4)
-LOG_ADD(LOG_UINT32, recvNum5, RECEIVE_COUNT + 5)
-LOG_ADD(LOG_UINT32, recvNum6, RECEIVE_COUNT + 6)
-LOG_ADD(LOG_UINT32, recvNum7, RECEIVE_COUNT + 7)
+// LOG_ADD(LOG_UINT32, recvNum0, RECEIVE_COUNT + 0) // 总包数
+// LOG_ADD(LOG_UINT32, recvNum1, RECEIVE_COUNT + 1)
+// LOG_ADD(LOG_UINT32, recvNum2, RECEIVE_COUNT + 2)
+// LOG_ADD(LOG_UINT32, recvNum3, RECEIVE_COUNT + 3)
+// LOG_ADD(LOG_UINT32, recvNum4, RECEIVE_COUNT + 4)
+// LOG_ADD(LOG_UINT32, recvNum5, RECEIVE_COUNT + 5)
+// LOG_ADD(LOG_UINT32, recvNum6, RECEIVE_COUNT + 6)
+// LOG_ADD(LOG_UINT32, recvNum7, RECEIVE_COUNT + 7)
 
-LOG_ADD(LOG_UINT32, distNum0, DIST_COUNT + 0) // 测距成功次数
-LOG_ADD(LOG_UINT32, distNum1, DIST_COUNT + 1)
-LOG_ADD(LOG_UINT32, distNum2, DIST_COUNT + 2)
-LOG_ADD(LOG_UINT32, distNum3, DIST_COUNT + 3)
-LOG_ADD(LOG_UINT32, distNum4, DIST_COUNT + 4)
-LOG_ADD(LOG_UINT32, distNum5, DIST_COUNT + 5)
-LOG_ADD(LOG_UINT32, distNum6, DIST_COUNT + 6)
-LOG_ADD(LOG_UINT32, distNum7, DIST_COUNT + 7)
+// LOG_ADD(LOG_UINT32, distNum0, DIST_COUNT + 0) // 测距成功次数
+// LOG_ADD(LOG_UINT32, distNum1, DIST_COUNT + 1)
+// LOG_ADD(LOG_UINT32, distNum2, DIST_COUNT + 2)
+// LOG_ADD(LOG_UINT32, distNum3, DIST_COUNT + 3)
+// LOG_ADD(LOG_UINT32, distNum4, DIST_COUNT + 4)
+// LOG_ADD(LOG_UINT32, distNum5, DIST_COUNT + 5)
+// LOG_ADD(LOG_UINT32, distNum6, DIST_COUNT + 6)
+// LOG_ADD(LOG_UINT32, distNum7, DIST_COUNT + 7)
 
-LOG_ADD(LOG_UINT8, index0, rv_data_interval_index + 0) // 接收到0号无人机数据包，rv_data_interval_index[0]++
-LOG_ADD(LOG_UINT8, index1, rv_data_interval_index + 1)
-LOG_ADD(LOG_UINT8, index2, rv_data_interval_index + 2)
-LOG_ADD(LOG_UINT8, index3, rv_data_interval_index + 3)
-LOG_ADD(LOG_UINT8, index4, rv_data_interval_index + 4)
-LOG_ADD(LOG_UINT8, index5, rv_data_interval_index + 5)
-LOG_ADD(LOG_UINT8, index6, rv_data_interval_index + 6)
+// LOG_ADD(LOG_UINT8, index0, rv_data_interval_index + 0) // 接收到0号无人机数据包，rv_data_interval_index[0]++
+// LOG_ADD(LOG_UINT8, index1, rv_data_interval_index + 1)
+// LOG_ADD(LOG_UINT8, index2, rv_data_interval_index + 2)
+// LOG_ADD(LOG_UINT8, index3, rv_data_interval_index + 3)
+// LOG_ADD(LOG_UINT8, index4, rv_data_interval_index + 4)
+// LOG_ADD(LOG_UINT8, index5, rv_data_interval_index + 5)
+// LOG_ADD(LOG_UINT8, index6, rv_data_interval_index + 6)
 
-LOG_ADD(LOG_UINT8, diff0, tx_rv_interval + 0) // 与0号无人机的漂移差
-LOG_ADD(LOG_UINT8, diff1, tx_rv_interval + 1) //
-LOG_ADD(LOG_UINT8, diff2, tx_rv_interval + 2) //
-LOG_ADD(LOG_UINT8, diff3, tx_rv_interval + 3) //
-LOG_ADD(LOG_UINT8, diff4, tx_rv_interval + 4) //
-LOG_ADD(LOG_UINT8, diff5, tx_rv_interval + 5) //
-LOG_ADD(LOG_UINT8, diff6, tx_rv_interval + 6) //
+// LOG_ADD(LOG_UINT8, diff0, tx_rv_interval + 0) // 与0号无人机的漂移差
+// LOG_ADD(LOG_UINT8, diff1, tx_rv_interval + 1) //
+// LOG_ADD(LOG_UINT8, diff2, tx_rv_interval + 2) //
+// LOG_ADD(LOG_UINT8, diff3, tx_rv_interval + 3) //
+// LOG_ADD(LOG_UINT8, diff4, tx_rv_interval + 4) //
+// LOG_ADD(LOG_UINT8, diff5, tx_rv_interval + 5) //
+// LOG_ADD(LOG_UINT8, diff6, tx_rv_interval + 6) //
 
-LOG_ADD(LOG_UINT16, interval0, rv_data_interval + 0) // 连续两次接收到0号无人机的时间差
-LOG_ADD(LOG_UINT16, interval1, rv_data_interval + 1)
-LOG_ADD(LOG_UINT16, interval2, rv_data_interval + 2)
-LOG_ADD(LOG_UINT16, interval3, rv_data_interval + 3)
-LOG_ADD(LOG_UINT16, interval4, rv_data_interval + 4)
-LOG_ADD(LOG_UINT16, interval5, rv_data_interval + 5)
-LOG_ADD(LOG_UINT16, interval6, rv_data_interval + 6)
-LOG_ADD(LOG_UINT8, seq, &rangingSeqNumber)
+// LOG_ADD(LOG_UINT16, interval0, rv_data_interval + 0) // 连续两次接收到0号无人机的时间差
+// LOG_ADD(LOG_UINT16, interval1, rv_data_interval + 1)
+// LOG_ADD(LOG_UINT16, interval2, rv_data_interval + 2)
+// LOG_ADD(LOG_UINT16, interval3, rv_data_interval + 3)
+// LOG_ADD(LOG_UINT16, interval4, rv_data_interval + 4)
+// LOG_ADD(LOG_UINT16, interval5, rv_data_interval + 5)
+// LOG_ADD(LOG_UINT16, interval6, rv_data_interval + 6)
+// LOG_ADD(LOG_UINT8, seq, &rangingSeqNumber)
 LOG_GROUP_STOP(Ranging)
 
 PARAM_GROUP_START(Statistic)
-PARAM_ADD(PARAM_INT16, jitter, &jitter)
+PARAM_ADD(PARAM_INT16, jitter, &TX_jitter)
 PARAM_ADD(PARAM_UINT16, period, &TX_PERIOD_IN_MS)
 PARAM_GROUP_STOP(Statistic)

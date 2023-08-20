@@ -37,10 +37,10 @@ static const uint16_t radius = 300;
 #define MAX(a, b) ((a > b) ? a : b)
 #define MIN(a, b) ((a < b) ? a : b)
 
-static float relaCtrl_p = 2.0f;
+float relaCtrl_p = 2.0f;
 // static float relaCtrl_i = 0.0001f;
-static float relaCtrl_i = 0.01f;
-static float relaCtrl_d = 0.01f;
+float relaCtrl_i = 0.01f;
+float relaCtrl_d = 0.01f;
 static const float up_down_delta = 0.002f;
 // static float NDI_k = 2.0f;
 
@@ -49,31 +49,31 @@ static void setHoverSetpoint(setpoint_t *setpoint, float vx, float vy, float z, 
   float velFront = 0;
   float velSide = 0;
   float factor = velMax / radius;
-  uint8_t multirangerInit = paramGetUint(idMultiranger);
-  if (multirangerInit)
-  {
-    uint16_t up = logGetUint(idUp);
-    uint16_t left = logGetUint(idLeft);
-    uint16_t right = logGetUint(idRight);
-    uint16_t front = logGetUint(idFront);
-    uint16_t back = logGetUint(idBack);
-    uint16_t left_o = radius - MIN(left, radius);
-    uint16_t right_o = radius - MIN(right, radius);
-    float l_comp = (-1) * left_o * factor;
-    float r_comp = right_o * factor;
-    velSide = r_comp + l_comp;
+  // uint8_t multirangerInit = paramGetUint(idMultiranger);
+  // if (multirangerInit)
+  // {
+  //   uint16_t up = logGetUint(idUp);
+  //   uint16_t left = logGetUint(idLeft);
+  //   uint16_t right = logGetUint(idRight);
+  //   uint16_t front = logGetUint(idFront);
+  //   uint16_t back = logGetUint(idBack);
+  //   uint16_t left_o = radius - MIN(left, radius);
+  //   uint16_t right_o = radius - MIN(right, radius);
+  //   float l_comp = (-1) * left_o * factor;
+  //   float r_comp = right_o * factor;
+  //   velSide = r_comp + l_comp;
 
-    uint16_t front_o = radius - MIN(front, radius);
-    uint16_t back_o = radius - MIN(back, radius);
-    float f_comp = (-1) * front_o * factor;
-    float b_comp = back_o * factor;
-    velFront = b_comp + f_comp;
+  //   uint16_t front_o = radius - MIN(front, radius);
+  //   uint16_t back_o = radius - MIN(back, radius);
+  //   float f_comp = (-1) * front_o * factor;
+  //   float b_comp = back_o * factor;
+  //   velFront = b_comp + f_comp;
 
-    if (up < radius)
-    {
-      set_height -= 0.002f;
-    }
-  }
+  //   if (up < radius)
+  //   {
+  //     set_height -= 0.002f;
+  //   }
+  // }
   setpoint->mode.z = modeAbs;
   setpoint->position.z = z;
   setpoint->mode.yaw = modeVelocity;
@@ -363,12 +363,12 @@ void relativeControlTask(void *arg)
 
   systemWaitStart();
   reset_estimators(); // 判断无人机数值是否收敛
-  idUp = logGetVarId("range", "up");
-  idLeft = logGetVarId("range", "left");
-  idRight = logGetVarId("range", "right");
-  idFront = logGetVarId("range", "front");
-  idBack = logGetVarId("range", "back");
-  idMultiranger = paramGetVarId("deck", "bcMultiranger");
+  // idUp = logGetVarId("range", "up");
+  // idLeft = logGetVarId("range", "left");
+  // idRight = logGetVarId("range", "right");
+  // idFront = logGetVarId("range", "front");
+  // idBack = logGetVarId("range", "back");
+  // idMultiranger = paramGetVarId("deck", "bcMultiranger");
   // uint8_t multirangerInit = paramGetUint(idMultiranger);
   uint8_t multirangerInit = false;
   DEBUG_PRINT("multirangerInit is %d\n", multirangerInit);
@@ -440,7 +440,7 @@ void relativeControlTask(void *arg)
           else
           { int8_t index = MY_UWB_ADDRESS;
             if( MY_UWB_ADDRESS > 8 )
-              index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
+            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
             formation0asCenter(targetX, targetY, set_height);
@@ -465,7 +465,7 @@ void relativeControlTask(void *arg)
             {
               targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
               // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift) % (25) + 1; // 目标地址索引
+              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
               if(index < 9) index += 9;
             }
             targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
@@ -495,37 +495,48 @@ void relativeControlTask(void *arg)
       }
       else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
       {
-        // DEBUG_PRINT("--2--\n");
         if (MY_UWB_ADDRESS == 0)
-        {
-        }
-        else
-        {
-          DEBUG_PRINT("--2--\n");
-        }
+          {
+          //  float_t randomVel = 0.3;
+          //  flyRandomIn1meter(randomVel, set_height);
+          }
+          else
+          { int8_t index = MY_UWB_ADDRESS;
+            if( MY_UWB_ADDRESS > 8 )
+            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
+            DEBUG_PRINT("3:%d\n", index);
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+          //  formation0asCenter(targetX, targetY, set_height);
+          }
       }
       else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
       {
-        // DEBUG_PRINT("--3--\n");
-        if (MY_UWB_ADDRESS == 0)
-        {
-        }
-        else
-        {
-          int8_t index = MY_UWB_ADDRESS;
-          if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
+       if (MY_UWB_ADDRESS == 0)
           {
-            targetShift = leaderStage;
-            // 使得targetList在1~UAV_NUM之间偏移
-            index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+           
           }
           else
           {
-            index = MY_UWB_ADDRESS; // 第二阶段，不做飞行的无人机，直接设置保持初始预定位置即可
+            int8_t index = MY_UWB_ADDRESS;
+            if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
+            {
+              targetShift = leaderStage;
+              // 使得targetList在1~UAV_NUM之间偏移
+              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+            }
+            else
+            {
+              targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
+              // 使得targetList在1~UAV_NUM之间偏移
+              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
+              if(index < 9) index += 9;
+              DEBUG_PRINT("3:%d\n", index);
+            }
+            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
+           // formation0asCenter(targetX, targetY, set_height);
           }
-          currentPosition_3Stage = index;
-          DEBUG_PRINT("3:%d\n", index);
-        }
       }
       else if (leaderStage > 30 && leaderStage < 90)
       {
