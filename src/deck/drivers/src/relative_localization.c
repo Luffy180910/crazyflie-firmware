@@ -86,9 +86,9 @@ static const float_t initPositionRela0[25][STATE_DIM_rl] = {
     {-doubInitDist, -initDist, 0.0f}, // 15
     {-doubInitDist, 0.0f, 0.0f},      // 16
     {-doubInitDist, initDist, 0.0f},  // 17
-    {-initDist, doubInitDist, 0.0f},      // 18
-    {0.0f, doubInitDist, 0.0f},      // 19
-    {initDist, doubInitDist, 0.0f},               // 20
+    {-initDist, doubInitDist, 0.0f},  // 18
+    {0.0f, doubInitDist, 0.0f},       // 19
+    {initDist, doubInitDist, 0.0f},   // 20
     {0.0f, 0.0f, 0.0f}
     };        
 // 八边形编队方案
