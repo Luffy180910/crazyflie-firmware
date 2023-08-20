@@ -119,6 +119,9 @@ static void rxCallback(dwt_cb_data_t *cbData)
   /*-------------------------------------------------*/
   UWB_Packet_t *packet = (UWB_Packet_t *)&rxBuffer;
   MESSAGE_TYPE msgType = packet->header.type;
+  /*------------------------------------------------*/
+  lastRxSeq = packet->header.seqNumber;
+  /*------------------------------------------------*/
 
   // DEBUG_PRINT("0x%llx:(%u)\n", rxTime.full, packet->header.seqNumber);
   if (msgType >= MESSAGE_TYPE_COUNT)
@@ -276,9 +279,9 @@ static void uwbTxTask(void *parameters)
       ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
 
 #ifdef ENABLE_RX_DBL_BUFF
-      uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
+      // uint8_t fstat = dwt_read8bitoffsetreg(FINT_STAT_ID, 0);
       uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
-      uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
+      // uint8_t statusDB = dwt_read8bitoffsetreg(RDB_STATUS_ID, 0);
       // DEBUG_PRINT("tx-DB: %02X\n", statusDB);
       if (status)
       {
@@ -298,8 +301,10 @@ static void uwbTxTask(void *parameters)
 #endif
 
       dwt_forcetrxoff();
+
       dwt_writetxdata(packetCache.header.length, (uint8_t *)&packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
+
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
       if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==

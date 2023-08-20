@@ -51,6 +51,7 @@ uint16_t rangingSuccCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] 
 uint16_t lossAndinvalidPacketCount[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 0}; // 收到邻居无效数据包总数
 
 uint32_t tx_rx[RX_TX_MAX_NUM] = {0};
+uint16_t rx_seq[RX_TX_MAX_NUM] = {0};
 uint16_t tx_rx_index = 0;
 dwTime_t lastTxTimeStamp = {0};
 extern uint64_t diff;
@@ -434,7 +435,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   /* generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   // rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
-  rangingMessage->header.msgLength = 32;
+  rangingMessage->header.msgLength = pklen;
   rangingMessage->header.msgSequence = curSeqNumber;
   rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
   float velocityX = logGetFloat(idVelocityX);
@@ -463,4 +464,5 @@ PARAM_GROUP_START(Statistic)
 PARAM_ADD(PARAM_INT16, jitter, &jitter)
 PARAM_ADD(PARAM_INT16, statistic, &startStatistic)
 PARAM_ADD(PARAM_UINT16, period, &TX_PERIOD_IN_MS)
+PARAM_ADD(PARAM_UINT16, pklen, &pklen)
 PARAM_GROUP_STOP(Statistic)
