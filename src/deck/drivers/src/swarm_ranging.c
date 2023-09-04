@@ -297,11 +297,17 @@ static void uwbRangingTxTask(void *parameters)
     // synchronization area begin
     if (MY_UWB_ADDRESS != 0)
     {
+      DEBUG_PRINT("I am not 0\n");
       TickType_t overTime_tick_count = (TX_PERIOD_IN_MS * configTICK_RATE_HZ) / 1000;
       xReturn = xSemaphoreTake(rangingTxTaskBinary, overTime_tick_count);
       if (pdTRUE == xReturn) 
       {
+        DEBUG_PRINT("Delay: %u\n", txPeriodDelay);
         vTaskDelay(txPeriodDelay);
+      }
+      else
+      {
+        DEBUG_PRINT("Delay: Overtime!\n");
       }
     }
 
@@ -326,6 +332,7 @@ static void uwbRangingTxTask(void *parameters)
 
     if (MY_UWB_ADDRESS == 0)
     {
+      DEBUG_PRINT("I am 0\n");
       vTaskDelay(TX_PERIOD_IN_MS);
     }
 
