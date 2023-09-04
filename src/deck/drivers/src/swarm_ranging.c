@@ -19,8 +19,8 @@
 
 
 static uint16_t MY_UWB_ADDRESS;
-int16_t TX_jitter = 10;
-uint16_t TX_PERIOD_IN_MS = 55;
+int16_t TX_jitter = 0;
+uint16_t TX_PERIOD_IN_MS = 60;
 /*用于计算丢包率*/
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
@@ -69,6 +69,11 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 /*--4添加--*/
 static leaderStateInfo_t leaderStateInfo;
 static neighborStateInfo_t neighborStateInfo; // 邻居的状态信息
+
+// Add by lcy
+static uint16_t txPeriodDelay = 0; // the tx send period delay
+static SemaphoreHandle_t rangingTxTaskBinary; // if it is open, then tx, Semaphore for synchronization
+
 void initNeighborStateInfoAndMedian_data()
 {
   for (int i = 0; i < RANGING_TABLE_SIZE + 1; i++)
@@ -282,21 +287,44 @@ static void uwbRangingTxTask(void *parameters)
   UWB_Packet_t txPacketCache;
   txPacketCache.header.type = RANGING;
   //  txPacketCache.header.mac = ? TODO init mac header
+
+  // Add by lcy
+  BaseType_t xReturn = pdPASS;
+
   while (true)
   {
+    // Add by lcy
+    // synchronization area begin
+    if (MY_UWB_ADDRESS != 0)
+    {
+      TickType_t overTime_tick_count = (TX_PERIOD_IN_MS * configTICK_RATE_HZ) / 1000;
+      xReturn = xSemaphoreTake(rangingTxTaskBinary, overTime_tick_count);
+      if (pdTRUE == xReturn) 
+      {
+        vTaskDelay(txPeriodDelay);
+      }
+    }
+
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
+
     uwbSendPacketBlock(&txPacketCache);
     /*--13添加--*/
     latest_txTime = xTaskGetTickCount();
     getCurrentNeighborAddressInfo_t(&currentNeighborAddressInfo);
     uint16_t notget_packet_interval = 0;
 
-    if (TX_jitter != 0)
-    {
-      vTaskDelay(TX_PERIOD_IN_MS + rand() % (TX_jitter + 1));
-    }
-    else
+    // Changed by lcy
+    // if (TX_jitter != 0)
+    // {
+    //   vTaskDelay(TX_PERIOD_IN_MS + rand() % (TX_jitter + 1));
+    // }
+    // else
+    // {
+    //   vTaskDelay(TX_PERIOD_IN_MS);
+    // }
+
+    if (MY_UWB_ADDRESS == 0)
     {
       vTaskDelay(TX_PERIOD_IN_MS);
     }
@@ -336,15 +364,29 @@ static void uwbRangingRxTask(void *parameters)
   }
 }
 
+// Add by lcy
+inline static void txPeriodDelayset()
+{
+  txPeriodDelay = MY_UWB_ADDRESS * 2;
+}
+
 void rangingInit()
 {
   MY_UWB_ADDRESS = getUWBAddress();
   DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
+
+  // Add by lcy
+  txPeriodDelayset();
+
   /*--12添加--*/
   initNeighborStateInfoAndMedian_data();
   initLeaderStateInfo();
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetMutex = xSemaphoreCreateMutex();
+
+  // Add by lcy
+  rangingTxTaskBinary = xSemaphoreCreateBinary(); // a binary semaphore 
+
   srand(MY_UWB_ADDRESS);
   /*--12添加--*/
   rangingTableSetInit(&rangingTableSet);
@@ -436,6 +478,12 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   Ranging_Message_t *rangingMessage = &rangingMessageWithTimestamp->rangingMessage;
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
   set_index_t neighborIndex = findInRangingTableSet(&rangingTableSet, neighborAddress);
+
+  // Add by lcy
+  if (neighborAddress == 0) 
+  {
+    xSemaphoreGive(rangingTxTaskBinary);
+  }
 
   /*这里用于测试数据丢包情况*/
   rv_data_interval[neighborAddress] = xTaskGetTickCount() - neighbor_latest_rvTime[neighborAddress];
