@@ -248,6 +248,13 @@ void rangingRxCallback(void *parameters)
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
   rxMessageWithTimestamp.rangingMessage = *rangingMessage;
 
+  // Add by lcy
+  uint16_t neighborAddress = rangingMessage->header.srcAddress;
+  if (neighborAddress == 0) 
+  {
+    xSemaphoreGive(rangingTxTaskBinary);
+  }
+
   xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
 }
 
@@ -297,17 +304,17 @@ static void uwbRangingTxTask(void *parameters)
     // synchronization area begin
     if (MY_UWB_ADDRESS != 0)
     {
-      DEBUG_PRINT("I am not 0\n");
+      // DEBUG_PRINT("I am not 0\n");
       TickType_t overTime_tick_count = (TX_PERIOD_IN_MS * configTICK_RATE_HZ) / 1000;
       xReturn = xSemaphoreTake(rangingTxTaskBinary, overTime_tick_count);
       if (pdTRUE == xReturn) 
       {
-        DEBUG_PRINT("Delay: %u\n", txPeriodDelay);
+        // DEBUG_PRINT("Delay: %u\n", txPeriodDelay);
         vTaskDelay(txPeriodDelay);
       }
       else
       {
-        DEBUG_PRINT("Delay: Overtime!\n");
+        // DEBUG_PRINT("Delay: Overtime!\n");
       }
     }
 
@@ -332,7 +339,7 @@ static void uwbRangingTxTask(void *parameters)
 
     if (MY_UWB_ADDRESS == 0)
     {
-      DEBUG_PRINT("I am 0\n");
+      // DEBUG_PRINT("I am 0\n");
       vTaskDelay(TX_PERIOD_IN_MS);
     }
 
@@ -485,12 +492,6 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   Ranging_Message_t *rangingMessage = &rangingMessageWithTimestamp->rangingMessage;
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
   set_index_t neighborIndex = findInRangingTableSet(&rangingTableSet, neighborAddress);
-
-  // Add by lcy
-  if (neighborAddress == 0) 
-  {
-    xSemaphoreGive(rangingTxTaskBinary);
-  }
 
   /*这里用于测试数据丢包情况*/
   rv_data_interval[neighborAddress] = xTaskGetTickCount() - neighbor_latest_rvTime[neighborAddress];
