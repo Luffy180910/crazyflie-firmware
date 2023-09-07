@@ -20,7 +20,7 @@
 
 static uint16_t MY_UWB_ADDRESS;
 int16_t TX_jitter = 0;
-uint16_t TX_PERIOD_IN_MS = 60;
+uint16_t TX_PERIOD_IN_MS = 100;
 /*用于计算丢包率*/
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
@@ -381,7 +381,7 @@ static void uwbRangingRxTask(void *parameters)
 // Add by lcy
 inline static void txPeriodDelayset()
 {
-  txPeriodDelay = MY_UWB_ADDRESS * 2;
+  txPeriodDelay = MY_UWB_ADDRESS * 4;
 }
 
 void rangingInit()
