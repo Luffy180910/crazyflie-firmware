@@ -54,6 +54,11 @@ typedef struct
   int8_t stage;           // 飞行阶段
   // bool isAlreadyTakeoff;  // 是否起飞
   /*--1添加--*/
+  /*--添加groundtruth--*/
+  float truthpositionX;
+  float truthpositionY;
+  float truthpositionZ;
+  /*--添加groundtruth--*/
   uint16_t msgLength;                               // 2 byte
   uint16_t filter;                                  // 16 bits bloom filter
 } __attribute__((packed)) Ranging_Message_Header_t; // 20 byte

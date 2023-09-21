@@ -57,6 +57,7 @@ static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int TfBufferIndex = 0;
 static uint16_t rangingSeqNumber = 1;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ; // 从日志获取速度
+static logVarId_t idtruthpositionX, idtruthpositionY, idtruthpositionZ;
 static float velocity;
 static bool MYisAlreadyTakeoff = false;
 static bool allIsTakeoff = false; // 判断是否所有的邻居无人机都起飞了
@@ -105,6 +106,17 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   neighborStateInfo.distanceTowards[neighborAddress] = distance;
   neighborStateInfo.velocityXInWorld[neighborAddress] = rangingMessageHeader->velocityXInWorld;
   neighborStateInfo.velocityYInWorld[neighborAddress] = rangingMessageHeader->velocityYInWorld;
+  neighborStateInfo.truthPositionX[neighborAddress] = rangingMessageHeader->truthpositionX;
+  neighborStateInfo.truthPositionY[neighborAddress] = rangingMessageHeader->truthpositionY;
+  neighborStateInfo.truthPositionZ[neighborAddress] = rangingMessageHeader->truthpositionZ;
+  float myPositionX = logGetFloat(idtruthpositionX);
+  float myPositionY = logGetFloat(idtruthpositionY);
+  float myPositionZ = logGetFloat(idtruthpositionZ);
+  float relativePositionX = rangingMessageHeader->truthpositionX - myPositionX;
+  float relativePositionY = rangingMessageHeader->truthpositionY - myPositionY;
+  float relativePositionZ = rangingMessageHeader->truthpositionZ - myPositionZ;
+  float truthDistance[neighborAddress] =  sqrt(pow(relativePositionX, 2) + pow(relativePositionY, 2) + pow(relativePositionZ, 2));
+  neighborStateInfo.truthDistance[neighborAddress] = truthDistance;
   neighborStateInfo.gyroZ[neighborAddress] = rangingMessageHeader->gyroZ;
   neighborStateInfo.positionZ[neighborAddress] = rangingMessageHeader->positionZ;
   neighborStateInfo.refresh[neighborAddress] = true;
@@ -278,6 +290,9 @@ static void uwbRangingTxTask(void *parameters)
   idVelocityX = logGetVarId("stateEstimate", "vx");
   idVelocityY = logGetVarId("stateEstimate", "vy");
   idVelocityZ = logGetVarId("stateEstimate", "vz");
+  idtruthpositionX = logGetVarId("lighthouse", "x");
+  idtruthpositionY = logGetVarId("lighthouse","y");
+  idtruthpositionZ = logGetVarId("lighthouse","z");
 
   UWB_Packet_t txPacketCache;
   txPacketCache.header.type = RANGING;
@@ -632,6 +647,9 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage)
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);
+  rangingMessage->header.truthpositionX = logGetFloat(idtruthpositionX);
+  rangingMessage->header.truthpositionY = logGetFloat(idtruthpositionY);
+  rangingMessage->header.truthpositionZ = logGetFloat(idtruthpositionZ);
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short)(velocity * 100);
@@ -755,6 +773,6 @@ LOG_ADD(LOG_INT8, stage, &stage)
 LOG_GROUP_STOP(Ranging)
 
 PARAM_GROUP_START(Statistic)
-PARAM_ADD(PARAM_INT16, jitter, &TX_jitter)
-PARAM_ADD(PARAM_UINT16, period, &TX_PERIOD_IN_MS)
+PARAM_ADD(PARAM_FLOAT, truthDistance, truthDistance + 1)
+PARAM_ADD(PARAM_FLOAT, swarmDistance, distanceTowards + 1)
 PARAM_GROUP_STOP(Statistic)

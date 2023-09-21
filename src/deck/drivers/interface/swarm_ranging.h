@@ -50,6 +50,10 @@ typedef struct
     short velocityXInWorld[RANGING_TABLE_SIZE + 1];   // 2byte m/s 在世界坐标系下的速度（不是机体坐标系）
     short velocityYInWorld[RANGING_TABLE_SIZE + 1];   // 2byte cm/s 在世界坐标系下的速度（不是机体坐标系）
     float gyroZ[RANGING_TABLE_SIZE + 1];              // 4 byte rad/s
+    float truthPositionX[RANGING_TABLE_SIZE + 1];
+    float truthPositionY[RANGING_TABLE_SIZE + 1];
+    float truthPositionZ[RANGING_TABLE_SIZE + 1];
+    float truthDistance[RANGING_TABLE_SIZE + 1];
     uint16_t positionZ[RANGING_TABLE_SIZE + 1];       // 2 byte cm/s
     bool refresh[RANGING_TABLE_SIZE + 1];             // 当前信息从上次EKF获取，到现在是否更新
     bool isNewAdd[RANGING_TABLE_SIZE + 1];            // 这个邻居是否是新加入的
