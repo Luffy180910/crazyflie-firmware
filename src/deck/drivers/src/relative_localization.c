@@ -187,6 +187,10 @@ void relativeLocoTask(void *arg)
         {
             connectCount = 0;
             address_t neighborAddress = currentNeighborAddressInfo.address[index];
+            
+            // Add by lcy
+            if(neighborAddress != 0) continue;
+
             bool isNewAdd; // 邻居是否是新加入的
 
             if (getNeighborStateInfo(neighborAddress, &dij, &vxj_t, &vyj_t, &rj, &hj_t, &isNewAdd))
