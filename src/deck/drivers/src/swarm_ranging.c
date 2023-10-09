@@ -19,8 +19,8 @@
 
 
 static uint16_t MY_UWB_ADDRESS;
-int16_t TX_jitter = 10;
-uint16_t TX_PERIOD_IN_MS = 55;
+int16_t TX_jitter = 0;
+uint16_t TX_PERIOD_IN_MS = 40;
 /*用于计算丢包率*/
 float PACKET_LOSS_RATE[RANGING_TABLE_SIZE + 1] = {0};
 uint32_t RECEIVE_COUNT[RANGING_TABLE_SIZE + 1] = {0};
@@ -44,8 +44,6 @@ static tx_rv_interval_history_t tx_rv_interval_history[RANGING_TABLE_SIZE + 1]; 
 static uint8_t tx_rv_interval[RANGING_TABLE_SIZE + 1] = {0};                    // 两次漂移时间差
 // static uint8_t nextTransportPeriod = TX_PERIOD_IN_MS;                           // 发送数据包周期
 
-static SemaphoreHandle_t rangingTableSetMutex;            // 用于互斥访问rangingTableSet
-static median_data_t median_data[RANGING_TABLE_SIZE + 1]; // 存储测距的历史值
 /*--5添加--*/
 static QueueHandle_t rxQueue;
 static Ranging_Table_Set_t rangingTableSet;
@@ -66,7 +64,8 @@ static int8_t stage = ZERO_STAGE; // 编队控制阶段
 // static bool allIsTakeoff = true; // 测试时，设置为true
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
-
+float distanceTowardsFloat[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
+float truthDistance[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 /*--4添加--*/
 static leaderStateInfo_t leaderStateInfo;
 static neighborStateInfo_t neighborStateInfo; // 邻居的状态信息
@@ -115,8 +114,8 @@ void setNeighborStateInfo(uint16_t neighborAddress, int16_t distance, Ranging_Me
   float relativePositionX = rangingMessageHeader->truthpositionX - myPositionX;
   float relativePositionY = rangingMessageHeader->truthpositionY - myPositionY;
   float relativePositionZ = rangingMessageHeader->truthpositionZ - myPositionZ;
-  float truthDistance[neighborAddress] =  sqrt(pow(relativePositionX, 2) + pow(relativePositionY, 2) + pow(relativePositionZ, 2));
-  neighborStateInfo.truthDistance[neighborAddress] = truthDistance;
+  truthDistance[neighborAddress] =  sqrt(pow(relativePositionX, 2) + pow(relativePositionY, 2) + pow(relativePositionZ, 2));
+  neighborStateInfo.truthDistance[neighborAddress] = truthDistance[neighborAddress];
   neighborStateInfo.gyroZ[neighborAddress] = rangingMessageHeader->gyroZ;
   neighborStateInfo.positionZ[neighborAddress] = rangingMessageHeader->positionZ;
   neighborStateInfo.refresh[neighborAddress] = true;
@@ -278,6 +277,7 @@ void setDistance(uint16_t neighborAddress, int16_t distance)
 {
   ASSERT(neighborAddress <= RANGING_TABLE_SIZE);
   distanceTowards[neighborAddress] = distance;
+  distanceTowardsFloat[neighborAddress] = (distance + 0.0) / 100;
   // 下面用于计算真正测距次数
   DIST_COUNT[neighborAddress]++;
 }
@@ -400,7 +400,6 @@ int16_t computeDistance(uint16_t neighborAddress, Timestamp_Tuple_t Tp, Timestam
   // DEBUG_PRINT("%d\n",calcDist);
   if (calcDist > 0 && calcDist < 400)
   {
-    return calcDist;
 
     int16_t medianDist = median_filter_3(median_data[neighborAddress].distance_history);
 
@@ -772,7 +771,7 @@ LOG_ADD(LOG_INT8, stage, &stage)
 // LOG_ADD(LOG_UINT8, seq, &rangingSeqNumber)
 LOG_GROUP_STOP(Ranging)
 
-PARAM_GROUP_START(Statistic)
-PARAM_ADD(PARAM_FLOAT, truthDistance, truthDistance + 1)
-PARAM_ADD(PARAM_FLOAT, swarmDistance, distanceTowards + 1)
-PARAM_GROUP_STOP(Statistic)
+LOG_GROUP_START(Statistic)
+LOG_ADD(LOG_FLOAT, truthDistance, truthDistance + 1)
+LOG_ADD(LOG_FLOAT, swarmDistance, distanceTowardsFloat + 1)
+LOG_GROUP_STOP(Statistic)
