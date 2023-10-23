@@ -278,6 +278,43 @@ void reset_estimators()
   }
 }
 
+void control_fly_square(int fly_case){
+    switch (fly_case)
+    {
+    case 0:
+        for(int i=0;i< 200;i++){
+            setHoverSetpoint(&setpoint, 1, 0, set_height ,0);
+            vTaskDelay(M2T(10));
+        }
+        DEBUG_PRINT("stage_one_square\n");
+        break;
+    
+    case 1:
+        for(int i=0;i< 200;i++){
+            setHoverSetpoint(&setpoint, 0, 1, set_height ,0);
+            vTaskDelay(M2T(10));
+        }
+        DEBUG_PRINT("stage_two_square\n");
+        break;
+    
+    case 2:
+        for(int i=0;i< 200;i++){
+            setHoverSetpoint(&setpoint, -1, 0, set_height ,0);
+            vTaskDelay(M2T(10));
+        }
+        DEBUG_PRINT("stage_three_square\n");
+        break;
+    
+    case 3:
+        for(int i=0;i< 200;i++){
+            setHoverSetpoint(&setpoint, 0, -1, set_height ,0);
+            vTaskDelay(M2T(10));
+        }
+        DEBUG_PRINT("stage_four_square\n");
+        break;
+    }
+}
+
 void relativeControlTask(void *arg)
 {
   int8_t targetShift = 0;
@@ -372,203 +409,36 @@ void relativeControlTask(void *arg)
   // uint8_t multirangerInit = paramGetUint(idMultiranger);
   uint8_t multirangerInit = false;
   DEBUG_PRINT("multirangerInit is %d\n", multirangerInit);
+  static uint8_t stage = 0;
+  uint32_t tickInterval = 0; 
+  uint32_t takeofftickInterval = 0; 
   while (1)
-  {
-    vTaskDelay(10);
+  { vTaskDelay(10);
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
-    bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, (float_t *)neighbor_height, &currentNeighborAddressInfo);
-    relaVarInCtrl[0][STATE_rlYaw] = 0;
-    int8_t leaderStage = getLeaderStage();
-    // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
-    // if(RUNNING_STAGE==0){ // 调试
-    //   vTaskDelay(10000);
-    //   setMyTakeoff(true);
-    // }
-
-    if (RUNNING_STAGE == 1) // debug阶段就不能让无人机飞
-    {
-      if (is_connect && keepFlying && !isCompleteTaskAndLand)
-      {
-        // take off
-        if (onGround) // 起飞
-        {
-          vTaskDelay(5000);        // 设定位置使得其收敛时间
-          if (MY_UWB_ADDRESS == 0) // 0号设置到0号高度
-          {
-            take_off(set_height);
-          }
-          else
-          {
-            take_off(set_height);
-          }
-          // setMyTakeoff(true);
-        }
-        if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
-        {
-          if (MY_UWB_ADDRESS == 0)
-          {
-            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
-          }
-          else
-          {
-            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
-          }
-        }
-        else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
-        {
-          // DEBUG_PRINT("--1--\n");
-          float_t randomVel = 0.3;
-          if (MY_UWB_ADDRESS == 0)
-          {
-            flyRandomIn1meter(randomVel, set_height);
-          }
-          else
-          {
-            flyRandomIn1meter(randomVel, set_height);
-          }
-        //  targetX = relaVarInCtrl[0][STATE_rlX];
-        // targetY = relaVarInCtrl[0][STATE_rlY];
-        }
-        else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
-        {
-          // DEBUG_PRINT("--2--\n");
-          if (MY_UWB_ADDRESS == 0)
-          {
-            float_t randomVel = 0.3;
-            flyRandomIn1meter(randomVel, set_height);
-          }
-          else
-          { int8_t index = MY_UWB_ADDRESS;
-            if( MY_UWB_ADDRESS > 8 )
-            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, set_height);
-          }
-        }
-        else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
-        {
-          if (MY_UWB_ADDRESS == 0)
-          {
-            setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
-          }
-          else
-          {
-            int8_t index = MY_UWB_ADDRESS;
-            if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
-            {
-              targetShift = leaderStage;
-              // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
-            }
-            else
-            {
-              targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
-              // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
-              if(index < 9) index += 9;
-            }
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, set_height);
-          }
-        }
-        else
-        {
-          land(set_height);
-        }
-      }
-      else
-      {
-        land(set_height);
-      }
+    if(keepFlying){
+      if(onGround){
+      take_off(set_height);
+      takeofftickInterval = xTaskGetTickCount();
     }
-    else // 用于debug_print调试
+    if (MY_UWB_ADDRESS == 0){
+      setHoverSetpoint(&setpoint, 0, 0, set_height, 0);
+    }else
     {
-      if (leaderStage == ZERO_STAGE) // 默认为第0个阶段，悬停
-      {
-        // DEBUG_PRINT("--0--\n");
-      }
-      else if (leaderStage == FIRST_STAGE) // 第1个阶段随机飞行
-      {
-        DEBUG_PRINT("--1--\n");
-      }
-      else if (leaderStage == SECOND_STAGE) // 第2个阶段跟随飞行
-      {
-        if (MY_UWB_ADDRESS == 0)
-          {
-          //  float_t randomVel = 0.3;
-          //  flyRandomIn1meter(randomVel, set_height);
-          }
-          else
-          { int8_t index = MY_UWB_ADDRESS;
-            if( MY_UWB_ADDRESS > 8 )
-            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
-            DEBUG_PRINT("2:%d\n", index);
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-          //  formation0asCenter(targetX, targetY, set_height);
-          }
-      }
-      else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
-      {
-       if (MY_UWB_ADDRESS == 0)
-          {
-           
-          }
-          else
-          {
-            int8_t index = MY_UWB_ADDRESS;
-            if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
-            {
-              targetShift = leaderStage;
-              // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
-            }
-            else
-            {
-              targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
-              // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
-              if(index < 9) index += 9;
-              DEBUG_PRINT("3:%d\n", index);
-            }
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-           // formation0asCenter(targetX, targetY, set_height);
-          }
-      }
-      else if (leaderStage > 30 && leaderStage < 90)
-      {
-        // 第4个阶段，变成5边形转圈
-        if (MY_UWB_ADDRESS == 0)
-        {
-        }
-        else
-        {
-          int8_t index = MY_UWB_ADDRESS;
-          targetShift = leaderStage % 5;
-          index = (MY_UWB_ADDRESS + targetShift) % (5) + 1;
-          DEBUG_PRINT("4:%d\n", index);
-        }
-      }
-      else if (leaderStage == RESET_INIT_STAGE)
-      { // 第4个阶段，3*4转圈
-        if (MY_UWB_ADDRESS == 0)
-        {
-        }
-        else
-        {
-          int8_t index = MY_UWB_ADDRESS;
-          DEBUG_PRINT("5 reset:%d\n", index);
-        }
-      }
-      else
-      {
-        int8_t index = MY_UWB_ADDRESS;
-        DEBUG_PRINT("6:%d\n", index);
-      }
+    DEBUG_PRINT("stage is %d\n", stage);
+    control_fly_square(stage);
+    stage = (stage+1)%4;
+    DEBUG_PRINT("stage is %d\n", stage);
     }
+    tickInterval  = xTaskGetTickCount() - takeofftickInterval; // 获取当前时间
+    if(tickInterval > 60000){
+      keepFlying = false;
+      land(set_height);
+      
+    }
+    }else{
+      land(set_height);
+    }
+    
   }
 }
 

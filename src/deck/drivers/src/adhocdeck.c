@@ -440,7 +440,7 @@ static void uwbTaskInit()
               ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
 #ifdef ENABLE_RANGING
   rangingInit(); // TODO ugly code
-  relativeLocoInit();
+  //relativeLocoInit();
   relativeControlInit();
 #endif
 #ifdef ENABLE_ROUTING
