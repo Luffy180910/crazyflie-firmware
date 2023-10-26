@@ -351,6 +351,13 @@ static void uwbTaskInit() {
 //  floodingInit();
 
 }
+
+/* TEST: Power adjustment */
+void setTxConfigPower(uint32_t power) {
+  txconfig_options.power = power;
+  dwt_configuretxrf(&txconfig_options);
+}
+
 /*********** Deck driver initialization ***************/
 static void dwm3000Init(DeckInfo *info) {
   pinInit();

@@ -106,4 +106,7 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener);
 dwTime_t getPacketSendTime();
 dwTime_t getPacketReceivedTime();
 
+/* TEST: Power adjustment */
+void setTxConfigPower(uint32_t power);
+
 #endif

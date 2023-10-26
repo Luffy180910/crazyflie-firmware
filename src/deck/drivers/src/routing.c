@@ -55,6 +55,11 @@ static void uwbRoutingTxTask(void *parameters) {
     int msgLen = generateRoutingDataMessage((MockData_t *) &txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
+
+    // TEST: Power adjustment
+    while (!dwt_checkidlerc()) {};
+    setTxConfigPower(0xfefefefe);
+
     vTaskDelay(M2T(2000));
   }
 }
