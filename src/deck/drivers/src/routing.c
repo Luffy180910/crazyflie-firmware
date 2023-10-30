@@ -14,6 +14,7 @@
 #include "log.h"
 #include "param.h"
 #include "system.h"
+#include "math.h"
 
 #include "adhocdeck.h"
 #include "dwTypes.h"
@@ -21,10 +22,14 @@
 #include "dw3000.h"
 #include "routing.h"
 
+#define DGC_DBG_DECISION_ID 0x30060
+#define DGC_DBG_DECISION_MASK 0x7FFFFFFF
+
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
 static QueueHandle_t rxQueue;
 static int seqNumber = 1;
+static double A = 120.7;
 
 void routingRxCallback(void *parameters) {
   DEBUG_PRINT("routingRxCallback \n");
@@ -42,7 +47,28 @@ int generateRoutingDataMessage(MockData_t *message) {
 
 static void processRoutingDataMessage(UWB_Packet_t *packet) {
   MockData_t *mockData = (MockData_t *) packet->payload;
-  DEBUG_PRINT("received routing data, seq number = %d \n", mockData->seqNumber);
+
+  // TEST: Power estimation
+  uint32_t F1 = dwt_read32bitreg(IP_DIAG_2_ID) & IP_DIAG_2_MASK; // F1
+  uint32_t F2 = dwt_read32bitreg(IP_DIAG_3_ID) & IP_DIAG_3_MASK; // F2
+  uint32_t F3 = dwt_read32bitreg(IP_DIAG_4_ID) & IP_DIAG_4_MASK; // F3
+  uint32_t N = dwt_read32bitreg(IP_DIAG_12_ID) & IP_DIAG_12_MASK; // N
+  uint32_t D = (dwt_read32bitreg(DGC_DBG_DECISION_ID) & DGC_DBG_DECISION_MASK) >> 28; // D
+  uint32_t C = dwt_read32bitreg(IP_DIAG_1_ID) & IP_DIAG_1_MASK; // C
+
+  uint16_t rx_tune_en = dwt_read16bitoffsetreg(DGC_CFG_ID, DGC_CFG_RX_TUNE_EN_BIT_OFFSET) & DGC_CFG_RX_TUNE_EN_BIT_MASK; // the DGC_DECISION
+
+  double FPP = 0;
+  double RX_Level = 0;
+  if (rx_tune_en) {
+    FPP = 10 * log10((F1*F1 + F2*F2 + F3*F3) / N*N) + (6 * D) - A;
+    RX_Level = 10 * log10((C * pow(2, 21)) / N*N) + (6 * D) - A;
+  } else {
+    FPP = 10 * log10((F1*F1 + F2*F2 + F3*F3) / N*N) - A;
+    RX_Level = 10 * log10((C * pow(2, 21)) / N*N) - A;
+  }
+
+  DEBUG_PRINT("FPP: %lld, RX_Level: %lld \n", FPP, RX_Level);
 }
 
 static void uwbRoutingTxTask(void *parameters) {
