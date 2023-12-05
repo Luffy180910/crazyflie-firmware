@@ -16,7 +16,9 @@
         "iterator": "c",
         "ranging_struct.h": "c",
         "adhocdeck.h": "c",
-        "dw3000.h": "c"
+        "dw3000.h": "c",
+        "chrono": "c",
+        "variant": "c"
     },
     "editor.fontSize": 18
 }

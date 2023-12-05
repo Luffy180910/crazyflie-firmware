@@ -23,6 +23,7 @@ bool keepFlying = false;
 static setpoint_t setpoint;
 static float_t relaVarInCtrl[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static float_t neighbor_height[RANGING_TABLE_SIZE + 1];
+static float_t relaVarTarget[RANGING_TABLE_SIZE + 1][STATE_DIM_rl];
 static currentNeighborAddressInfo_t currentNeighborAddressInfo;
 static float_t set_height = 0.5;
 static float_t set_height0 = 0.5;
@@ -133,27 +134,35 @@ static float PreErr_y = 0;
 static float IntErr_x = 0;
 static float IntErr_y = 0;
 static uint32_t PreTime;
-static void formation0asCenter(float_t tarX, float_t tarY, float_t height)
+static void formation0asCenter(float_t height)
 {
   float dt = (float)(xTaskGetTickCount() - PreTime) / configTICK_RATE_HZ;
   PreTime = xTaskGetTickCount();
   if (dt > 1) // skip the first run of the EKF
     return;
   // pid control for formation flight 当前是1号无人机
-  float err_x = -(tarX - relaVarInCtrl[0][STATE_rlX]);
-  float err_y = -(tarY - relaVarInCtrl[0][STATE_rlY]);
+  float err_x =0; 
+  float err_y =0;
+  for(int index = 0; index<currentNeighborAddressInfo.size; index++){
+    address_t neighborAddress = currentNeighborAddressInfo.address[index];
+    err_x +=(relaVarInCtrl[neighborAddress][STATE_rlX] - relaVarTarget[neighborAddress][STATE_rlX]);
+    err_y +=(relaVarInCtrl[neighborAddress][STATE_rlY] - relaVarTarget[neighborAddress][STATE_rlY]);
+    DEBUG_PRINT("relaX:%f, TarX:%f\n",relaVarInCtrl[neighborAddress][STATE_rlX],relaVarTarget[neighborAddress][STATE_rlX]);
+    DEBUG_PRINT("relaY:%f, TarY:%f\n",relaVarInCtrl[neighborAddress][STATE_rlY],relaVarTarget[neighborAddress][STATE_rlY]);
+  }
+  DEBUG_PRINT("err_x:%f, err_y:%f\n",err_x,err_y);
   float pid_vx = relaCtrl_p * err_x;  // 2.0*err_x 基于距离差进行一个速度控制
   float pid_vy = relaCtrl_p * err_y;  // 2.0*err_y
-  float dx = (err_x - PreErr_x) / dt; // 先前的速度
-  float dy = (err_y - PreErr_y) / dt;
-  PreErr_x = err_x;
-  PreErr_y = err_y;
-  pid_vx += relaCtrl_d * dx; // 0.01*dx 先前速度*比例系数
-  pid_vy += relaCtrl_d * dy; // 0.01*dy
-  IntErr_x += err_x * dt;
-  IntErr_y += err_y * dt;
-  pid_vx += relaCtrl_i * constrain(IntErr_x, -0.5, 0.5); // += (+-)0.00005
-  pid_vy += relaCtrl_i * constrain(IntErr_y, -0.5, 0.5);
+  // float dx = (err_x - PreErr_x) / dt; // 先前的速度
+  // float dy = (err_y - PreErr_y) / dt;
+  // PreErr_x = err_x;
+  // PreErr_y = err_y;
+  // pid_vx += relaCtrl_d * dx; // 0.01*dx 先前速度*比例系数
+  // pid_vy += relaCtrl_d * dy; // 0.01*dy
+  // IntErr_x += err_x * dt;
+  // IntErr_y += err_y * dt;
+  // pid_vx += relaCtrl_i * constrain(IntErr_x, -0.5, 0.5); // += (+-)0.00005
+  // pid_vy += relaCtrl_i * constrain(IntErr_y, -0.5, 0.5);
   pid_vx = constrain(pid_vx, -0.5f, 0.5f);
   pid_vy = constrain(pid_vy, -0.5f, 0.5f);
 
@@ -377,6 +386,7 @@ void relativeControlTask(void *arg)
     vTaskDelay(10);
     keepFlying = getOrSetKeepflying(MY_UWB_ADDRESS, keepFlying);
     bool is_connect = relativeInfoRead((float_t *)relaVarInCtrl, (float_t *)neighbor_height, &currentNeighborAddressInfo);
+    //DEBUG_PRINT("%d,%d",keepFlying,is_connect);
     relaVarInCtrl[0][STATE_rlYaw] = 0;
     int8_t leaderStage = getLeaderStage();
     // DEBUG_PRINT("%d,%d\n",keepFlying,leaderStage);
@@ -438,12 +448,18 @@ void relativeControlTask(void *arg)
             flyRandomIn1meter(randomVel, set_height);
           }
           else
-          { int8_t index = MY_UWB_ADDRESS;
+          { int8_t myindexForTarget = MY_UWB_ADDRESS;
             if( MY_UWB_ADDRESS > 8 )
-            index = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, set_height);
+            myindexForTarget = MY_UWB_ADDRESS + (MY_UWB_ADDRESS - 9)/3;
+            for(int index=0; index < currentNeighborAddressInfo.size; index++ ){
+              address_t neighbor_Address = currentNeighborAddressInfo.address[index];
+              int indexForTarget = neighbor_Address;
+              if(neighbor_Address > 8 )
+              indexForTarget = neighbor_Address + (neighbor_Address - 9)/3;  
+              relaVarTarget[neighbor_Address][STATE_rlX] = targetList[indexForTarget][STATE_rlX]-targetList[myindexForTarget][STATE_rlX];
+              relaVarTarget[neighbor_Address][STATE_rlY] = targetList[indexForTarget][STATE_rlY]-targetList[myindexForTarget][STATE_rlY];
+            }
+            formation0asCenter(set_height);
           }
         }
         else if (leaderStage >= -30 && leaderStage <= 30) // 第3个阶段，3*3转圈
@@ -454,23 +470,42 @@ void relativeControlTask(void *arg)
           }
           else
           {
-            int8_t index = MY_UWB_ADDRESS;
+            int8_t myindexForTarget = MY_UWB_ADDRESS;
             if (MY_UWB_ADDRESS < 9) // 根据目前方案只要小于9，就是第2阶段
             {
               targetShift = leaderStage;
               // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+              myindexForTarget = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
             }
             else
             {
               targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
               // 使得targetList在1~UAV_NUM之间偏移
-              index = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
-              if(index < 9) index += 9;
+              myindexForTarget = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
+              if(myindexForTarget < 9) myindexForTarget += 9;
             }
-            targetX = -cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] + sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            targetY = -sinf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlX] - cosf(relaVarInCtrl[0][STATE_rlYaw]) * targetList[index][STATE_rlY];
-            formation0asCenter(targetX, targetY, set_height);
+            for(int index=0; index < currentNeighborAddressInfo.size; index++ ){
+              address_t neighbor_Address = currentNeighborAddressInfo.address[index];
+              int indexForTarget = neighbor_Address;
+              if (indexForTarget < 9) // 根据目前方案只要小于9，就是第2阶段
+              {
+              targetShift = leaderStage;
+              // 使得targetList在1~UAV_NUM之间偏移
+              indexForTarget = (MY_UWB_ADDRESS + targetShift) % (SQURE3_3_NUM - 1) + 1; // 目标地址索引
+              }
+              else
+              {
+              targetShift = leaderStage + (MY_UWB_ADDRESS - 9)/3;
+              // 使得targetList在1~UAV_NUM之间偏移
+              indexForTarget = (MY_UWB_ADDRESS + targetShift+1) % 25; // 目标地址索引
+              if(indexForTarget < 9) indexForTarget += 9;
+              }
+              if(neighbor_Address == 0) 
+              indexForTarget = 0;                         
+              relaVarTarget[neighbor_Address][STATE_rlX] = targetList[indexForTarget][STATE_rlX]-targetList[myindexForTarget][STATE_rlX];
+              relaVarTarget[neighbor_Address][STATE_rlY] = targetList[indexForTarget][STATE_rlY]-targetList[myindexForTarget][STATE_rlY];
+            }
+            formation0asCenter(set_height);
           }
         }
         else
