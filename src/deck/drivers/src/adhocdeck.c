@@ -30,38 +30,33 @@
 
 // LOCO deck alternative IRQ and RESET pins(IO_2, IO_4) instead of default (RX1, TX1), leaving UART1 free for use
 #ifdef CONFIG_DECK_ADHOCDECK_USE_ALT_PINS
-#define GPIO_PIN_IRQ      DECK_GPIO_IO2
-
-#ifndef ADHOCDECK_ALT_PIN_RESET
-#define GPIO_PIN_RESET    DECK_GPIO_IO4
-#else
-#define GPIO_PIN_RESET 	ADHOCDECK_ALT_PIN_RESET
-#endif
-
-#define EXTI_PortSource EXTI_PortSourceGPIOB
-#define EXTI_PinSource    EXTI_PinSource5
-#define EXTI_LineN          EXTI_Line5
+  #define GPIO_PIN_IRQ      DECK_GPIO_IO2
+  #ifndef ADHOCDECK_ALT_PIN_RESET
+    #define GPIO_PIN_RESET    DECK_GPIO_IO4
+  #else
+    #define GPIO_PIN_RESET 	ADHOCDECK_ALT_PIN_RESET
+  #endif
+  #define EXTI_PortSource EXTI_PortSourceGPIOB
+  #define EXTI_PinSource    EXTI_PinSource5
+  #define EXTI_LineN          EXTI_Line5
 #elif defined(CONFIG_DECK_ADHOCDECK_USE_UART2_PINS)
-#define GPIO_PIN_IRQ 	  DECK_GPIO_TX2
-#define GPIO_PIN_RESET 	DECK_GPIO_RX2
-#define EXTI_PortSource EXTI_PortSourceGPIOA
-#define EXTI_PinSource 	EXTI_PinSource2
-#define EXTI_LineN 		  EXTI_Line2
+  #define GPIO_PIN_IRQ 	  DECK_GPIO_TX2
+  #define GPIO_PIN_RESET 	DECK_GPIO_RX2
+  #define EXTI_PortSource EXTI_PortSourceGPIOA
+  #define EXTI_PinSource 	EXTI_PinSource2
+  #define EXTI_LineN 		  EXTI_Line2
 #else
-#define GPIO_PIN_IRQ      DECK_GPIO_RX1
-#define GPIO_PIN_RESET    DECK_GPIO_TX1
-#define EXTI_PortSource EXTI_PortSourceGPIOC
-#define EXTI_PinSource    EXTI_PinSource11
-#define EXTI_LineN          EXTI_Line11
+  #define GPIO_PIN_IRQ      DECK_GPIO_RX1
+  #define GPIO_PIN_RESET    DECK_GPIO_TX1
+  #define EXTI_PortSource EXTI_PortSourceGPIOC
+  #define EXTI_PinSource    EXTI_PinSource11
+  #define EXTI_LineN          EXTI_Line11
 #endif
 
 #define DEFAULT_RX_TIMEOUT 0xFFFFF
 
 static uint16_t MY_UWB_ADDRESS;
 static bool isInit = false;
-#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-static bool isUWBStart = false;
-#endif
 static TaskHandle_t uwbTaskHandle = 0;
 static TaskHandle_t uwbTxTaskHandle = 0;
 static SemaphoreHandle_t irqSemaphore;
@@ -91,9 +86,11 @@ static void rxCallback() {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   uint32_t dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
-  if (dataLength != 0 && dataLength <= FRAME_LEN_MAX) {
-    dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
-  }
+
+  ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
+
+  dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
+
 //  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
@@ -129,24 +126,29 @@ uint16_t getUWBAddress() {
 }
 
 int uwbSendPacket(UWB_Packet_t *packet) {
-  xQueueSend(txQueue, packet, 0);
+  ASSERT(packet);
+  return xQueueSend(txQueue, packet, 0);
 }
 
 int uwbSendPacketBlock(UWB_Packet_t *packet) {
-  xQueueSend(txQueue, packet, portMAX_DELAY);
+  ASSERT(packet);
+  return xQueueSend(txQueue, packet, portMAX_DELAY);
 }
 
 int uwbReceivePacket(MESSAGE_TYPE type, UWB_Packet_t *packet) {
+  ASSERT(packet);
   ASSERT(type < MESSAGE_TYPE_COUNT);
   return xQueueReceive(queues[type], packet, 0);
 }
 
 int uwbReceivePacketBlock(MESSAGE_TYPE type, UWB_Packet_t *packet) {
+  ASSERT(packet);
   ASSERT(type < MESSAGE_TYPE_COUNT);
   return xQueueReceive(queues[type], packet, portMAX_DELAY);
 }
 
 int uwbReceivePacketWait(MESSAGE_TYPE type, UWB_Packet_t *packet, int wait) {
+  ASSERT(packet);
   ASSERT(type < MESSAGE_TYPE_COUNT);
   return xQueueReceive(queues[type], packet, M2T(wait));
 }
@@ -161,21 +163,14 @@ static int uwbInit() {
   while (!dwt_checkidlerc()) {
 
   }
-#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-  while (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
-    vTaskDelay(100);
-  }
-  while (dwt_configure(&config) == DWT_ERROR) {
-    vTaskDelay(100);
-  }
-#else
+
   if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
     return DWT_ERROR;
   }
   if (dwt_configure(&config) == DWT_ERROR) {
     return DWT_ERROR;
   }
-#endif
+
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
   /* Configure the TX spectrum parameters (power, PG delay and PG count) */
@@ -214,35 +209,28 @@ static int uwbInit() {
 
 static void uwbTxTask(void *parameters) {
   systemWaitStart();
-#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-  while (!isUWBStart) {
-    vTaskDelay(200);
-  }
-#endif
 
   UWB_Packet_t packetCache;
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
+      ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
+      TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
       if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       }
       TOTAL_SEND++;
+      vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
     }
   }
 }
 
 static void uwbTask(void *parameters) {
   systemWaitStart();
-#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-  if (uwbInit() == DWT_SUCCESS) {
-    isUWBStart = true;
-  }
-#endif
 
   while (1) {
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
@@ -250,9 +238,6 @@ static void uwbTask(void *parameters) {
         xSemaphoreTake(irqSemaphore, portMAX_DELAY);
         dwt_isr();
         xSemaphoreGive(irqSemaphore);
-#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-        vTaskDelay(M2T(5)); // TODO check if necessary since increasing FREERTOS_HEAP_SIZE
-#endif
       } while (digitalRead(GPIO_PIN_IRQ) != 0);
     }
   }
@@ -321,6 +306,7 @@ static void reset(void) {
   digitalWrite(GPIO_PIN_RESET, 1);
   vTaskDelay(M2T(10));
 }
+
 extern dwOps_t dwt_ops = {
     .spiRead = spiRead,
     .spiWrite = spiWrite,
@@ -344,10 +330,15 @@ static void pinInit() {
   EXTI_Init(&EXTI_InitStructure);
 
   // Init pins
+#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
+  pinMode(CS_PIN, OUTPUT);
+//  pinMode(GPIO_PIN_RESET, OUTPUT); TODO: magic, don't know why, need further debugging
+  pinMode(GPIO_PIN_IRQ, INPUT);
+#else
   pinMode(CS_PIN, OUTPUT);
   pinMode(GPIO_PIN_RESET, OUTPUT);
   pinMode(GPIO_PIN_IRQ, INPUT);
-
+#endif
   //Reset the DW3000 chip
   dwt_ops.reset();
 }
@@ -370,17 +361,12 @@ static void uwbTaskInit() {
 static void dwm3000Init(DeckInfo *info) {
   pinInit();
   queueInit();
-#ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
-  uwbTaskInit();
-  isInit = true;
-#else
   if (uwbInit() == DWT_SUCCESS) {
     uwbTaskInit();
     isInit = true;
   } else {
     isInit = false;
   }
-#endif
 }
 
 static bool dwm3000Test() {
@@ -404,7 +390,7 @@ static const DeckDriver dwm3000_deck = {
     .usedGpio = DECK_USING_IO_1 | DECK_USING_UART1,
 #endif
     .usedPeriph = DECK_USING_SPI,
-    .requiredEstimator = kalmanEstimator,
+    .requiredEstimator = StateEstimatorTypeKalman,
 #ifdef ADHOCDECK_NO_LOW_INTERFERENCE
     .requiredLowInterferenceRadioMode = false,
 #else

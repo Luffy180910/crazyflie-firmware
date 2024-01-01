@@ -78,7 +78,21 @@ config PLATFORM_TAG
     bool "Build for the roadrunner"
     select SENSORS_BMI088_BMP388
 
+config PLATFORM_FLAPPER
+    bool "Build for Flapper Nimble+"
+    select SENSORS_BMI088_BMP388
+    select SENSORS_BMI088_SPI
+
 endchoice
+
+config BOLT11_BRUSHED
+    bool "Bolt 1.1: Use brushed motor driver (HW mod required)"
+    depends on PLATFORM_BOLT
+    default n
+    help
+        0R resistors 0402 (or simple wire to short) should be mounted at 
+        R19, R22, R33, R34 and motor override signals will be disabled (high impedance).
+        Brushed motor should be connected + and - at motor connector (not S).
 
 endmenu
 

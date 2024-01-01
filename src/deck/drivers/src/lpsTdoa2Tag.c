@@ -5,8 +5,6 @@
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
  *  ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
  *
- * LPS node firmware.
- *
  * Copyright 2016, Bitcraze AB
  *
  * This program is free software: you can redistribute it and/or modify
@@ -118,7 +116,7 @@ static void updateRemoteData(tdoaAnchorContext_t* anchorCtx, const rangePacket2_
       if (hasDistance) {
         int64_t tof = packet->distances[i];
         if (isValidTimeStamp(tof)) {
-          tdoaStorageSetTimeOfFlight(anchorCtx, remoteId, tof);
+          tdoaStorageSetRemoteTimeOfFlight(anchorCtx, remoteId, tof);
 
           if (isConsecutiveIds(previousAnchor, anchorId)) {
             logAnchorDistance[anchorId] = packet->distances[previousAnchor];
@@ -252,8 +250,9 @@ static uint32_t onEvent(dwDevice_t *dev, uwbEvent_t event) {
       }
       break;
     case eventTimeout:
-      setRadioInReceiveMode(dev);
-      break;
+      // Fall through
+    case eventReceiveFailed:
+      // Fall through
     case eventReceiveTimeout:
       setRadioInReceiveMode(dev);
       break;

@@ -18,7 +18,12 @@
 #include "filter.h"
 #include "num.h"
 #include "controller_mellinger.h"
+#include "controller_brescianini.h"
 #include "power_distribution.h"
+#include "axis3fSubSampler.h"
+#include "outlierFilterTdoa.h"
+#include "kalman_core.h"
+#include "mm_tdoa.h"
 %}
 
 %include "math3d.h"
@@ -29,7 +34,13 @@
 %include "controller_pid.h"
 %include "imu_types.h"
 %include "controller_mellinger.h"
+%include "controller_brescianini.h"
 %include "power_distribution.h"
+%include "axis3fSubSampler.h"
+%include "outlierFilterTdoa.h"
+%include "kalman_core.h"
+%include "mm_tdoa.h"
+
 
 %inline %{
 struct poly4d* piecewise_get(struct piecewise_traj *pp, int i)
@@ -87,6 +98,12 @@ void collisionAvoidanceUpdateSetpointWrap(
     free(workspace);
 }
 
+void assertFail(char *exp, char *file, int line) {
+    char buf[150];
+    sprintf(buf, "%s in File: \"%s\", line %d\n", exp, file, line);
+
+    PyErr_SetString(PyExc_AssertionError, buf);
+}
 %}
 
 %pythoncode %{
