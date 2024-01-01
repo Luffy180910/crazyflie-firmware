@@ -96,6 +96,7 @@ static void uwbRangingRxTask(void *parameters) {
     if (xQueueReceive(rxQueue, &rxPacketCache, portMAX_DELAY)) {
 //      DEBUG_PRINT("uwbRangingRxTask: received ranging message \n");
       processRangingMessage(&rxPacketCache);
+//      vTaskDelay(M2T(1));
     }
   }
 }

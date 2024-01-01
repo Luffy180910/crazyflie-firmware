@@ -30,27 +30,27 @@
 
 // LOCO deck alternative IRQ and RESET pins(IO_2, IO_4) instead of default (RX1, TX1), leaving UART1 free for use
 #ifdef CONFIG_DECK_ADHOCDECK_USE_ALT_PINS
-  #define GPIO_PIN_IRQ      DECK_GPIO_IO2
-  #ifndef ADHOCDECK_ALT_PIN_RESET
-    #define GPIO_PIN_RESET    DECK_GPIO_IO4
-  #else
-    #define GPIO_PIN_RESET 	ADHOCDECK_ALT_PIN_RESET
-  #endif
-  #define EXTI_PortSource EXTI_PortSourceGPIOB
-  #define EXTI_PinSource    EXTI_PinSource5
-  #define EXTI_LineN          EXTI_Line5
-#elif defined(CONFIG_DECK_ADHOCDECK_USE_UART2_PINS)
-  #define GPIO_PIN_IRQ 	  DECK_GPIO_TX2
-  #define GPIO_PIN_RESET 	DECK_GPIO_RX2
-  #define EXTI_PortSource EXTI_PortSourceGPIOA
-  #define EXTI_PinSource 	EXTI_PinSource2
-  #define EXTI_LineN 		  EXTI_Line2
+#define GPIO_PIN_IRQ      DECK_GPIO_IO2
+#ifndef ADHOCDECK_ALT_PIN_RESET
+#define GPIO_PIN_RESET    DECK_GPIO_IO4
 #else
-  #define GPIO_PIN_IRQ      DECK_GPIO_RX1
-  #define GPIO_PIN_RESET    DECK_GPIO_TX1
-  #define EXTI_PortSource EXTI_PortSourceGPIOC
-  #define EXTI_PinSource    EXTI_PinSource11
-  #define EXTI_LineN          EXTI_Line11
+#define GPIO_PIN_RESET 	ADHOCDECK_ALT_PIN_RESET
+#endif
+#define EXTI_PortSource EXTI_PortSourceGPIOB
+#define EXTI_PinSource    EXTI_PinSource5
+#define EXTI_LineN          EXTI_Line5
+#elif defined(CONFIG_DECK_ADHOCDECK_USE_UART2_PINS)
+#define GPIO_PIN_IRQ 	  DECK_GPIO_TX2
+#define GPIO_PIN_RESET 	DECK_GPIO_RX2
+#define EXTI_PortSource EXTI_PortSourceGPIOA
+#define EXTI_PinSource 	EXTI_PinSource2
+#define EXTI_LineN 		  EXTI_Line2
+#else
+#define GPIO_PIN_IRQ      DECK_GPIO_RX1
+#define GPIO_PIN_RESET    DECK_GPIO_TX1
+#define EXTI_PortSource EXTI_PortSourceGPIOC
+#define EXTI_PinSource    EXTI_PinSource11
+#define EXTI_LineN          EXTI_Line11
 #endif
 
 #define DEFAULT_RX_TIMEOUT 0xFFFFF
@@ -160,14 +160,7 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener) {
 
 static int uwbInit() {
   /* Need to make sure DW IC is in IDLE_RC before proceeding */
-  while (!dwt_checkidlerc()) {
-
-  }
-
-  if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
-    return DWT_ERROR;
-  }
-  if (dwt_configure(&config) == DWT_ERROR) {
+  if (!dwt_checkidlerc() || dwt_initialise(DWT_DW_INIT) || dwt_configure(&config)) {
     return DWT_ERROR;
   }
 
@@ -180,14 +173,10 @@ static int uwbInit() {
   dwt_setrxantennadelay(RX_ANT_DLY);
   dwt_settxantennadelay(TX_ANT_DLY);
 
-  /* Auto re-enable receiver after a frame reception failure (except a frame
-   * wait timeout), the receiver will re-enable to re-attempt reception. */
-  dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
-  /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and
-   * RX errors). */
+  /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and RX errors). */
   dwt_setinterrupt(SYS_ENABLE_LO_TXFRS_ENABLE_BIT_MASK |
                        SYS_ENABLE_LO_RXFCG_ENABLE_BIT_MASK |
                        SYS_ENABLE_LO_RXFTO_ENABLE_BIT_MASK |
@@ -199,8 +188,7 @@ static int uwbInit() {
                    0, DWT_ENABLE_INT);
 
   /* Clearing the SPI ready interrupt */
-  dwt_write32bitreg(SYS_STATUS_ID,
-                    SYS_STATUS_RCINIT_BIT_MASK | SYS_STATUS_SPIRDY_BIT_MASK);
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RCINIT_BIT_MASK | SYS_STATUS_SPIRDY_BIT_MASK);
 
   irqSemaphore = xSemaphoreCreateMutex();
 
@@ -353,7 +341,7 @@ static void uwbTaskInit() {
               ADHOC_DECK_TASK_PRI, &uwbTaskHandle); // TODO optimize STACK SIZE
   xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
-//  rangingInit();
+  rangingInit();
   routingInit();
 //  floodingInit();
 }

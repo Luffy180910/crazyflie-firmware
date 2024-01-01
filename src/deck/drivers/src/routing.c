@@ -140,6 +140,7 @@ static void uwbRoutingRxTask(void *parameters) {
   while (true) {
     if (uwbReceivePacketBlock(DATA, &rxPacketCache)) {
       processRoutingDataMessage(&rxPacketCache);
+//      vTaskDelay(M2T(1));
     }
   }
 }
