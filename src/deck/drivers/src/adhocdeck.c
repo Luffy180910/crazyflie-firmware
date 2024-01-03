@@ -154,13 +154,14 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener) {
 
 static int uwbInit() {
   /* Need to make sure DW IC is in IDLE_RC before proceeding */
-  while (!dwt_checkidlerc()) {
-
+  if (!dwt_checkidlerc()) {
+    return DWT_ERROR;
   }
 
   if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
     return DWT_ERROR;
   }
+
   if (dwt_configure(&config) == DWT_ERROR) {
     return DWT_ERROR;
   }
@@ -174,14 +175,11 @@ static int uwbInit() {
   dwt_setrxantennadelay(RX_ANT_DLY);
   dwt_settxantennadelay(TX_ANT_DLY);
 
-  /* Auto re-enable receiver after a frame reception failure (except a frame
-   * wait timeout), the receiver will re-enable to re-attempt reception. */
-  dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
-  /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and
-   * RX errors). */
+
+  /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and RX errors). */
   dwt_setinterrupt(SYS_ENABLE_LO_TXFRS_ENABLE_BIT_MASK |
                        SYS_ENABLE_LO_RXFCG_ENABLE_BIT_MASK |
                        SYS_ENABLE_LO_RXFTO_ENABLE_BIT_MASK |
@@ -193,8 +191,7 @@ static int uwbInit() {
                    0, DWT_ENABLE_INT);
 
   /* Clearing the SPI ready interrupt */
-  dwt_write32bitreg(SYS_STATUS_ID,
-                    SYS_STATUS_RCINIT_BIT_MASK | SYS_STATUS_SPIRDY_BIT_MASK);
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RCINIT_BIT_MASK | SYS_STATUS_SPIRDY_BIT_MASK);
 
   irqSemaphore = xSemaphoreCreateMutex();
 
@@ -213,8 +210,7 @@ static void uwbTxTask(void *parameters) {
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
       TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
-      if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
-          DWT_ERROR) {
+      if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) == DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       }
       vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.

@@ -30,7 +30,7 @@
 
 typedef uint16_t address_t;
 
-/* Packet */
+/* Packet Constants */
 #define PACKET_SIZE FRAME_LEN_MAX
 #define PAYLOAD_SIZE (PACKET_SIZE - sizeof(Packet_Header_t))
 
@@ -103,7 +103,11 @@ int uwbReceivePacket(MESSAGE_TYPE type, UWB_Packet_t *packet);
 int uwbReceivePacketBlock(MESSAGE_TYPE type, UWB_Packet_t *packet);
 int uwbReceivePacketWait(MESSAGE_TYPE type, UWB_Packet_t *packet, int wait);
 void uwbRegisterListener(UWB_Message_Listener_t *listener);
-dwTime_t getPacketSendTime();
-dwTime_t getPacketReceivedTime();
-
+/* Advanced messaging */
+// TODO: memory consuming functions ↓
+int uwbSendAndWaitForAckSync(UWB_Packet_t *packet, int wait);
+int uwbSendAndWaitForAckAsync(UWB_Packet_t *packet, UWBCallback ackCallback);
+UWB_Packet_t uwbSendAndWaitForResponseSync(UWB_Packet_t *packet, int wait);
+/* mostly equal to uwbSendAndWaitForAckAsync(UWB_Packet_t *packet, UWBCallback ackCallback) */
+// void uwbSendAndWaitForResponseAsync(UWB_Packet_t *packet);
 #endif
