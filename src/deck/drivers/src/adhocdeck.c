@@ -178,6 +178,7 @@ static int uwbInit() {
    * wait timeout), the receiver will re-enable to re-attempt reception. */
   dwt_or32bitoffsetreg(SYS_CFG_ID, 0, SYS_CFG_RXAUTR_BIT_MASK);
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
+  dwt_configciadiag(DW_CIA_DIAG_LOG_ALL);                   // Enable diagnostic mode - minimal
 
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
   /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and
@@ -346,8 +347,8 @@ static void uwbTaskInit() {
               ADHOC_DECK_TASK_PRI, &uwbTaskHandle); // TODO optimize STACK SIZE
   xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
-  rangingInit();
-//  routingInit();
+  // rangingInit();
+  routingInit();
 //  floodingInit();
 
 }

@@ -56,10 +56,15 @@ static void processRoutingDataMessage(UWB_Packet_t *packet) {
   uint32_t D = (dwt_read32bitreg(DGC_DBG_DECISION_ID) & DGC_DBG_DECISION_MASK) >> 28; // D
   uint32_t C = dwt_read32bitreg(IP_DIAG_1_ID) & IP_DIAG_1_MASK; // C
 
+  // CIADONE
+  uint32_t CIADONE_MASK = 0x400;
+  uint32_t CIADONE = dwt_read32bitreg(SYS_STATUS_ID) & CIADONE_MASK;
+  DEBUG_PRINT("CIADONE: %u, C: %u, N: %u, D: %u\n", CIADONE, C, N, D);
+
   uint16_t rx_tune_en = dwt_read16bitoffsetreg(DGC_CFG_ID, DGC_CFG_RX_TUNE_EN_BIT_OFFSET) & DGC_CFG_RX_TUNE_EN_BIT_MASK; // the DGC_DECISION
 
-  double FPP = 0;
-  double RX_Level = 0;
+  float FPP = 0;
+  float RX_Level = 0;
   if (rx_tune_en) {
     FPP = 10 * log10((F1*F1 + F2*F2 + F3*F3) / N*N) + (6 * D) - A;
     RX_Level = 10 * log10((C * pow(2, 21)) / N*N) + (6 * D) - A;
@@ -68,7 +73,7 @@ static void processRoutingDataMessage(UWB_Packet_t *packet) {
     RX_Level = 10 * log10((C * pow(2, 21)) / N*N) - A;
   }
 
-  DEBUG_PRINT("FPP: %lld, RX_Level: %lld \n", FPP, RX_Level);
+  DEBUG_PRINT("FPP: %f, RX_Level: %f \n", FPP, RX_Level);
 }
 
 static void uwbRoutingTxTask(void *parameters) {
@@ -83,7 +88,7 @@ static void uwbRoutingTxTask(void *parameters) {
     uwbSendPacketBlock(&txPacketCache);
 
     // TEST: Power adjustment
-    while (!dwt_checkidlerc()) {};
+    // while (!dwt_checkidlerc()) {};
     setTxConfigPower(0xfefefefe);
 
     vTaskDelay(M2T(2000));
