@@ -117,6 +117,9 @@ void routingInit() {
   listener.txCb = routingTxCallback;
   uwbRegisterListener(&listener);
 
+  uint16_t myUWBAddress = getUWBAddress();
+  DEBUG_PRINT("MY UWB ADDRESS: %u\n", myUWBAddress);
+
   xTaskCreate(uwbRoutingTxTask, ADHOC_DECK_ROUTING_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbRoutingTxTaskHandle); // TODO optimize STACK SIZE
   xTaskCreate(uwbRoutingRxTask, ADHOC_DECK_ROUTING_RX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
