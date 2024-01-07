@@ -70,10 +70,12 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
                                                                Timestamp_Tuple_t Tf);
 
 typedef enum {
-  RESERVED = 0,
-  TRANSMITTED = 1, // indicate body unit is transmitted
-  RECEIVED = 2,
-} RANGING_TABLE_STATE;
+  S1 = 0b00000000,
+  S2 = 0b00000100,
+  S3 = 0b10011000,
+  S4 = 0b10011100,
+  S5 = 0b11111110
+} RANGING_TABLE_STATE; /* bit string of (Rp Tf Rf Tp Rr Tf Re 0) */
 
 /* Ranging Table
   +------+------+------+------+------+
@@ -91,9 +93,10 @@ typedef struct {
   Timestamp_Tuple_t Rf;
   Timestamp_Tuple_t Tf;
   Timestamp_Tuple_t Re;
+  Timestamp_Tuple_t latestReceived;
 
   Time_t period;
-  Time_t nextDeliveryTime;
+  Time_t nextExpectedDeliveryTime;
   Time_t expirationTime;
   int16_t distance;
 
@@ -102,6 +105,7 @@ typedef struct {
 
 void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);
 void rangingTableShift(Ranging_Table_t *rangingTable);
+RANGING_TABLE_STATE rangingTableGetState(Ranging_Table_t *rangingTable);
 
 typedef struct {
   set_index_t next;
@@ -116,7 +120,7 @@ typedef struct {
   int size;
 } Ranging_Table_Set_t;
 
-/*Ranging Table Set Operations*/
+/* Ranging Table Set Operations */
 void rangingTableSetInit(Ranging_Table_Set_t *rangingTableSet);
 
 set_index_t rangingTableSetInsert(Ranging_Table_Set_t *rangingTableSet,
