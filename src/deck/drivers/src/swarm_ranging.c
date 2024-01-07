@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <math.h>
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -8,10 +7,12 @@
 #include "autoconf.h"
 #include "debug.h"
 #include "log.h"
-#include "assert.h"
 #include "adhocdeck.h"
-#include "ranging_struct.h"
 #include "swarm_ranging.h"
+#include "ranging_struct.h"
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 static uint16_t MY_UWB_ADDRESS;
 
@@ -78,12 +79,13 @@ static void uwbRangingTxTask(void *parameters) {
 
   UWB_Packet_t txPacketCache;
   txPacketCache.header.type = RANGING;
+  Ranging_Message_t *rangingMessage = &txPacketCache.payload;
 //  txPacketCache.header.mac = ? TODO init mac header
   while (true) {
-    int msgLen = generateRangingMessage((Ranging_Message_t *) &txPacketCache.payload);
-    txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
+    int taskDelay = generateRangingMessage(rangingMessage);
+    txPacketCache.header.length = sizeof(Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
-    vTaskDelay(TX_PERIOD_IN_MS);
+    vTaskDelay(taskDelay);
   }
 }
 
@@ -239,10 +241,18 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   /* update expiration time */
   neighborRangingTable->expirationTime = xTaskGetTickCount() + M2T(RANGING_TABLE_HOLD_TIME);
 
-  neighborRangingTable->state = RECEIVED;
+  neighborRangingTable->latestReceived = neighborRangingTable->Re;
+
+  #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
+  /* update period according to distance and velocity */
+  neighborRangingTable->period = M2T(DYNAMIC_RANGING_COEFFICIENT * (neighborRangingTable->distance / rangingMessage->header.velocity));
+  /* bound ranging period between RANGING_PERIOD_MIN and RANGING_PERIOD_MAX */
+  neighborRangingTable->period = MAX(neighborRangingTable->period, M2T(RANGING_PERIOD_MIN));
+  neighborRangingTable->period = MIN(neighborRangingTable->period, M2T(RANGING_PERIOD_MAX));
+  #endif
 }
 
-int generateRangingMessage(Ranging_Message_t *rangingMessage) {
+Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
 #ifdef ENABLE_BUS_BOARDING_SCHEME
   sortRangingTableSet(&rangingTableSet);
 #endif
@@ -251,25 +261,40 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
   rangingSeqNumber++;
   int curSeqNumber = rangingSeqNumber;
   rangingMessage->header.filter = 0;
-  /* generate message body */
+  Time_t curTime = xTaskGetTickCount();
+  /* Using the default RANGING_PERIOD when DYNAMIC_RANGING_PERIOD is not enabled. */
+  Time_t taskDelay = M2T(RANGING_PERIOD);
+  /* Generate message body */
   for (set_index_t index = rangingTableSet.fullQueueEntry; index != -1;
        index = rangingTableSet.setData[index].next) {
     Ranging_Table_t *table = &rangingTableSet.setData[index].data;
     if (bodyUnitNumber >= MAX_BODY_UNIT_NUMBER) {
       break;
     }
-    if (table->state == RECEIVED) {
+    if (table->latestReceived.timestamp.full) {
+      #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
+      /* Only include timestamps with expected delivery time less or equal than current time. */
+      if (curTime < table->nextExpectedDeliveryTime) {
+        continue;
+      }
+      table->nextExpectedDeliveryTime = curTime + table->period;
+      /* Change task delay dynamically, may increase packet loss rate since ranging period now is determined
+       * by the minimum expected delivery time.
+       */
+      taskDelay = MIN(taskDelay, table->nextExpectedDeliveryTime - curTime);
+      /* Bound the dynamic task delay between RANGING_PERIOD_MIN and RANGING_PERIOD */
+      taskDelay = MAX(RANGING_PERIOD_MIN, taskDelay);
+      #endif
       rangingMessage->bodyUnits[bodyUnitNumber].address = table->neighborAddress;
-      /* It is possible that Re is not the newest timestamp, because the newest may be in rxQueue
+      /* It is possible that latestReceived is not the newest timestamp, because the newest may be in rxQueue
        * waiting to be handled.
        */
-      rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->Re;
+      rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->latestReceived;
       bodyUnitNumber++;
-      table->state = TRANSMITTED;
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16);
     }
   }
-  /* generate message header */
+  /* Generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
   rangingMessage->header.msgSequence = curSeqNumber;
@@ -280,7 +305,7 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage) {
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short) (velocity * 100);
-  return rangingMessage->header.msgLength;
+  return taskDelay;
 }
 
 LOG_GROUP_START(Ranging)
