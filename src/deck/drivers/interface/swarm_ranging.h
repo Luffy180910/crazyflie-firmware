@@ -1,6 +1,6 @@
 #ifndef _SWARM_RANGING_H_
 #define _SWARM_RANGING_H_
-#include "adhocdeck.h"
+
 #include "ranging_struct.h"
 
 /* Function Switch */

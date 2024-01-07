@@ -2,10 +2,8 @@
 #define __RANGING_STRUCT_H__
 
 #include <stdbool.h>
-
 #include "FreeRTOS.h"
 #include "dwTypes.h"
-#include "adhocdeck.h"
 
 #define MAX_BODY_UNIT_NUMBER 7
 //#define MAX_BODY_UNIT_NUMBER (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
@@ -110,7 +108,7 @@ typedef struct {
   Ranging_Table_t data;
 } __attribute__((packed)) Ranging_Table_Set_Item_t;
 
-/* Ranging Table Set*/
+/* Ranging Table Set */
 typedef struct {
   Ranging_Table_Set_Item_t setData[RANGING_TABLE_SIZE];
   set_index_t freeQueueEntry;

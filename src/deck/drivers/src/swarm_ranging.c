@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <math.h>
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -8,10 +7,9 @@
 #include "autoconf.h"
 #include "debug.h"
 #include "log.h"
-#include "assert.h"
 #include "adhocdeck.h"
-#include "ranging_struct.h"
 #include "swarm_ranging.h"
+#include "ranging_struct.h"
 
 static uint16_t MY_UWB_ADDRESS;
 
