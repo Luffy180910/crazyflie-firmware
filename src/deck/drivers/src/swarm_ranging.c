@@ -65,15 +65,23 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
   /* Update expiration time of this neighbor */
   neighborRangingTable->expirationTime = xTaskGetTickCount() + M2T(RANGING_TABLE_HOLD_TIME);
 
+  /* Each ranging messages contains find corresponding MAX_Tr_UNIT lastTxTimestamps
+   * find corresponding Tr according to Rr to get a valid Tr-Rr pair if possible.
+   * This approach may help when experiencing continuous packet loss.
+   */
   Ranging_Table_Tr_Rr_Buffer_t *neighborTrRrBuffer = &neighborRangingTable->TrRrBuffer;
-  /* Update Tr and Rr if possible. */
-  Timestamp_Tuple_t neighborTr = rangingMessage->header.lastTxTimestamp;
-  if (neighborTr.timestamp.full && neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.timestamp.full
-      && neighborTr.seqNumber == neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.seqNumber) {
-    rangingTableBufferUpdate(&neighborRangingTable->TrRrBuffer,
-                             neighborTr,
-                             neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr);
+  for (int i = 0; i < MAX_Tr_UNIT; i++) {
+    if (rangingMessage->header.lastTxTimestamps[i].timestamp.full
+        && neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.timestamp.full
+        && rangingMessage->header.lastTxTimestamps[i].seqNumber
+            == neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.seqNumber) {
+      rangingTableBufferUpdate(&neighborRangingTable->TrRrBuffer,
+                               rangingMessage->header.lastTxTimestamps[i],
+                               neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr);
+      break;
+    }
   }
+  printRangingMessage(rangingMessage);
 
   /* Try to find corresponding Rf for MY_UWB_ADDRESS. */
   Timestamp_Tuple_t neighborRf = {.timestamp.full = 0, .seqNumber = 0};
@@ -152,13 +160,14 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
   rangingMessage->header.msgSequence = curSeqNumber;
-  rangingMessage->header.lastTxTimestamp = getLatestTxTimestamp();
+  getLastestNTxTimestamps(rangingMessage->header.lastTxTimestamps, MAX_Tr_UNIT);
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short) (velocity * 100);
+  //  printRangingMessage(rangingMessage);
   return taskDelay;
 }
 
@@ -314,7 +323,7 @@ Timestamp_Tuple_t getLatestTxTimestamp() {
   return TfBuffer[TfBufferIndex];
 }
 
-void getLastestNTxTimestamps(Timestamp_Tuple_t* timestamps, int n) {
+void getLastestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n) {
   ASSERT(n <= Tf_BUFFER_POOL_SIZE);
   int startIndex = (TfBufferIndex + 1 - n + Tf_BUFFER_POOL_SIZE) % Tf_BUFFER_POOL_SIZE;
   for (int i = n - 1; i >= 0; i--) {
@@ -528,7 +537,7 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   Ranging_Table_Tr_Rr_Candidate_t Tr_Rr_Candidate = rangingTableBufferGetCandidate(&rangingTable->TrRrBuffer,
                                                                                    rangingTable->Tf);
 
-//  printRangingTable(rangingTable);
+  printRangingTable(rangingTable);
 
   /* try to compute distance */
   int16_t distance = computeDistance(rangingTable->Tp, rangingTable->Rp,
@@ -785,16 +794,13 @@ void printRangingTableSet(Ranging_Table_Set_t *rangingTableSet) {
 }
 
 void printRangingMessage(Ranging_Message_t *rangingMessage) {
-  DEBUG_PRINT(
-      "msgLength=%u, msgSequence=%d, srcAddress=%u, velocity=%d\n, last_tx_timestamp_seq=%u, lastTxTimestamp=%2x%8lx\n",
-      rangingMessage->header.msgLength,
-      rangingMessage->header.msgSequence,
-      rangingMessage->header.srcAddress,
-      rangingMessage->header.velocity,
-      rangingMessage->header.lastTxTimestamp.seqNumber,
-      rangingMessage->header.lastTxTimestamp.timestamp.high8,
-      rangingMessage->header.lastTxTimestamp.timestamp.low32);
-
+  for (int i = 0; i < MAX_Tr_UNIT; i++) {
+    DEBUG_PRINT("lastTxTimestamp %d seq=%u, lastTxTimestamp=%2x%8lx\n",
+                i,
+                rangingMessage->header.lastTxTimestamps[i].seqNumber,
+                rangingMessage->header.lastTxTimestamps[i].timestamp.high8,
+                rangingMessage->header.lastTxTimestamps[i].timestamp.low32);
+  }
   if (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t) == 0) {
     return;
   }
