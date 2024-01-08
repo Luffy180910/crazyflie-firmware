@@ -523,7 +523,16 @@ void updateTfBuffer(Timestamp_Tuple_t timestamp) {
 
 Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
   Timestamp_Tuple_t Tf = {.timestamp.full = 0, .seqNumber = 0};
-  for (int i = 0; i < Tf_BUFFER_POOL_SIZE; i++) {
+  int startIndex = TfBufferIndex;
+  /* Backward search */
+  for (int i = startIndex; i >= 0; i--) {
+    if (TfBuffer[i].seqNumber == seqNumber) {
+      Tf = TfBuffer[i];
+      return Tf;
+    }
+  }
+  /* Forward search */
+  for (int i = startIndex + 1; i < Tf_BUFFER_POOL_SIZE; i++) {
     if (TfBuffer[i].seqNumber == seqNumber) {
       Tf = TfBuffer[i];
       break;
