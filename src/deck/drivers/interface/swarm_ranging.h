@@ -18,7 +18,6 @@
 #define RANGING_PERIOD 100 // in ms
 #define RANGING_PERIOD_MIN 20 // default 20ms
 #define RANGING_PERIOD_MAX 500 // default 500ms
-#define Tf_BUFFER_POOL_SIZE (4 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
 
 /* Ranging Operations */
 void rangingInit();

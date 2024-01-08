@@ -10,6 +10,7 @@
 #define RANGING_TABLE_SIZE 10
 #define RANGING_TABLE_HOLD_TIME 10000
 #define Tr_Rr_BUFFER_POOL_SIZE 5
+#define Tf_BUFFER_POOL_SIZE 100
 
 typedef portTickType Time_t;
 typedef short set_index_t;
@@ -149,6 +150,16 @@ bool deleteRangingTableByIndex(Ranging_Table_Set_t *rangingTableSet,
 bool rangingTableSetClearExpire(Ranging_Table_Set_t *rangingTableSet);
 
 void sortRangingTableSet(Ranging_Table_Set_t *rangingTableSet);
+
+/* Tf Buffer Operations */
+
+void updateTfBuffer(Timestamp_Tuple_t timestamp);
+
+Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber);
+
+Timestamp_Tuple_t getLatestTxTimestamp();
+
+/* Debug Operations */
 
 void printRangingTable(Ranging_Table_t *rangingTable);
 

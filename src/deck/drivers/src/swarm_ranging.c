@@ -22,8 +22,6 @@ static UWB_Message_Listener_t listener;
 static TaskHandle_t uwbRangingTxTaskHandle = 0;
 static TaskHandle_t uwbRangingRxTaskHandle = 0;
 
-static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
-static int TfBufferIndex = 0;
 static int rangingSeqNumber = 1;
 
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
@@ -51,10 +49,8 @@ void rangingRxCallback(void *parameters) {
 void rangingTxCallback(void *parameters) {
   dwTime_t txTime;
   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
-  TfBufferIndex++;
-  TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
-  TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
-  TfBuffer[TfBufferIndex].timestamp = txTime;
+  Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingSeqNumber};
+  updateTfBuffer(timestamp);
 }
 
 int16_t getDistance(uint16_t neighborAddress) {
@@ -200,7 +196,7 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
   }
 
   /* update Rf */
-  Timestamp_Tuple_t neighborRf = {.timestamp.full = 0};
+  Timestamp_Tuple_t neighborRf = {.timestamp.full = 0, .seqNumber = 0};
   if (rangingMessage->header.filter & (1 << (getUWBAddress() % 16))) {
     /* retrieve body unit */
     uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
@@ -214,13 +210,8 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 
   if (neighborRf.timestamp.full) {
     neighborRangingTable->Rf = neighborRf;
-    // TODO it is possible that can not find corresponding Tf
-    /* find corresponding Tf in TfBuffer */
-    for (int i = 0; i < Tf_BUFFER_POOL_SIZE; i++) {
-      if (TfBuffer[i].seqNumber == neighborRf.seqNumber) {
-        neighborRangingTable->Tf = TfBuffer[i];
-      }
-    }
+    /* find corresponding Tf in TfBuffer, it is possible that can not find corresponding Tf. */
+    neighborRangingTable->Tf = findTfBySeqNumber(neighborRf.seqNumber);
 
     Ranging_Table_Tr_Rr_Candidate_t Tr_Rr_Candidate = rangingTableBufferGetCandidate(&neighborRangingTable->TrRrBuffer,
                                                                                      neighborRangingTable->Tf);
@@ -314,7 +305,7 @@ Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
   rangingMessage->header.msgSequence = curSeqNumber;
-  rangingMessage->header.lastTxTimestamp = TfBuffer[TfBufferIndex];
+  rangingMessage->header.lastTxTimestamp = getLatestTxTimestamp();
   float velocityX = logGetFloat(idVelocityX);
   float velocityY = logGetFloat(idVelocityY);
   float velocityZ = logGetFloat(idVelocityZ);

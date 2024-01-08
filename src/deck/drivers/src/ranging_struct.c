@@ -58,88 +58,88 @@ void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
 
 // TODO: merge state handlers
 
-static void S1_Tf(Ranging_Table_t * rangingTable) {
+static void S1_Tf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
   rangingTable->state = S2;
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S1_Tf: %d -> %d\n",prevState, curState);
+  DEBUG_PRINT("S1_Tf: %d -> %d\n", prevState, curState);
 }
 
-static void S1_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S1;
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S1_RX_NO_Rf: %d -> %d\n",prevState, curState);
+  DEBUG_PRINT("S1_RX_NO_Rf: %d -> %d\n", prevState, curState);
 }
 
-static void S1_RX_Rf(Ranging_Table_t * rangingTable) {
+static void S1_RX_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S1;
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S1_RX_Rf: %d -> %d\n",prevState, curState);
+  DEBUG_PRINT("S1_RX_Rf: %d -> %d\n", prevState, curState);
 }
 
-static void S2_Tf(Ranging_Table_t * rangingTable) {
+static void S2_Tf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
   rangingTable->state = S2;
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S2_Tf: %d -> %d\n",prevState, curState);
+  DEBUG_PRINT("S2_Tf: %d -> %d\n", prevState, curState);
 }
 
-static void S2_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S2;
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S2_RX_NO_Rf: %d -> %d\n",prevState, curState);
+  DEBUG_PRINT("S2_RX_NO_Rf: %d -> %d\n", prevState, curState);
 }
 
-static void S2_RX_Rf(Ranging_Table_t * rangingTable) {
+static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
   // TODO
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S3;
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S2_RX_Rf: %d -> %d\n",prevState, curState);
+  DEBUG_PRINT("S2_RX_Rf: %d -> %d\n", prevState, curState);
 }
 
-static void S3_Tf(Ranging_Table_t * rangingTable) {
+static void S3_Tf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S3_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S3_RX_Rf(Ranging_Table_t * rangingTable) {
+static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S4_Tf(Ranging_Table_t * rangingTable) {
+static void S4_Tf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S4_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S4_RX_Rf(Ranging_Table_t * rangingTable) {
+static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S5_Tf(Ranging_Table_t * rangingTable) {
+static void S5_Tf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S5_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+static void S5_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static void S5_RX_Rf(Ranging_Table_t * rangingTable) {
+static void S5_RX_Rf(Ranging_Table_t *rangingTable) {
   // TODO
 }
 
-static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING_TABLE_EVENT_COUNT] {
+static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING_TABLE_EVENT_COUNT] = {
     {S1_Tf, S1_RX_NO_Rf, S1_RX_Rf},
     {S2_Tf, S2_RX_NO_Rf, S2_RX_Rf},
     {S3_Tf, S3_RX_NO_Rf, S3_RX_Rf},
@@ -360,6 +360,29 @@ void sortRangingTableSet(Ranging_Table_Set_t *rangingTableSet) {
     cur = next;
   }
   rangingTableSet->fullQueueEntry = new_head;
+}
+
+static int TfBufferIndex = 0;
+static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
+
+void updateTfBuffer(Timestamp_Tuple_t timestamp) {
+  TfBufferIndex++;
+  TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
+  TfBuffer[TfBufferIndex] = timestamp;
+}
+
+Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
+  for (int i = 0; i < Tf_BUFFER_POOL_SIZE; i++) {
+    if (TfBuffer[i].seqNumber == seqNumber) {
+      return TfBuffer[i];
+    }
+  }
+  Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
+  return empty;
+}
+
+Timestamp_Tuple_t getLatestTxTimestamp() {
+  return TfBuffer[TfBufferIndex];
 }
 
 void printRangingMessage(Ranging_Message_t *rangingMessage) {
