@@ -121,7 +121,7 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   for (set_index_t index = rangingTableSet.fullQueueEntry; index != -1;
        index = rangingTableSet.setData[index].next) {
     Ranging_Table_t *table = &rangingTableSet.setData[index].data;
-    if (bodyUnitNumber >= MAX_BODY_UNIT_NUMBER) {
+    if (bodyUnitNumber >= MAX_BODY_UNIT) {
       break;
     }
     if (table->latestReceived.timestamp.full) {
@@ -790,7 +790,7 @@ void printRangingMessage(Ranging_Message_t *rangingMessage) {
     return;
   }
   int body_unit_number = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-  if (body_unit_number >= MAX_BODY_UNIT_NUMBER) {
+  if (body_unit_number >= MAX_BODY_UNIT) {
     DEBUG_PRINT("===printRangingMessage: wrong body unit number occurs===\n");
     return;
   }

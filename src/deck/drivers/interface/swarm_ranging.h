@@ -7,25 +7,27 @@
 //#define ENABLE_BUS_BOARDING_SCHEME
 //#define ENABLE_DYNAMIC_RANGING_PERIOD
 #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
-  #define DYNAMIC_RANGING_COEFFICIENT 1
+#define DYNAMIC_RANGING_COEFFICIENT 1
 #endif
 
 /* Ranging Constants */
 #define RANGING_PERIOD 100 // in ms
 #define RANGING_PERIOD_MIN 20 // default 20ms
 #define RANGING_PERIOD_MAX 500 // default 500ms
+#define MAX_NEIGHBOR 10 // default up to 10 neighbors
 
 /* Queue Constants */
 #define RANGING_RX_QUEUE_SIZE 10
 #define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
 
 /* Ranging Struct Constants */
-#define MAX_BODY_UNIT_NUMBER 7
-//#define MAX_BODY_UNIT_NUMBER (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
-#define RANGING_TABLE_SIZE 10
+#define MAX_Tr_UNIT 3
+#define MAX_BODY_UNIT 7
+//#define MAX_BODY_UNIT (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
+#define RANGING_TABLE_SIZE MAX_NEIGHBOR
 #define RANGING_TABLE_HOLD_TIME 10000
-#define Tr_Rr_BUFFER_POOL_SIZE 5
-#define Tf_BUFFER_POOL_SIZE 100
+#define Tr_Rr_BUFFER_POOL_SIZE 3
+#define Tf_BUFFER_POOL_SIZE (4 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
 
 typedef portTickType Time_t;
 typedef short set_index_t;
@@ -55,7 +57,7 @@ typedef struct {
 /* Ranging Message */
 typedef struct {
   Ranging_Message_Header_t header; // 18 byte
-  Body_Unit_t bodyUnits[MAX_BODY_UNIT_NUMBER]; // 12 byte * MAX_NEIGHBOR_SIZE
+  Body_Unit_t bodyUnits[MAX_BODY_UNIT]; // 12 byte * MAX_NEIGHBOR_SIZE
 } __attribute__((packed)) Ranging_Message_t; // 20 + 12 byte * MAX_NEIGHBOR_SIZE
 
 /* Ranging Message With RX Timestamp, used in RX Queue */
@@ -134,6 +136,11 @@ typedef struct {
   int size;
 } Ranging_Table_Set_t;
 
+/* Ranging Operations */
+void rangingInit();
+int16_t getDistance(uint16_t neighborAddress);
+void setDistance(uint16_t neighborAddress, int16_t distance);
+
 /* Tr_Rr Buffer Operations */
 void rangingTableBufferInit(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer);
 void rangingTableBufferUpdate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
@@ -144,41 +151,22 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
 
 /* Tf Buffer Operations */
 void updateTfBuffer(Timestamp_Tuple_t timestamp);
-
 Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber);
-
 Timestamp_Tuple_t getLatestTxTimestamp();
 
 /* Ranging Table Operations */
 void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);
-
 void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT event);
-
 void rangingTableSetInit(Ranging_Table_Set_t *rangingTableSet);
-
-set_index_t rangingTableSetInsert(Ranging_Table_Set_t *rangingTableSet,
-                                  Ranging_Table_t *rangingTable);
-
-set_index_t findInRangingTableSet(Ranging_Table_Set_t *rangingTableSet,
-                                  uint16_t address);
-
-bool deleteRangingTableByIndex(Ranging_Table_Set_t *rangingTableSet,
-                               set_index_t index);
-
+set_index_t rangingTableSetInsert(Ranging_Table_Set_t *rangingTableSet, Ranging_Table_t *rangingTable);
+set_index_t findInRangingTableSet(Ranging_Table_Set_t *rangingTableSet, uint16_t address);
+bool deleteRangingTableByIndex(Ranging_Table_Set_t *rangingTableSet, set_index_t index);
 bool rangingTableSetClearExpire(Ranging_Table_Set_t *rangingTableSet);
-
 void sortRangingTableSet(Ranging_Table_Set_t *rangingTableSet);
 
 /* Debug Operations */
 void printRangingTable(Ranging_Table_t *rangingTable);
-
 void printRangingTableSet(Ranging_Table_Set_t *rangingTableSet);
-
 void printRangingMessage(Ranging_Message_t *rangingMessage);
-
-/* Ranging Operations */
-void rangingInit();
-int16_t getDistance(uint16_t neighborAddress);
-void setDistance(uint16_t neighborAddress, int16_t distance);
 
 #endif
