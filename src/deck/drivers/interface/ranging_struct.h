@@ -75,13 +75,8 @@ typedef enum {
   S2,
   S3,
   S4,
-  S5,
+  S5, /* S5 is effectively a temporary state for distance calculation. */
   RANGING_TABLE_STATE_COUNT
-//  S1 = 0b00000000, /* bit string of (Rp Tf Rf Tp Rr Tf Re 0) */
-//  S2 = 0b00000100,
-//  S3 = 0b10011000,
-//  S4 = 0b10011100,
-//  S5 = 0b11111110,
 } RANGING_TABLE_STATE;
 
 typedef enum {

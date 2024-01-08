@@ -118,51 +118,6 @@ void rangingInit() {
               ADHOC_DECK_TASK_PRI, &uwbRangingRxTaskHandle); // TODO optimize STACK SIZE
 }
 
-int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
-                        Timestamp_Tuple_t Tr, Timestamp_Tuple_t Rr,
-                        Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf) {
-
-  bool isErrorOccurred = false;
-
-  if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber) {
-    DEBUG_PRINT("Error: sequence number mismatch\n");
-    isErrorOccurred = true;
-  }
-
-  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber) {
-    DEBUG_PRINT("Error: sequence number out of order\n");
-    isErrorOccurred = true;
-  }
-
-  int64_t tRound1, tReply1, tRound2, tReply2, diff1, diff2, tprop_ctn;
-  tRound1 = (Rr.timestamp.full - Tp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  tReply1 = (Tr.timestamp.full - Rp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  tRound2 = (Rf.timestamp.full - Tr.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  tReply2 = (Tf.timestamp.full - Rr.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  diff1 = tRound1 - tReply1;
-  diff2 = tRound2 - tReply2;
-  tprop_ctn = (diff1 * tReply2 + diff2 * tReply1 + diff2 * diff1) / (tRound1 + tRound2 + tReply1 + tReply2);
-  int16_t distance = (int16_t) tprop_ctn * 0.4691763978616;
-
-  if (distance < 0) {
-    DEBUG_PRINT("Error: distance < 0\n");
-    isErrorOccurred = true;
-    return -1;
-  }
-
-  if (distance > 1000) {
-    DEBUG_PRINT("Error: distance > 1000\n");
-    return -1;
-  }
-
-  // TODO: check
-//  if (isErrorOccurred) {
-//    return 0;
-//  }
-
-  return distance;
-}
-
 void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithTimestamp) {
   Ranging_Message_t *rangingMessage = &rangingMessageWithTimestamp->rangingMessage;
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
@@ -214,47 +169,11 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 
   /* Trigger event handler according to Rf */
   if (neighborRf.timestamp.full) {
+    neighborRangingTable->Rf = neighborRf;
     rangingTableOnEvent(neighborRangingTable, RX_Rf);
   } else {
     rangingTableOnEvent(neighborRangingTable, RX_NO_Rf);
   }
-
-//  if (neighborRf.timestamp.full) {
-//    neighborRangingTable->Rf = neighborRf;
-//    /* find corresponding Tf in TfBuffer, it is possible that can not find corresponding Tf. */
-//    neighborRangingTable->Tf = findTfBySeqNumber(neighborRf.seqNumber);
-//
-//    Ranging_Table_Tr_Rr_Candidate_t Tr_Rr_Candidate = rangingTableBufferGetCandidate(&neighborRangingTable->TrRrBuffer,
-//                                                                                     neighborRangingTable->Tf);
-//    /* try to compute distance */
-//    if (Tr_Rr_Candidate.Tr.timestamp.full && Tr_Rr_Candidate.Rr.timestamp.full &&
-//        neighborRangingTable->Tp.timestamp.full && neighborRangingTable->Rp.timestamp.full &&
-//        neighborRangingTable->Tf.timestamp.full && neighborRangingTable->Rf.timestamp.full) {
-//      int16_t distance = computeDistance(neighborRangingTable->Tp, neighborRangingTable->Rp,
-//                                         Tr_Rr_Candidate.Tr, Tr_Rr_Candidate.Rr,
-//                                         neighborRangingTable->Tf, neighborRangingTable->Rf);
-//      if (distance > 0) {
-//        neighborRangingTable->distance = distance;
-//        setDistance(neighborRangingTable->neighborAddress, distance);
-//      } else {
-//        // DEBUG_PRINT("distance is not updated since some error occurs\n");
-//      }
-//    }
-//  }
-
-//  /* Tp <- Tf, Rp <- Rf */
-//  if (neighborRangingTable->Tf.timestamp.full && neighborRangingTable->Rf.timestamp.full) {
-//    neighborRangingTable->Rp = neighborRangingTable->Rf;
-//    neighborRangingTable->Tp = neighborRangingTable->Tf;
-//
-//    neighborRangingTable->Rf.timestamp.full = 0;
-//    neighborRangingTable->Rf.seqNumber = 0;
-//    neighborRangingTable->Tf.timestamp.full = 0;
-//    neighborRangingTable->Tf.seqNumber = 0;
-//  }
-
-//  /* update Rr */
-//  neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr = neighborRangingTable->Re;
 
   #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
   /* update period according to distance and velocity */
@@ -284,7 +203,7 @@ Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
     if (bodyUnitNumber >= MAX_BODY_UNIT_NUMBER) {
       break;
     }
-    if (table->latestReceived.timestamp.full) {
+    if (table->state == S1 || table->latestReceived.timestamp.full) {
       #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
       /* Only include timestamps with expected delivery time less or equal than current time. */
       if (curTime < table->nextExpectedDeliveryTime) {
