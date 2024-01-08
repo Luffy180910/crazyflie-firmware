@@ -56,8 +56,8 @@ typedef struct {
 
 /* Tr and Rr candidate buffer for each Ranging Table */
 typedef struct {
-  set_index_t latest;
-  set_index_t cur;
+  set_index_t latest; /* Index of latest valid (Tr,Rr) pair */
+  set_index_t cur; /* Index of current empty slot for next valid (Tr,Rr) pair */
   Ranging_Table_Tr_Rr_Candidate_t candidates[Tr_Rr_BUFFER_POOL_SIZE];
 } __attribute__((packed)) Ranging_Table_Tr_Rr_Buffer_t;
 

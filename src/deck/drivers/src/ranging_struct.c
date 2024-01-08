@@ -70,6 +70,7 @@ static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S1;
   RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("Invalid state transition occurs ↓\n");
   DEBUG_PRINT("S1_RX_NO_Rf: %d -> %d\n", prevState, curState);
 }
 
@@ -77,6 +78,7 @@ static void S1_RX_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S1;
   RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("Invalid state transition occurs ↓\n");
   DEBUG_PRINT("S1_RX_Rf: %d -> %d\n", prevState, curState);
 }
 
@@ -92,27 +94,63 @@ static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
   rangingTable->state = S2;
   RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("Invalid state transition occurs ↓\n");
   DEBUG_PRINT("S2_RX_NO_Rf: %d -> %d\n", prevState, curState);
 }
 
 static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
-  // TODO
   RANGING_TABLE_STATE prevState = rangingTable->state;
+  /* Shift ranging table
+   * Rp <- Rf
+   * Tp <- Tf  Rr <- Re
+   */
+  rangingTable->Rp = rangingTable->Rf;
+  rangingTable->Tp = rangingTable->Tf;
+  rangingTable->TrRrBuffer.candidates[rangingTable->TrRrBuffer.cur].Rr = rangingTable->Re;
+
+  Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
+  rangingTable->Rf = empty;
+  rangingTable->Tf = empty;
+  rangingTable->Re = empty;
+
   rangingTable->state = S3;
+
   RANGING_TABLE_STATE curState = rangingTable->state;
   DEBUG_PRINT("S2_RX_Rf: %d -> %d\n", prevState, curState);
 }
 
 static void S3_Tf(Ranging_Table_t *rangingTable) {
-  // TODO
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
+  rangingTable->state = S4;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S3_Tf: %d -> %d\n", prevState, curState);
 }
 
 static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
-  // TODO
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+
+  rangingTable->TrRrBuffer.candidates[rangingTable->TrRrBuffer.cur].Rr = rangingTable->Re;
+  Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
+  rangingTable->Re = empty;
+
+  rangingTable->state = S3;
+
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S3_RX_NO_Rf: %d -> %d\n", prevState, curState);
 }
 
 static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
-  // TODO
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+
+  rangingTable->TrRrBuffer.candidates[rangingTable->TrRrBuffer.cur].Rr = rangingTable->Re;
+  Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
+  rangingTable->Re = empty;
+
+  rangingTable->state = S3;
+
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S3_RX_Rf: %d -> %d\n", prevState, curState);
 }
 
 static void S4_Tf(Ranging_Table_t *rangingTable) {
@@ -152,26 +190,6 @@ void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT even
   ASSERT(rangingTable->state < RANGING_TABLE_STATE_COUNT);
   ASSERT(event < RANGING_TABLE_EVENT_COUNT);
   EVENT_HANDLER[rangingTable->state][event](rangingTable);
-//  switch (event) {
-//    case TX_Tf:
-//      DEBUG_PRINT("Event: TX_Tf, neighbor: %d\n", rangingTable->neighborAddress);
-//      EVENT_HANDLER[curState][event](rangingTable);
-//      break;
-//    case RX_NO_Rf:
-//      DEBUG_PRINT("Event: RX_NO_Rf, neighbor: %d\n", rangingTable->neighborAddress);
-//      EVENT_HANDLER[curState][event](rangingTable);
-//      break;
-//    case RX_Rf:
-//      DEBUG_PRINT("Event: RX_Rf, neighbor: %d\n", rangingTable->neighborAddress);
-//      EVENT_HANDLER[curState][event](rangingTable);
-//      break;
-//    default:
-//      DEBUG_PRINT("Error: invalid ranging table event\n");
-//  }
-}
-// TODO merge swarm_ranging.h and ranging_struct.h
-static void handleEvent() {
-
 }
 
 //TODO add semaphore to protect ranging table structure.
