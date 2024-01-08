@@ -133,9 +133,7 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
     isErrorOccurred = true;
   }
 
-  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber
-      || Tr.seqNumber <= Rp.seqNumber || Tr.seqNumber >= Rf.seqNumber
-      || Rr.seqNumber <= Tp.seqNumber || Rr.seqNumber >= Tf.seqNumber) {
+  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber) {
     DEBUG_PRINT("Error: sequence number out of order\n");
     isErrorOccurred = true;
   }
