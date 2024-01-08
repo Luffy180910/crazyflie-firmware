@@ -105,7 +105,6 @@ typedef struct {
 
 void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);
 void rangingTableShift(Ranging_Table_t *rangingTable);
-RANGING_TABLE_STATE rangingTableGetState(Ranging_Table_t *rangingTable);
 
 typedef struct {
   set_index_t next;

@@ -126,6 +126,20 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
                         Timestamp_Tuple_t Tr, Timestamp_Tuple_t Rr,
                         Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf) {
 
+  bool isErrorOccurred = false;
+
+  if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber) {
+    DEBUG_PRINT("Error: sequence number mismatch\n");
+    isErrorOccurred = true;
+  }
+
+  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber
+      || Tr.seqNumber <= Rp.seqNumber || Tr.seqNumber >= Rf.seqNumber
+      || Rr.seqNumber <= Tp.seqNumber || Rr.seqNumber >= Tf.seqNumber) {
+    DEBUG_PRINT("Error: sequence number out of order\n");
+    isErrorOccurred = true;
+  }
+
   int64_t tRound1, tReply1, tRound2, tReply2, diff1, diff2, tprop_ctn;
   tRound1 = (Rr.timestamp.full - Tp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
   tReply1 = (Tr.timestamp.full - Rp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
@@ -136,20 +150,19 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   tprop_ctn = (diff1 * tReply2 + diff2 * tReply1 + diff2 * diff1) / (tRound1 + tRound2 + tReply1 + tReply2);
   int16_t distance = (int16_t) tprop_ctn * 0.4691763978616;
 
-  bool isErrorOccurred = false;
-  if (distance > 1000 || distance < 0) {
-    DEBUG_PRINT("isErrorOccurred\n");
+  if (distance < 0) {
+    DEBUG_PRINT("Error: distance < 0\n");
     isErrorOccurred = true;
   }
 
-  if (tRound2 < 0 || tReply2 < 0) {
-    DEBUG_PRINT("tRound2 < 0 || tReply2 < 0\n");
-    isErrorOccurred = true;
+  if (distance > 1000) {
+    DEBUG_PRINT("Error: distance > 1000\n");
   }
 
-  if (isErrorOccurred) {
-    return 0;
-  }
+  // TODO: check
+//  if (isErrorOccurred) {
+//    return 0;
+//  }
 
   return distance;
 }

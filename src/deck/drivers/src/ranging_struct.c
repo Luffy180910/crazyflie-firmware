@@ -47,6 +47,8 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
 
 void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
   memset(rangingTable, 0, sizeof(Ranging_Table_t));
+  // TODO: check state init
+  rangingTable->state = S1;
   rangingTable->neighborAddress = address;
   rangingTable->period = RANGING_PERIOD;
   rangingTable->nextExpectedDeliveryTime = xTaskGetTickCount() + rangingTable->period;
@@ -62,12 +64,6 @@ void rangingTableShift(Ranging_Table_t *rangingTable) {
   rangingTable->Rf.seqNumber = 0;
   rangingTable->Tf.timestamp.full = 0;
   rangingTable->Tf.seqNumber = 0;
-}
-
-RANGING_TABLE_STATE rangingTableGetState(Ranging_Table_t *rangingTable) {
-  uint8_t state = 0;
-  // TODO
-  return state;
 }
 
 //TODO add semaphore to protect ranging table structure.
