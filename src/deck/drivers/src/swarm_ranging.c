@@ -203,7 +203,7 @@ Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
     if (bodyUnitNumber >= MAX_BODY_UNIT_NUMBER) {
       break;
     }
-    if (table->state == S1 || table->latestReceived.timestamp.full) {
+    if (table->latestReceived.timestamp.full) {
       #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
       /* Only include timestamps with expected delivery time less or equal than current time. */
       if (curTime < table->nextExpectedDeliveryTime) {

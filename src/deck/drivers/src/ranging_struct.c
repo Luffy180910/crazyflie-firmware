@@ -63,12 +63,12 @@ static int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   bool isErrorOccurred = false;
 
   if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber) {
-    DEBUG_PRINT("Error: sequence number mismatch\n");
+    DEBUG_PRINT("Ranging Error: sequence number mismatch\n");
     isErrorOccurred = true;
   }
 
   if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber) {
-    DEBUG_PRINT("Error: sequence number out of order\n");
+    DEBUG_PRINT("Ranging Error: sequence number out of order\n");
     isErrorOccurred = true;
   }
 
@@ -83,12 +83,13 @@ static int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   int16_t distance = (int16_t) tprop_ctn * 0.4691763978616;
 
   if (distance < 0) {
-    DEBUG_PRINT("Error: distance < 0\n");
+    DEBUG_PRINT("Ranging Error: distance < 0\n");
     isErrorOccurred = true;
   }
 
   if (distance > 1000) {
-    DEBUG_PRINT("Error: distance > 1000\n");
+    DEBUG_PRINT("Ranging Error: distance > 1000\n");
+    isErrorOccurred = true;
   }
 
   if (isErrorOccurred) {
@@ -107,7 +108,7 @@ static void S1_Tf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S1_Tf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S1_Tf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
@@ -116,8 +117,8 @@ static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S1;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
-  DEBUG_PRINT("S1_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
+//  DEBUG_PRINT("S1_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S1_RX_Rf(Ranging_Table_t *rangingTable) {
@@ -126,8 +127,8 @@ static void S1_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S1;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
-  DEBUG_PRINT("S1_RX_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
+//  DEBUG_PRINT("S1_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S2_Tf(Ranging_Table_t *rangingTable) {
@@ -137,7 +138,7 @@ static void S2_Tf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S2_Tf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S2_Tf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable) {
@@ -146,8 +147,8 @@ static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
-  DEBUG_PRINT("S2_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
+//  DEBUG_PRINT("S2_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
@@ -172,7 +173,7 @@ static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S2_RX_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S2_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S3_Tf(Ranging_Table_t *rangingTable) {
@@ -182,7 +183,7 @@ static void S3_Tf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S3_Tf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S3_Tf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
@@ -198,7 +199,7 @@ static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S3_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S3_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
@@ -214,7 +215,7 @@ static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S3_RX_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S3_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S4_Tf(Ranging_Table_t *rangingTable) {
@@ -224,7 +225,7 @@ static void S4_Tf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S4_Tf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S4_Tf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable) {
@@ -240,7 +241,7 @@ static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S4_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S4_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
@@ -252,7 +253,7 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   Ranging_Table_Tr_Rr_Candidate_t Tr_Rr_Candidate = rangingTableBufferGetCandidate(&rangingTable->TrRrBuffer,
                                                                                    rangingTable->Tf);
 
-  printRangingTable(rangingTable);
+//  printRangingTable(rangingTable);
 
   /* try to compute distance */
   int16_t distance = computeDistance(rangingTable->Tp, rangingTable->Rp,
@@ -262,7 +263,7 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
     rangingTable->distance = distance;
     setDistance(rangingTable->neighborAddress, distance);
   } else {
-    DEBUG_PRINT("distance is not updated since some error occurs\n");
+//    DEBUG_PRINT("distance is not updated since some error occurs\n");
   }
 
   /* Shift ranging table
@@ -282,27 +283,27 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-  DEBUG_PRINT("S4_RX_Rf: S%d -> S%d\n", prevState, curState);
+//  DEBUG_PRINT("S4_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 /* Don't call this handler function. */
 static void S5_Tf(Ranging_Table_t *rangingTable) {
-  DEBUG_PRINT("S5_Tf: invalid handler invocation of temporary state S5\n");
+//  DEBUG_PRINT("S5_Tf: invalid handler invocation of temporary state S5\n");
 }
 
 /* Don't call this handler function. */
 static void S5_RX_NO_Rf(Ranging_Table_t *rangingTable) {
-  DEBUG_PRINT("S5_RX_NO_Rf: invalid handler invocation of temporary state S5\n");
+//  DEBUG_PRINT("S5_RX_NO_Rf: invalid handler invocation of temporary state S5\n");
 }
 
 /* Don't call this handler function. */
 static void S5_RX_Rf(Ranging_Table_t *rangingTable) {
-  DEBUG_PRINT("S5_RX_Rf: invalid handler invocation of temporary state S5\n");
+//  DEBUG_PRINT("S5_RX_Rf: invalid handler invocation of temporary state S5\n");
 }
 
 /* Don't call this handler function. */
 static void RESERVED_STUB(Ranging_Table_t *rangingTable) {
-  DEBUG_PRINT("RESERVED_STUB: Error, been invoked unexpectedly\n");
+//  DEBUG_PRINT("RESERVED_STUB: Error, been invoked unexpectedly\n");
 }
 
 static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING_TABLE_EVENT_COUNT] = {
