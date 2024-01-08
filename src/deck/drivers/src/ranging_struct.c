@@ -56,8 +56,122 @@ void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
   rangingTableBufferInit(&rangingTable->TrRrBuffer); // TODO remove this since memset() is called
 }
 
-void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT event) {
+// TODO: merge state handlers
+
+static void S1_Tf(Ranging_Table_t * rangingTable) {
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
+  rangingTable->state = S2;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S1_Tf: %d -> %d\n",prevState, curState);
+}
+
+static void S1_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  rangingTable->state = S1;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S1_RX_NO_Rf: %d -> %d\n",prevState, curState);
+}
+
+static void S1_RX_Rf(Ranging_Table_t * rangingTable) {
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  rangingTable->state = S1;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S1_RX_Rf: %d -> %d\n",prevState, curState);
+}
+
+static void S2_Tf(Ranging_Table_t * rangingTable) {
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
+  rangingTable->state = S2;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S2_Tf: %d -> %d\n",prevState, curState);
+}
+
+static void S2_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  rangingTable->state = S2;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S2_RX_NO_Rf: %d -> %d\n",prevState, curState);
+}
+
+static void S2_RX_Rf(Ranging_Table_t * rangingTable) {
   // TODO
+  RANGING_TABLE_STATE prevState = rangingTable->state;
+  rangingTable->state = S3;
+  RANGING_TABLE_STATE curState = rangingTable->state;
+  DEBUG_PRINT("S2_RX_Rf: %d -> %d\n",prevState, curState);
+}
+
+static void S3_Tf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S3_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S3_RX_Rf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S4_Tf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S4_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S4_RX_Rf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S5_Tf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S5_RX_NO_Rf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static void S5_RX_Rf(Ranging_Table_t * rangingTable) {
+  // TODO
+}
+
+static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING_TABLE_EVENT_COUNT] {
+    {S1_Tf, S1_RX_NO_Rf, S1_RX_Rf},
+    {S2_Tf, S2_RX_NO_Rf, S2_RX_Rf},
+    {S3_Tf, S3_RX_NO_Rf, S3_RX_Rf},
+    {S4_Tf, S4_RX_NO_Rf, S4_RX_Rf},
+    {S5_Tf, S5_RX_NO_Rf, S5_RX_Rf},
+};
+
+void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT event) {
+  // TODO: check if mutex is needed.
+  ASSERT(rangingTable->state < RANGING_TABLE_STATE_COUNT);
+  ASSERT(event < RANGING_TABLE_EVENT_COUNT);
+  EVENT_HANDLER[rangingTable->state][event](rangingTable);
+//  switch (event) {
+//    case TX_Tf:
+//      DEBUG_PRINT("Event: TX_Tf, neighbor: %d\n", rangingTable->neighborAddress);
+//      EVENT_HANDLER[curState][event](rangingTable);
+//      break;
+//    case RX_NO_Rf:
+//      DEBUG_PRINT("Event: RX_NO_Rf, neighbor: %d\n", rangingTable->neighborAddress);
+//      EVENT_HANDLER[curState][event](rangingTable);
+//      break;
+//    case RX_Rf:
+//      DEBUG_PRINT("Event: RX_Rf, neighbor: %d\n", rangingTable->neighborAddress);
+//      EVENT_HANDLER[curState][event](rangingTable);
+//      break;
+//    default:
+//      DEBUG_PRINT("Error: invalid ranging table event\n");
+//  }
+}
+// TODO merge swarm_ranging.h and ranging_struct.h
+static void handleEvent() {
+
 }
 
 //TODO add semaphore to protect ranging table structure.

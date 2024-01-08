@@ -69,17 +69,25 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
                                                                Timestamp_Tuple_t Tf);
 
 typedef enum {
-  S1 = 0b00000000,
-  S2 = 0b00000100,
-  S3 = 0b10011000,
-  S4 = 0b10011100,
-  S5 = 0b11111110
-} RANGING_TABLE_STATE; /* bit string of (Rp Tf Rf Tp Rr Tf Re 0) */
+  RESERVED,
+  S1,
+  S2,
+  S3,
+  S4,
+  S5,
+  RANGING_TABLE_STATE_COUNT
+//  S1 = 0b00000000, /* bit string of (Rp Tf Rf Tp Rr Tf Re 0) */
+//  S2 = 0b00000100,
+//  S3 = 0b10011000,
+//  S4 = 0b10011100,
+//  S5 = 0b11111110,
+} RANGING_TABLE_STATE;
 
 typedef enum {
-  TX_Tf = 0,
-  RX_NO_Rf = 1,
-  RX_Rf = 2
+  TX_Tf,
+  RX_NO_Rf,
+  RX_Rf,
+  RANGING_TABLE_EVENT_COUNT
 } RANGING_TABLE_EVENT;
 
 /* Ranging Table
@@ -107,6 +115,8 @@ typedef struct {
 
   RANGING_TABLE_STATE state;
 } __attribute__((packed)) Ranging_Table_t;
+
+typedef void (*RangingTableEventHandler)(Ranging_Table_t *);
 
 void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);
 void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT event);
