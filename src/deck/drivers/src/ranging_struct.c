@@ -372,13 +372,15 @@ void updateTfBuffer(Timestamp_Tuple_t timestamp) {
 }
 
 Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
+  Timestamp_Tuple_t Tf = {.timestamp.full = 0, .seqNumber = 0};
   for (int i = 0; i < Tf_BUFFER_POOL_SIZE; i++) {
     if (TfBuffer[i].seqNumber == seqNumber) {
-      return TfBuffer[i];
+      Tf = TfBuffer[i];
+      break;
     }
   }
-  Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
-  return empty;
+
+  return Tf;
 }
 
 Timestamp_Tuple_t getLatestTxTimestamp() {
