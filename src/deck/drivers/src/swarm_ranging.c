@@ -153,10 +153,12 @@ int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   if (distance < 0) {
     DEBUG_PRINT("Error: distance < 0\n");
     isErrorOccurred = true;
+    return -1;
   }
 
   if (distance > 1000) {
     DEBUG_PRINT("Error: distance > 1000\n");
+    return -1;
   }
 
   // TODO: check
@@ -242,7 +244,13 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 
   /* Tp <- Tf, Rp <- Rf */
   if (neighborRangingTable->Tf.timestamp.full && neighborRangingTable->Rf.timestamp.full) {
-    rangingTableShift(neighborRangingTable);
+    neighborRangingTable->Rp = neighborRangingTable->Rf;
+    neighborRangingTable->Tp = neighborRangingTable->Tf;
+
+    neighborRangingTable->Rf.timestamp.full = 0;
+    neighborRangingTable->Rf.seqNumber = 0;
+    neighborRangingTable->Tf.timestamp.full = 0;
+    neighborRangingTable->Tf.seqNumber = 0;
   }
 
   /* update Rr */

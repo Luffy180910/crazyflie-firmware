@@ -9,6 +9,7 @@
 //#define MAX_BODY_UNIT_NUMBER (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
 #define RANGING_TABLE_SIZE 10
 #define RANGING_TABLE_HOLD_TIME 10000
+#define Tr_Rr_BUFFER_POOL_SIZE 5
 
 typedef portTickType Time_t;
 typedef short set_index_t;
@@ -47,8 +48,6 @@ typedef struct {
   dwTime_t rxTime;
 } __attribute__((packed)) Ranging_Message_With_Timestamp_t;
 
-#define Tr_Rr_BUFFER_SIZE 5
-
 typedef struct {
   Timestamp_Tuple_t Tr;
   Timestamp_Tuple_t Rr;
@@ -58,7 +57,7 @@ typedef struct {
 typedef struct {
   set_index_t latest;
   set_index_t cur;
-  Ranging_Table_Tr_Rr_Candidate_t candidates[Tr_Rr_BUFFER_SIZE];
+  Ranging_Table_Tr_Rr_Candidate_t candidates[Tr_Rr_BUFFER_POOL_SIZE];
 } __attribute__((packed)) Ranging_Table_Tr_Rr_Buffer_t;
 
 /* Tr_Rr Buffer Operations */
@@ -76,6 +75,12 @@ typedef enum {
   S4 = 0b10011100,
   S5 = 0b11111110
 } RANGING_TABLE_STATE; /* bit string of (Rp Tf Rf Tp Rr Tf Re 0) */
+
+typedef enum {
+  TX_Tf = 0,
+  RX_NO_Rf = 1,
+  RX_Rf = 2
+} RANGING_TABLE_EVENT;
 
 /* Ranging Table
   +------+------+------+------+------+
@@ -104,7 +109,7 @@ typedef struct {
 } __attribute__((packed)) Ranging_Table_t;
 
 void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);
-void rangingTableShift(Ranging_Table_t *rangingTable);
+void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT event);
 
 typedef struct {
   set_index_t next;

@@ -10,7 +10,7 @@ void rangingTableBufferInit(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer) {
   rangingTableBuffer->cur = 0;
   rangingTableBuffer->latest = 0;
   Timestamp_Tuple_t empty = {.seqNumber = 0, .timestamp.full = 0};
-  for (set_index_t i = 0; i < Tr_Rr_BUFFER_SIZE; i++) {
+  for (set_index_t i = 0; i < Tr_Rr_BUFFER_POOL_SIZE; i++) {
     rangingTableBuffer->candidates[i].Tr = empty;
     rangingTableBuffer->candidates[i].Rr = empty;
   }
@@ -23,7 +23,7 @@ void rangingTableBufferUpdate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
   rangingTableBuffer->candidates[rangingTableBuffer->cur].Rr = Rr;
   // shift
   rangingTableBuffer->latest = rangingTableBuffer->cur;
-  rangingTableBuffer->cur = (rangingTableBuffer->cur + 1) % Tr_Rr_BUFFER_SIZE;
+  rangingTableBuffer->cur = (rangingTableBuffer->cur + 1) % Tr_Rr_BUFFER_POOL_SIZE;
 }
 
 Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
@@ -32,14 +32,14 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
   uint64_t rightBound = Tf.timestamp.full % MAX_TIMESTAMP;
   Ranging_Table_Tr_Rr_Candidate_t candidate = {.Rr.timestamp.full = 0, .Tr.timestamp.full = 0};
 
-  for (int count = 0; count < Tr_Rr_BUFFER_SIZE; count++) {
+  for (int count = 0; count < Tr_Rr_BUFFER_POOL_SIZE; count++) {
     if (rangingTableBuffer->candidates[index].Rr.timestamp.full &&
         rangingTableBuffer->candidates[index].Rr.timestamp.full % MAX_TIMESTAMP < rightBound) {
       candidate.Tr = rangingTableBuffer->candidates[index].Tr;
       candidate.Rr = rangingTableBuffer->candidates[index].Rr;
       break;
     }
-    index = (index - 1 + Tr_Rr_BUFFER_SIZE) % Tr_Rr_BUFFER_SIZE;
+    index = (index - 1 + Tr_Rr_BUFFER_POOL_SIZE) % Tr_Rr_BUFFER_POOL_SIZE;
   }
 
   return candidate;
@@ -56,14 +56,8 @@ void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
   rangingTableBufferInit(&rangingTable->TrRrBuffer); // TODO remove this since memset() is called
 }
 
-void rangingTableShift(Ranging_Table_t *rangingTable) {
-  rangingTable->Rp = rangingTable->Rf;
-  rangingTable->Tp = rangingTable->Tf;
-
-  rangingTable->Rf.timestamp.full = 0;
-  rangingTable->Rf.seqNumber = 0;
-  rangingTable->Tf.timestamp.full = 0;
-  rangingTable->Tf.seqNumber = 0;
+void rangingTableOnEvent(Ranging_Table_t *rangingTable, RANGING_TABLE_EVENT event) {
+  // TODO
 }
 
 //TODO add semaphore to protect ranging table structure.
