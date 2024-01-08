@@ -314,6 +314,15 @@ Timestamp_Tuple_t getLatestTxTimestamp() {
   return TfBuffer[TfBufferIndex];
 }
 
+void getLastestNTxTimestamps(Timestamp_Tuple_t* timestamps, int n) {
+  ASSERT(n <= Tf_BUFFER_POOL_SIZE);
+  int startIndex = (TfBufferIndex + 1 - n + Tf_BUFFER_POOL_SIZE) % Tf_BUFFER_POOL_SIZE;
+  for (int i = n - 1; i >= 0; i--) {
+    timestamps[i] = TfBuffer[startIndex];
+    startIndex = (startIndex + 1) % Tf_BUFFER_POOL_SIZE;
+  }
+}
+
 void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
   memset(rangingTable, 0, sizeof(Ranging_Table_t));
   rangingTable->state = S1;
