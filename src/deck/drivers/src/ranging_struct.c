@@ -379,7 +379,6 @@ Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
       break;
     }
   }
-
   return Tf;
 }
 
