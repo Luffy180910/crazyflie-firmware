@@ -1,4 +1,4 @@
-#define DEBUG_MODULE "ROUTING"
+// #define DEBUG_MODULE "ROUTING"
 
 #include "stm32fxxx.h"
 
@@ -32,11 +32,11 @@ static int seqNumber = 1;
 static double A = 120.7;
 
 void routingRxCallback(void *parameters) {
-  DEBUG_PRINT("routingRxCallback \n");
+  // DEBUG_PRINT("routingRxCallback \n");
 }
 
 void routingTxCallback(void *parameters) {
-  DEBUG_PRINT("routingTxCallback \n");
+  // DEBUG_PRINT("routingTxCallback \n");
 }
 
 int generateRoutingDataMessage(MockData_t *message) {
@@ -59,7 +59,7 @@ static void processRoutingDataMessage(UWB_Packet_t *packet) {
   // CIADONE
   uint32_t CIADONE_MASK = 0x400;
   uint32_t CIADONE = dwt_read32bitreg(SYS_STATUS_ID) & CIADONE_MASK;
-  DEBUG_PRINT("CIADONE: %u, C: %u, N: %u, D: %u\n", CIADONE, C, N, D);
+  // DEBUG_PRINT("CIADONE: %u, C: %u, N: %u, D: %u\n", CIADONE, C, N, D);
 
   uint16_t rx_tune_en = dwt_read16bitoffsetreg(DGC_CFG_ID, DGC_CFG_RX_TUNE_EN_BIT_OFFSET) & DGC_CFG_RX_TUNE_EN_BIT_MASK; // the DGC_DECISION
 
@@ -73,7 +73,7 @@ static void processRoutingDataMessage(UWB_Packet_t *packet) {
     RX_Level = 10 * log10((C * pow(2, 21)) / N*N) - A;
   }
 
-  DEBUG_PRINT("FPP: %f, RX_Level: %f \n", FPP, RX_Level);
+  DEBUG_PRINT("%f\n", RX_Level);
 }
 
 static void uwbRoutingTxTask(void *parameters) {
