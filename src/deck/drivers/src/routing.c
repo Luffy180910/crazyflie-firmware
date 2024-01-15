@@ -27,11 +27,11 @@ static QueueHandle_t rxQueue;
 static int seqNumber = 1;
 
 void routingRxCallback(void *parameters) {
-  DEBUG_PRINT("routingRxCallback \n");
+//  DEBUG_PRINT("routingRxCallback \n");
 }
 
 void routingTxCallback(void *parameters) {
-  DEBUG_PRINT("routingTxCallback \n");
+//  DEBUG_PRINT("routingTxCallback \n");
 }
 
 int generateRoutingDataMessage(MockData_t *message) {
