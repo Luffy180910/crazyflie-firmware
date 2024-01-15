@@ -138,8 +138,8 @@ typedef struct {
 
 /* Ranging Operations */
 void rangingInit();
-int16_t getDistance(uint16_t neighborAddress);
-void setDistance(uint16_t neighborAddress, int16_t distance);
+int16_t getDistance(UWB_Address_t neighborAddress);
+void setDistance(UWB_Address_t neighborAddress, int16_t distance);
 
 /* Tr_Rr Buffer Operations */
 void rangingTableBufferInit(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer);

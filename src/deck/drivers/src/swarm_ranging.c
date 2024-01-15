@@ -29,12 +29,12 @@ static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
-int16_t getDistance(uint16_t neighborAddress) {
+int16_t getDistance(UWB_Address_t neighborAddress) {
   ASSERT(neighborAddress <= RANGING_TABLE_SIZE);
   return distanceTowards[neighborAddress];
 }
 
-void setDistance(uint16_t neighborAddress, int16_t distance) {
+void setDistance(UWB_Address_t neighborAddress, int16_t distance) {
   ASSERT(neighborAddress <= RANGING_TABLE_SIZE);
   distanceTowards[neighborAddress] = distance;
 }

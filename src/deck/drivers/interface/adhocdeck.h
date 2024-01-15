@@ -73,8 +73,8 @@ typedef enum {
 } UWB_MESSAGE_TYPE;
 
 typedef struct {
-  uint16_t srcAddress;
-  uint16_t destAddress;
+  UWB_Address_t srcAddress;
+  UWB_Address_t destAddress;
   uint32_t seqNumber;
   UWB_MESSAGE_TYPE type: 6;
   uint16_t length: 10;

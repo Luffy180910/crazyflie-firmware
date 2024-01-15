@@ -7,8 +7,9 @@
 #define ROUTING_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
 
 typedef struct {
-  uint16_t seqNumber;
-} __attribute__((packed)) MockData_t;
+  uint16_t srcAddress;
+  uint16_t destAddress;
+} __attribute__((packed)) DataPacket_t;
 
 void routingInit();
 #endif
