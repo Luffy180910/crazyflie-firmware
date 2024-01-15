@@ -7,7 +7,7 @@
 //#define ENABLE_BUS_BOARDING_SCHEME
 //#define ENABLE_DYNAMIC_RANGING_PERIOD
 #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
-#define DYNAMIC_RANGING_COEFFICIENT 1
+  #define DYNAMIC_RANGING_COEFFICIENT 1
 #endif
 
 /* Ranging Constants */
@@ -23,7 +23,7 @@
 /* Ranging Struct Constants */
 #define MAX_Tr_UNIT 3
 #define MAX_BODY_UNIT 7
-//#define MAX_BODY_UNIT (FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
+//#define MAX_BODY_UNIT (UWB_FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
 #define RANGING_TABLE_SIZE MAX_NEIGHBOR
 #define RANGING_TABLE_HOLD_TIME 10000
 #define Tr_Rr_BUFFER_POOL_SIZE 3
@@ -79,19 +79,19 @@ typedef struct {
 } __attribute__((packed)) Ranging_Table_Tr_Rr_Buffer_t;
 
 typedef enum {
-  RESERVED,
-  S1,
-  S2,
-  S3,
-  S4,
-  S5, /* S5 is effectively a temporary state for distance calculation. */
+  RANGING_STATE_RESERVED,
+  RANGING_STATE_S1,
+  RANGING_STATE_S2,
+  RANGING_STATE_S3,
+  RANGING_STATE_S4,
+  RANGING_STATE_S5, /* RANGING_STATE_S5 is effectively a temporary state for distance calculation. */
   RANGING_TABLE_STATE_COUNT
 } RANGING_TABLE_STATE;
 
 typedef enum {
-  TX_Tf,
-  RX_NO_Rf,
-  RX_Rf,
+  RANGING_EVENT_TX_Tf,
+  RANGING_EVENT_RX_NO_Rf,
+  RANGING_EVENT_RX_Rf,
   RANGING_TABLE_EVENT_COUNT
 } RANGING_TABLE_EVENT;
 
@@ -153,7 +153,7 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
 void updateTfBuffer(Timestamp_Tuple_t timestamp);
 Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber);
 Timestamp_Tuple_t getLatestTxTimestamp();
-void getLatestNTxTimestamps(Timestamp_Tuple_t* timestamps, int n);
+void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n);
 
 /* Ranging Table Operations */
 void rangingTableInit(Ranging_Table_t *rangingTable, uint16_t address);

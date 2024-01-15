@@ -85,11 +85,11 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
 
   /* Try to find corresponding Rf for MY_UWB_ADDRESS. */
   Timestamp_Tuple_t neighborRf = {.timestamp.full = 0, .seqNumber = 0};
-  if (rangingMessage->header.filter & (1 << (getUWBAddress() % 16))) {
+  if (rangingMessage->header.filter & (1 << (uwbGetAddress() % 16))) {
     /* Retrieve body unit from received ranging message. */
     uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
     for (int i = 0; i < bodyUnitCount; i++) {
-      if (rangingMessage->bodyUnits[i].address == getUWBAddress()) {
+      if (rangingMessage->bodyUnits[i].address == uwbGetAddress()) {
         neighborRf = rangingMessage->bodyUnits[i].timestamp;
         break;
       }
@@ -99,9 +99,9 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
   /* Trigger event handler according to Rf */
   if (neighborRf.timestamp.full) {
     neighborRangingTable->Rf = neighborRf;
-    rangingTableOnEvent(neighborRangingTable, RX_Rf);
+    rangingTableOnEvent(neighborRangingTable, RANGING_EVENT_RX_Rf);
   } else {
-    rangingTableOnEvent(neighborRangingTable, RX_NO_Rf);
+    rangingTableOnEvent(neighborRangingTable, RANGING_EVENT_RX_NO_Rf);
   }
 
   #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
@@ -153,7 +153,7 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
       rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->latestReceived;
       bodyUnitNumber++;
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16);
-      rangingTableOnEvent(table, TX_Tf);
+      rangingTableOnEvent(table, RANGING_EVENT_TX_Tf);
     }
   }
   /* Generate message header */
@@ -171,6 +171,49 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   return taskDelay;
 }
 
+static int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
+                               Timestamp_Tuple_t Tr, Timestamp_Tuple_t Rr,
+                               Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf) {
+
+  bool isErrorOccurred = false;
+
+  if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber) {
+    DEBUG_PRINT("Ranging Error: sequence number mismatch\n");
+    isErrorOccurred = true;
+  }
+
+  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber) {
+    DEBUG_PRINT("Ranging Error: sequence number out of order\n");
+    isErrorOccurred = true;
+  }
+
+  int64_t tRound1, tReply1, tRound2, tReply2, diff1, diff2, t;
+  tRound1 = (Rr.timestamp.full - Tp.timestamp.full + UWB_MAX_TIMESTAMP) % UWB_MAX_TIMESTAMP;
+  tReply1 = (Tr.timestamp.full - Rp.timestamp.full + UWB_MAX_TIMESTAMP) % UWB_MAX_TIMESTAMP;
+  tRound2 = (Rf.timestamp.full - Tr.timestamp.full + UWB_MAX_TIMESTAMP) % UWB_MAX_TIMESTAMP;
+  tReply2 = (Tf.timestamp.full - Rr.timestamp.full + UWB_MAX_TIMESTAMP) % UWB_MAX_TIMESTAMP;
+  diff1 = tRound1 - tReply1;
+  diff2 = tRound2 - tReply2;
+  t = (diff1 * tReply2 + diff2 * tReply1 + diff2 * diff1) / (tRound1 + tRound2 + tReply1 + tReply2);
+  int16_t distance = (int16_t) t * 0.4691763978616;
+
+  if (distance < 0) {
+    DEBUG_PRINT("Ranging Error: distance < 0\n");
+    isErrorOccurred = true;
+  }
+
+  if (distance > 1000) {
+    DEBUG_PRINT("Ranging Error: distance > 1000\n");
+    isErrorOccurred = true;
+  }
+
+  if (isErrorOccurred) {
+    return -1;
+  }
+
+  return distance;
+}
+
 static void uwbRangingTxTask(void *parameters) {
   systemWaitStart();
 
@@ -180,9 +223,11 @@ static void uwbRangingTxTask(void *parameters) {
   idVelocityZ = logGetVarId("stateEstimate", "vz");
 
   UWB_Packet_t txPacketCache;
-  txPacketCache.header.type = RANGING;
-  Ranging_Message_t *rangingMessage = &txPacketCache.payload;
-//  txPacketCache.header.mac = ? TODO init mac header
+  txPacketCache.header.srcAddress = uwbGetAddress();
+  txPacketCache.header.destAddress = UWB_DEST_ONE_HOP;
+  txPacketCache.header.type = UWB_RANGING_MESSAGE;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;
+
   while (true) {
     int taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(Packet_Header_t) + rangingMessage->header.msgLength;
@@ -229,12 +274,12 @@ void rangingTxCallback(void *parameters) {
 }
 
 void rangingInit() {
-  MY_UWB_ADDRESS = getUWBAddress();
+  MY_UWB_ADDRESS = uwbGetAddress();
   DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetInit(&rangingTableSet);
 
-  listener.type = RANGING;
+  listener.type = UWB_RANGING_MESSAGE;
   listener.rxQueue = NULL; // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
   listener.rxCb = rangingRxCallback;
   listener.txCb = rangingTxCallback;
@@ -273,12 +318,12 @@ void rangingTableBufferUpdate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
 Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
                                                                Timestamp_Tuple_t Tf) {
   set_index_t index = rangingTableBuffer->latest;
-  uint64_t rightBound = Tf.timestamp.full % MAX_TIMESTAMP;
+  uint64_t rightBound = Tf.timestamp.full % UWB_MAX_TIMESTAMP;
   Ranging_Table_Tr_Rr_Candidate_t candidate = {.Rr.timestamp.full = 0, .Tr.timestamp.full = 0};
 
   for (int count = 0; count < Tr_Rr_BUFFER_POOL_SIZE; count++) {
     if (rangingTableBuffer->candidates[index].Rr.timestamp.full &&
-        rangingTableBuffer->candidates[index].Rr.timestamp.full % MAX_TIMESTAMP < rightBound) {
+        rangingTableBuffer->candidates[index].Rr.timestamp.full % UWB_MAX_TIMESTAMP < rightBound) {
       candidate.Tr = rangingTableBuffer->candidates[index].Tr;
       candidate.Rr = rangingTableBuffer->candidates[index].Rr;
       break;
@@ -332,9 +377,9 @@ void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n) {
   }
 }
 
-void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
+void rangingTableInit(Ranging_Table_t *rangingTable, UWB_Address_t address) {
   memset(rangingTable, 0, sizeof(Ranging_Table_t));
-  rangingTable->state = S1;
+  rangingTable->state = RANGING_STATE_S1;
   rangingTable->neighborAddress = address;
   rangingTable->period = RANGING_PERIOD;
   rangingTable->nextExpectedDeliveryTime = xTaskGetTickCount() + rangingTable->period;
@@ -342,54 +387,11 @@ void rangingTableInit(Ranging_Table_t *rangingTable, address_t address) {
   rangingTableBufferInit(&rangingTable->TrRrBuffer); // Can be safely removed this line since memset() is called
 }
 
-static int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
-                               Timestamp_Tuple_t Tr, Timestamp_Tuple_t Rr,
-                               Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf) {
-
-  bool isErrorOccurred = false;
-
-  if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber) {
-    DEBUG_PRINT("Ranging Error: sequence number mismatch\n");
-    isErrorOccurred = true;
-  }
-
-  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber) {
-    DEBUG_PRINT("Ranging Error: sequence number out of order\n");
-    isErrorOccurred = true;
-  }
-
-  int64_t tRound1, tReply1, tRound2, tReply2, diff1, diff2, tprop_ctn;
-  tRound1 = (Rr.timestamp.full - Tp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  tReply1 = (Tr.timestamp.full - Rp.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  tRound2 = (Rf.timestamp.full - Tr.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  tReply2 = (Tf.timestamp.full - Rr.timestamp.full + MAX_TIMESTAMP) % MAX_TIMESTAMP;
-  diff1 = tRound1 - tReply1;
-  diff2 = tRound2 - tReply2;
-  tprop_ctn = (diff1 * tReply2 + diff2 * tReply1 + diff2 * diff1) / (tRound1 + tRound2 + tReply1 + tReply2);
-  int16_t distance = (int16_t) tprop_ctn * 0.4691763978616;
-
-  if (distance < 0) {
-    DEBUG_PRINT("Ranging Error: distance < 0\n");
-    isErrorOccurred = true;
-  }
-
-  if (distance > 1000) {
-    DEBUG_PRINT("Ranging Error: distance > 1000\n");
-    isErrorOccurred = true;
-  }
-
-  if (isErrorOccurred) {
-    return -1;
-  }
-
-  return distance;
-}
-
 static void S1_Tf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
-  rangingTable->state = S2;
+  rangingTable->state = RANGING_STATE_S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S1_Tf: S%d -> S%d\n", prevState, curState);
@@ -398,7 +400,7 @@ static void S1_Tf(Ranging_Table_t *rangingTable) {
 static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
-  rangingTable->state = S1;
+  rangingTable->state = RANGING_STATE_S1;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
@@ -408,7 +410,7 @@ static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
 static void S1_RX_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
-  rangingTable->state = S1;
+  rangingTable->state = RANGING_STATE_S1;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
@@ -419,7 +421,7 @@ static void S2_Tf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
-  rangingTable->state = S2;
+  rangingTable->state = RANGING_STATE_S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S2_Tf: S%d -> S%d\n", prevState, curState);
@@ -428,7 +430,7 @@ static void S2_Tf(Ranging_Table_t *rangingTable) {
 static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
-  rangingTable->state = S2;
+  rangingTable->state = RANGING_STATE_S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
@@ -454,7 +456,7 @@ static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->Tf = empty;
   rangingTable->Re = empty;
 
-  rangingTable->state = S3;
+  rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S2_RX_Rf: S%d -> S%d\n", prevState, curState);
@@ -464,7 +466,7 @@ static void S3_Tf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
-  rangingTable->state = S4;
+  rangingTable->state = RANGING_STATE_S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S3_Tf: S%d -> S%d\n", prevState, curState);
@@ -480,7 +482,7 @@ static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
   rangingTable->Re = empty;
 
-  rangingTable->state = S3;
+  rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S3_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
@@ -496,7 +498,7 @@ static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
   Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
   rangingTable->Re = empty;
 
-  rangingTable->state = S3;
+  rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S3_RX_Rf: S%d -> S%d\n", prevState, curState);
@@ -506,7 +508,7 @@ static void S4_Tf(Ranging_Table_t *rangingTable) {
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
-  rangingTable->state = S4;
+  rangingTable->state = RANGING_STATE_S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S4_Tf: S%d -> S%d\n", prevState, curState);
@@ -522,7 +524,7 @@ static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   Timestamp_Tuple_t empty = {.timestamp.full = 0, .seqNumber = 0};
   rangingTable->Re = empty;
 
-  rangingTable->state = S4;
+  rangingTable->state = RANGING_STATE_S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S4_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
@@ -564,7 +566,7 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->Re = empty;
 
   // TODO: check if valid
-  rangingTable->state = S3;
+  rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
 //  DEBUG_PRINT("S4_RX_Rf: S%d -> S%d\n", prevState, curState);
@@ -572,17 +574,17 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
 
 /* Don't call this handler function. */
 static void S5_Tf(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("S5_Tf: invalid handler invocation of temporary state S5\n");
+//  DEBUG_PRINT("S5_Tf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
 }
 
 /* Don't call this handler function. */
 static void S5_RX_NO_Rf(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("S5_RX_NO_Rf: invalid handler invocation of temporary state S5\n");
+//  DEBUG_PRINT("S5_RX_NO_Rf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
 }
 
 /* Don't call this handler function. */
 static void S5_RX_Rf(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("S5_RX_Rf: invalid handler invocation of temporary state S5\n");
+//  DEBUG_PRINT("S5_RX_Rf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
 }
 
 /* Don't call this handler function. */
@@ -596,7 +598,7 @@ static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING
     {S2_Tf, S2_RX_NO_Rf, S2_RX_Rf},
     {S3_Tf, S3_RX_NO_Rf, S3_RX_Rf},
     {S4_Tf, S4_RX_NO_Rf, S4_RX_Rf},
-    /* S5 is effectively a temporary state for distance calculation, never been invoked */
+    /* RANGING_STATE_S5 is effectively a temporary state for distance calculation, never been invoked */
     {S5_Tf, S5_RX_NO_Rf, S5_RX_Rf}
 };
 
@@ -679,7 +681,7 @@ set_index_t rangingTableSetInsert(Ranging_Table_Set_t *rangingTableSet,
 }
 
 set_index_t findInRangingTableSet(Ranging_Table_Set_t *rangingTableSet,
-                                  address_t addr) {
+                                  UWB_Address_t addr) {
   set_index_t iter = rangingTableSet->fullQueueEntry;
   while (iter != -1) {
     Ranging_Table_Set_Item_t cur = rangingTableSet->setData[iter];

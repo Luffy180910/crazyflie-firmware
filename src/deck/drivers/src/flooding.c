@@ -40,7 +40,9 @@ static void uwbFloodingTxTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t txPacketCache;
-  txPacketCache.header.type = FLOODING;
+  txPacketCache.header.srcAddress = uwbGetAddress();
+  txPacketCache.header.destAddress = UWB_DEST_ANY;
+  txPacketCache.header.type = UWB_FLOODING_MESSAGE;
 
   while (true) {
     printFloodingTopologyTableSet(&floodingTopologyTableSet);
@@ -70,11 +72,11 @@ static void uwbFloodingRxTask(void *parameters) {
 }
 
 void floodingInit() {
-  MY_UWB_ADDRESS = getUWBAddress();
+  MY_UWB_ADDRESS = uwbGetAddress();
   rxQueue = xQueueCreate(FLOODING_RX_QUEUE_SIZE, FLOODING_RX_QUEUE_ITEM_SIZE);
   floodingTopologyTableSetInit(&floodingTopologyTableSet);
 
-  listener.type = FLOODING;
+  listener.type = UWB_FLOODING_MESSAGE;
   listener.rxQueue = rxQueue;
   listener.rxCb = floodingRxCallback;
   listener.txCb = floodingTxCallback;

@@ -49,7 +49,7 @@ static void uwbRoutingTxTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t txPacketCache;
-  txPacketCache.header.type = DATA;
+  txPacketCache.header.type = UWB_DATA_MESSAGE;
 //  txPacketCache.header.mac = ? TODO init mac header
   while (true) {
     int msgLen = generateRoutingDataMessage((MockData_t *) &txPacketCache.payload);
@@ -65,7 +65,7 @@ static void uwbRoutingRxTask(void *parameters) {
   UWB_Packet_t rxPacketCache;
 
   while (true) {
-    if (uwbReceivePacketBlock(DATA, &rxPacketCache)) {
+    if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
       processRoutingDataMessage(&rxPacketCache);
     }
   }
@@ -75,7 +75,7 @@ void routingInit() {
   rxQueue = xQueueCreate(ROUTING_RX_QUEUE_SIZE, ROUTING_RX_QUEUE_ITEM_SIZE);
 
   UWB_Message_Listener_t listener;
-  listener.type = DATA;
+  listener.type = UWB_DATA_MESSAGE;
   listener.rxQueue = rxQueue;
   listener.rxCb = routingRxCallback;
   listener.txCb = routingTxCallback;
