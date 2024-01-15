@@ -41,6 +41,7 @@ void routingRxCallback(void *parameters) {
 
 void routingTxCallback(void *parameters) {
 //  DEBUG_PRINT("routingTxCallback \n");
+  DEBUG_PRINT("seq = %d\n", seqNumber);
 }
 
 int generateRoutingDataMessage(MockData_t *message) {
