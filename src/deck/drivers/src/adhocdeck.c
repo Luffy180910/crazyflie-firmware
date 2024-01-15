@@ -30,27 +30,27 @@
 
 // LOCO deck alternative IRQ and RESET pins(IO_2, IO_4) instead of default (RX1, TX1), leaving UART1 free for use
 #ifdef CONFIG_DECK_ADHOCDECK_USE_ALT_PINS
-#define GPIO_PIN_IRQ      DECK_GPIO_IO2
-#ifndef ADHOCDECK_ALT_PIN_RESET
-#define GPIO_PIN_RESET    DECK_GPIO_IO4
-#else
-#define GPIO_PIN_RESET 	ADHOCDECK_ALT_PIN_RESET
-#endif
-#define EXTI_PortSource EXTI_PortSourceGPIOB
-#define EXTI_PinSource    EXTI_PinSource5
-#define EXTI_LineN          EXTI_Line5
+  #define GPIO_PIN_IRQ      DECK_GPIO_IO2
+  #ifndef ADHOCDECK_ALT_PIN_RESET
+    #define GPIO_PIN_RESET    DECK_GPIO_IO4
+  #else
+    #define GPIO_PIN_RESET 	ADHOCDECK_ALT_PIN_RESET
+  #endif
+  #define EXTI_PortSource EXTI_PortSourceGPIOB
+  #define EXTI_PinSource    EXTI_PinSource5
+  #define EXTI_LineN          EXTI_Line5
 #elif defined(CONFIG_DECK_ADHOCDECK_USE_UART2_PINS)
-#define GPIO_PIN_IRQ 	  DECK_GPIO_TX2
-#define GPIO_PIN_RESET 	DECK_GPIO_RX2
-#define EXTI_PortSource EXTI_PortSourceGPIOA
-#define EXTI_PinSource 	EXTI_PinSource2
-#define EXTI_LineN 		  EXTI_Line2
+  #define GPIO_PIN_IRQ 	  DECK_GPIO_TX2
+  #define GPIO_PIN_RESET 	DECK_GPIO_RX2
+  #define EXTI_PortSource EXTI_PortSourceGPIOA
+  #define EXTI_PinSource 	EXTI_PinSource2
+  #define EXTI_LineN 		  EXTI_Line2
 #else
-#define GPIO_PIN_IRQ      DECK_GPIO_RX1
-#define GPIO_PIN_RESET    DECK_GPIO_TX1
-#define EXTI_PortSource EXTI_PortSourceGPIOC
-#define EXTI_PinSource    EXTI_PinSource11
-#define EXTI_LineN          EXTI_Line11
+  #define GPIO_PIN_IRQ      DECK_GPIO_RX1
+  #define GPIO_PIN_RESET    DECK_GPIO_TX1
+  #define EXTI_PortSource EXTI_PortSourceGPIOC
+  #define EXTI_PinSource    EXTI_PinSource11
+  #define EXTI_LineN          EXTI_Line11
 #endif
 
 #define DEFAULT_RX_TIMEOUT 0xFFFFF
@@ -62,41 +62,49 @@ static TaskHandle_t uwbTxTaskHandle = 0;
 static SemaphoreHandle_t irqSemaphore;
 
 static QueueHandle_t txQueue;
-static xQueueHandle queues[MESSAGE_TYPE_COUNT];
-static UWB_Message_Listener_t listeners[MESSAGE_TYPE_COUNT];
-static MESSAGE_TYPE TX_MESSAGE_TYPE;
+static xQueueHandle queues[UWB_MESSAGE_TYPE_COUNT];
+static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
+static UWB_MESSAGE_TYPE LAST_TX_MESSAGE_TYPE;
 
 static int packetSeqNumber = 1;
 
 /* rx buffer used in rx_callback */
-static uint8_t rxBuffer[FRAME_LEN_MAX];
+static uint8_t rxBuffer[UWB_FRAME_LEN_MAX];
 
 /* log block */
 uint32_t TOTAL_SEND = 0;
 uint32_t TOTAL_RECEIVED = 0;
 
 static void txCallback() {
-  packetSeqNumber++;
-  if (TX_MESSAGE_TYPE < MESSAGE_TYPE_COUNT && listeners[TX_MESSAGE_TYPE].txCb) {
-    listeners[TX_MESSAGE_TYPE].txCb(NULL); // TODO no parameter passed into txCb now
+  if (listeners[LAST_TX_MESSAGE_TYPE].txCb) {
+    listeners[LAST_TX_MESSAGE_TYPE].txCb(NULL); // TODO: no parameter passed into txCb now
   }
 }
 
+/* Packet dispatcher */
 static void rxCallback() {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   uint32_t dataLength = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_BIT_MASK;
 
-  ASSERT(dataLength != 0 && dataLength <= FRAME_LEN_MAX);
+  ASSERT(dataLength != 0 && dataLength <= UWB_FRAME_LEN_MAX);
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
 
 //  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
-  MESSAGE_TYPE msgType = packet->header.type;
+  UWB_MESSAGE_TYPE msgType = packet->header.type;
 
-  ASSERT(msgType < MESSAGE_TYPE_COUNT);
+  ASSERT(msgType > 0);
+  ASSERT(msgType < UWB_MESSAGE_TYPE_COUNT);
+
+  if (!(packet->header.destAddress == MY_UWB_ADDRESS || packet->header.destAddress == UWB_DEST_ANY
+      || packet->header.destAddress == UWB_DEST_ONE_HOP)) {
+    dwt_forcetrxoff();
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    return;
+  }
 
   if (listeners[msgType].rxCb) {
     listeners[msgType].rxCb(packet);
@@ -121,7 +129,7 @@ static void rxErrorCallback() {
   DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
 }
 
-uint16_t getUWBAddress() {
+uint16_t uwbGetAddress() {
   return MY_UWB_ADDRESS;
 }
 
@@ -135,21 +143,21 @@ int uwbSendPacketBlock(UWB_Packet_t *packet) {
   return xQueueSend(txQueue, packet, portMAX_DELAY);
 }
 
-int uwbReceivePacket(MESSAGE_TYPE type, UWB_Packet_t *packet) {
+int uwbReceivePacket(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet) {
   ASSERT(packet);
-  ASSERT(type < MESSAGE_TYPE_COUNT);
+  ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
   return xQueueReceive(queues[type], packet, 0);
 }
 
-int uwbReceivePacketBlock(MESSAGE_TYPE type, UWB_Packet_t *packet) {
+int uwbReceivePacketBlock(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet) {
   ASSERT(packet);
-  ASSERT(type < MESSAGE_TYPE_COUNT);
+  ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
   return xQueueReceive(queues[type], packet, portMAX_DELAY);
 }
 
-int uwbReceivePacketWait(MESSAGE_TYPE type, UWB_Packet_t *packet, int wait) {
+int uwbReceivePacketWait(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet, int wait) {
   ASSERT(packet);
-  ASSERT(type < MESSAGE_TYPE_COUNT);
+  ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
   return xQueueReceive(queues[type], packet, M2T(wait));
 }
 
@@ -160,7 +168,19 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener) {
 
 static int uwbInit() {
   /* Need to make sure DW IC is in IDLE_RC before proceeding */
-  if (!dwt_checkidlerc() || dwt_initialise(DWT_DW_INIT) || dwt_configure(&config)) {
+  for (int i = 0; !dwt_checkidlerc() && i < 3; i++) {
+  }
+
+  if (!dwt_checkidlerc()) {
+    DEBUG_PRINT("Error: DW IC is not in IDLE_RC state \n");
+    return DWT_ERROR;
+  }
+
+  if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
+    return DWT_ERROR;
+  }
+
+  if (dwt_configure(&config) == DWT_ERROR) {
     return DWT_ERROR;
   }
 
@@ -170,12 +190,14 @@ static int uwbInit() {
   dwt_configuretxrf(&txconfig_options);
 
   /* Configure Antenna Delay */
-  dwt_setrxantennadelay(RX_ANT_DLY);
-  dwt_settxantennadelay(TX_ANT_DLY);
+  dwt_setrxantennadelay(UWB_RX_ANT_DLY);
+  dwt_settxantennadelay(UWB_TX_ANT_DLY);
 
   dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
 
+  /* Set callback functions */
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
+
   /* Enable wanted interrupts (TX confirmation, RX good frames, RX timeouts and RX errors). */
   dwt_setinterrupt(SYS_ENABLE_LO_TXFRS_ENABLE_BIT_MASK |
                        SYS_ENABLE_LO_RXFCG_ENABLE_BIT_MASK |
@@ -201,11 +223,16 @@ static void uwbTxTask(void *parameters) {
   UWB_Packet_t packetCache;
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
-      ASSERT(packetCache.header.length <= FRAME_LEN_MAX);
+      ASSERT(packetCache.header.type > 0);
+      ASSERT(packetCache.header.type < UWB_MESSAGE_TYPE_COUNT);
+      ASSERT(packetCache.header.length <= UWB_FRAME_LEN_MAX);
+
+      packetCache.header.seqNumber = packetSeqNumber++;
+
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
-      TX_MESSAGE_TYPE = packetCache.header.type;
+      LAST_TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
       if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
           DWT_ERROR) {
@@ -233,8 +260,8 @@ static void uwbTask(void *parameters) {
 
 /************ Low level ops for libdw **********/
 
-static uint8_t spiTxBuffer[FRAME_LEN_MAX];
-static uint8_t spiRxBuffer[FRAME_LEN_MAX];
+static uint8_t spiTxBuffer[UWB_FRAME_LEN_MAX];
+static uint8_t spiRxBuffer[UWB_FRAME_LEN_MAX];
 static uint16_t spiSpeed = SPI_BAUDRATE_2MHZ;
 
 static void spiWrite(const void *header, size_t headerLength, const void *data,
@@ -332,7 +359,7 @@ static void pinInit() {
 }
 
 static void queueInit() {
-  txQueue = xQueueCreate(TX_QUEUE_SIZE, TX_QUEUE_ITEM_SIZE);
+  txQueue = xQueueCreate(UWB_TX_QUEUE_SIZE, UWB_TX_QUEUE_ITEM_SIZE);
 }
 
 static void uwbTaskInit() {

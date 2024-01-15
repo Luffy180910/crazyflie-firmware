@@ -46,7 +46,7 @@ void routingTxCallback(void *parameters) {
 int generateRoutingDataMessage(MockData_t *message) {
   int msgLen = sizeof(MockData_t);
   message->seqNumber = seqNumber++;
-  message->srcAddress = getUWBAddress();
+  message->srcAddress = uwbGetAddress();
   return msgLen;
 }
 
@@ -116,7 +116,7 @@ static void uwbRoutingTxTask(void *parameters) {
   TickType_t LAST_PRINT_TIME = xTaskGetTickCount();
 
   UWB_Packet_t txPacketCache;
-  txPacketCache.header.type = DATA;
+  txPacketCache.header.type = UWB_DATA_MESSAGE;
 //  txPacketCache.header.mac = ? TODO init mac header
   while (true) {
     int msgLen = generateRoutingDataMessage((MockData_t *) &txPacketCache.payload);
@@ -138,7 +138,7 @@ static void uwbRoutingRxTask(void *parameters) {
   UWB_Packet_t rxPacketCache;
 
   while (true) {
-    if (uwbReceivePacketBlock(DATA, &rxPacketCache)) {
+    if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
       processRoutingDataMessage(&rxPacketCache);
 //      vTaskDelay(M2T(1));
     }
@@ -149,7 +149,7 @@ void routingInit() {
   rxQueue = xQueueCreate(ROUTING_RX_QUEUE_SIZE, ROUTING_RX_QUEUE_ITEM_SIZE);
 
   UWB_Message_Listener_t listener;
-  listener.type = DATA;
+  listener.type = UWB_DATA_MESSAGE;
   listener.rxQueue = rxQueue;
   listener.rxCb = routingRxCallback;
   listener.txCb = routingTxCallback;
