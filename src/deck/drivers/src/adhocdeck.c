@@ -168,13 +168,14 @@ void uwbRegisterListener(UWB_Message_Listener_t *listener) {
 
 static int uwbInit() {
   /* Need to make sure DW IC is in IDLE_RC before proceeding */
-  for (int i = 0; !dwt_checkidlerc() && i < 3; i++) {
+  while (!dwt_checkidlerc()) {
   }
 
-  if (!dwt_checkidlerc()) {
-    DEBUG_PRINT("Error: DW IC is not in IDLE_RC state \n");
-    return DWT_ERROR;
-  }
+
+//  if (!dwt_checkidlerc()) {
+//    DEBUG_PRINT("Error: DW IC is not in IDLE_RC state \n");
+//    return DWT_ERROR;
+//  }
 
   if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) {
     return DWT_ERROR;

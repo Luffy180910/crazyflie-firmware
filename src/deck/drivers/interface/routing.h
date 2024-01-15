@@ -3,7 +3,7 @@
 #include "stdint.h"
 #include "adhocdeck.h"
 
-#define ROUTING_RX_QUEUE_SIZE 20
+#define ROUTING_RX_QUEUE_SIZE 10
 #define ROUTING_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
 
 #define ROUTING_TX_INTERVAL 100

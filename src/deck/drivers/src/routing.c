@@ -118,6 +118,7 @@ static void uwbRoutingTxTask(void *parameters) {
 
   UWB_Packet_t txPacketCache;
   txPacketCache.header.type = UWB_DATA_MESSAGE;
+  txPacketCache.header.destAddress = UWB_DEST_ONE_HOP;
 //  txPacketCache.header.mac = ? TODO init mac header
   while (true) {
     int msgLen = generateRoutingDataMessage((MockData_t *) &txPacketCache.payload);
