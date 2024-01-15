@@ -66,10 +66,9 @@ typedef uint16_t UWB_Address_t;
 
 /* UWB packet definition */
 typedef enum {
-  UWB_RESERVED_MESSAGE = 0,
-  UWB_RANGING_MESSAGE = 1,
-  UWB_FLOODING_MESSAGE = 2,
-  UWB_DATA_MESSAGE = 3,
+  UWB_RANGING_MESSAGE = 0,
+  UWB_FLOODING_MESSAGE = 1,
+  UWB_DATA_MESSAGE = 2,
   UWB_MESSAGE_TYPE_COUNT, /* only used for counting message types. */
 } UWB_MESSAGE_TYPE;
 

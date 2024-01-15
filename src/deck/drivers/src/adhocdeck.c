@@ -92,7 +92,6 @@ static void rxCallback() {
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   UWB_MESSAGE_TYPE msgType = packet->header.type;
 
-  ASSERT(msgType > 0);
   ASSERT(msgType < UWB_MESSAGE_TYPE_COUNT);
 
   if (!(packet->header.destAddress == MY_UWB_ADDRESS || packet->header.destAddress == UWB_DEST_ANY
@@ -187,6 +186,8 @@ static int uwbInit() {
   dwt_setrxantennadelay(UWB_RX_ANT_DLY);
   dwt_settxantennadelay(UWB_TX_ANT_DLY);
 
+  dwt_setrxtimeout(DEFAULT_RX_TIMEOUT);
+
   /* Set callback functions */
   dwt_setcallbacks(&txCallback, &rxCallback, &rxTimeoutCallback, &rxErrorCallback, NULL, NULL);
 
@@ -215,7 +216,6 @@ static void uwbTxTask(void *parameters) {
   UWB_Packet_t packetCache;
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
-      ASSERT(packetCache.header.type > 0);
       ASSERT(packetCache.header.type < UWB_MESSAGE_TYPE_COUNT);
       ASSERT(packetCache.header.length <= UWB_FRAME_LEN_MAX);
 
