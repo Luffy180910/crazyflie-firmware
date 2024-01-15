@@ -34,14 +34,14 @@ void routingTxCallback(void *parameters) {
 //  DEBUG_PRINT("routingTxCallback \n");
 }
 
-int generateRoutingDataMessage(MockData_t *message) {
-  int msgLen = sizeof(MockData_t);
+int generateRoutingDataMessage(DataPacket_t *message) {
+  int msgLen = sizeof(DataPacket_t);
   message->seqNumber = seqNumber++;
   return msgLen;
 }
 
 static void processRoutingDataMessage(UWB_Packet_t *packet) {
-  MockData_t *mockData = (MockData_t *) packet->payload;
+  DataPacket_t *mockData = (DataPacket_t *) packet->payload;
   DEBUG_PRINT("received routing data, seq number = %d \n", mockData->seqNumber);
 }
 
@@ -52,7 +52,7 @@ static void uwbRoutingTxTask(void *parameters) {
   txPacketCache.header.type = UWB_DATA_MESSAGE;
 //  txPacketCache.header.mac = ? TODO init mac header
   while (true) {
-    int msgLen = generateRoutingDataMessage((MockData_t *) &txPacketCache.payload);
+    int msgLen = generateRoutingDataMessage((DataPacket_t *) &txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
     vTaskDelay(M2T(2000));

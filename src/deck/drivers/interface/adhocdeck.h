@@ -73,9 +73,8 @@ typedef enum {
 } UWB_MESSAGE_TYPE;
 
 typedef struct {
-  UWB_Address_t srcAddress;
-  UWB_Address_t destAddress;
-  uint32_t seqNumber;
+  UWB_Address_t srcAddress; // mac address, currently using MY_UWB_ADDRESS
+  UWB_Address_t destAddress; // mac address
   UWB_MESSAGE_TYPE type: 6;
   uint16_t length: 10;
 } __attribute__((packed)) Packet_Header_t;

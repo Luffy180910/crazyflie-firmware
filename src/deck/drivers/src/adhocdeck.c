@@ -66,8 +66,6 @@ static xQueueHandle queues[UWB_MESSAGE_TYPE_COUNT];
 static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
 static UWB_MESSAGE_TYPE LAST_TX_MESSAGE_TYPE;
 
-static int packetSeqNumber = 1;
-
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[UWB_FRAME_LEN_MAX];
 
@@ -218,8 +216,6 @@ static void uwbTxTask(void *parameters) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
       ASSERT(packetCache.header.type < UWB_MESSAGE_TYPE_COUNT);
       ASSERT(packetCache.header.length <= UWB_FRAME_LEN_MAX);
-
-      packetCache.header.seqNumber = packetSeqNumber++;
 
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
