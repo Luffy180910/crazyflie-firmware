@@ -269,17 +269,22 @@ int routingTableFindEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
 }
 
 void printRouteEntry(Route_Entry_t entry) {
-  DEBUG_PRINT("%u\t %u\t %u\n", entry.destAddress, entry.nextHop, entry.hopCount);
+  DEBUG_PRINT("dest\t next\t hop\t expire\t \n");
+  DEBUG_PRINT("%u\t %u\t %u\t %lu\t \n", entry.destAddress, entry.nextHop, entry.hopCount, entry.expirationTime);
 }
 
 void printRoutingTable(Routing_Table_t *table) {
   xSemaphoreTake(table->mu, portMAX_DELAY);
-  DEBUG_PRINT("dest\t next\t hop\t \n");
+  DEBUG_PRINT("dest\t next\t hop\t expire\t \n");
   for (int i = 0; i < table->size; i++) {
     if (table->entries[i].destAddress == UWB_DEST_EMPTY) {
       continue;
     }
-    DEBUG_PRINT("%u\t %u\t %u\n", table->entries[i].destAddress, table->entries[i].nextHop, table->entries[i].hopCount);
+    DEBUG_PRINT("%u\t %u\t %u\t %lu\t \n",
+                table->entries[i].destAddress,
+                table->entries[i].nextHop,
+                table->entries[i].hopCount,
+                table->entries[i].expirationTime);
   }
   DEBUG_PRINT("---\n");
   xSemaphoreGive(table->mu);
