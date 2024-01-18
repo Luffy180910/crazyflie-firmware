@@ -135,10 +135,10 @@ static int COMPARE_BY_EXPIRATION_TIME(Route_Entry_t *first, Route_Entry_t *secon
 }
 
 // TODO: test
-static void routingTableEvictStalestEntry(Routing_Table_t *table) {
+static int routingTableGetStalestEntry(Routing_Table_t *table) {
   if (table->size == 0) {
     DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is empty, ignore.\n");
-    return;
+    return -1;
   }
   int stalestIndex = 0;
   for (int i = 0; i < table->size; i++) {
@@ -146,19 +146,37 @@ static void routingTableEvictStalestEntry(Routing_Table_t *table) {
       stalestIndex = i;
     }
   }
-  DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is full, evict stalest route entry for dest %u.\n",
-              table->entries[stalestIndex].destAddress);
-  routingTableRemoveEntry(table, table->entries[stalestIndex].destAddress);
+  return stalestIndex;
 }
 
-/* Rebuild the heap (Sort the routing table) */
-static void routingTableRearrange(Routing_Table_t *table, int start, int end, routeEntryCompareFunc compare) {
-  ASSERT(start >= 0);
-  ASSERT(end < table->size);
-  ASSERT(start <= end);
+/* Build the heap */
+static void routingTableArrange(Routing_Table_t *table, int index, int len, routeEntryCompareFunc compare) {
+  int leftChild = 2 * index + 1;
+  int rightChild = 2 * index + 2;
+  int maxIndex = index;
+  if (leftChild < len && compare(&table->entries[maxIndex], &table->entries[leftChild]) < 0) {
+    maxIndex = leftChild;
+  }
+  if (rightChild < len && compare(&table->entries[maxIndex], &table->entries[rightChild]) < 0) {
+    maxIndex = rightChild;
+  }
+  if (maxIndex != index) {
+    routingTableSwapRouteEntry(table, index, maxIndex);
+    routingTableArrange(table, maxIndex, len, compare);
+  }
+}
 
+/* Sort the routing table */
+static void routingTableRearrange(Routing_Table_t *table, routeEntryCompareFunc compare) {
   xSemaphoreTake(table->mu, portMAX_DELAY);
-  // TODO
+  /* Build max heap */
+  for (int i = table->size / 2 - 1; i >= 0; i--) {
+    routingTableArrange(table, i, table->size, compare);
+  }
+  for (int i = table->size - 1; i >= 0; i--) {
+    routingTableSwapRouteEntry(table, 0, i);
+    routingTableArrange(table, 0, i, compare);
+  }
   xSemaphoreGive(table->mu);
 }
 
@@ -172,19 +190,28 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
     table->entries[index] = entry;
   } else {
     if (table->size == ROUTING_TABLE_SIZE_MAX) {
+      int evictedIndex = -1;
       #ifdef ROUTING_TABLE_EVICT_POLICY_STALEST
-      routingTableEvictStalestEntry(table);
+      evictedIndex = routingTableGetStalestEntry(table);
       #else
       /* Randomly drop a route entry */
-      int randomIndex = rand() % table->size;
-      routingTableRemoveEntry(table, table->entries[randomIndex].destAddress);
+      evictedIndex = rand() % table->size;
       #endif
+      DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is full, evict stalest route entry for dest %u.\n",
+                  table->entries[evictedIndex].destAddress);
+      /* Swap it to last */
+      int lastEntryIndex = ROUTING_TABLE_SIZE_MAX - 1;
+      routingTableSwapRouteEntry(table, evictedIndex, lastEntryIndex);
+      /* Clear the last entry */
+      table->entries[lastEntryIndex] = EMPTY_ROUTE_ENTRY;
+      table->size--;
     }
     /* Add the new entry to the last */
     uint8_t curIndex = table->size;
     table->entries[curIndex] = entry;
     table->size++;
-    // TODO: heap operation
+    /* Sort the routing table */
+    routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
   }
   xSemaphoreGive(table->mu);
 }
@@ -200,7 +227,6 @@ void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry) {
   } else {
     table->entries[index] = entry;
     DEBUG_PRINT("routingTableUpdateEntry: Update route entry for dest %u.\n", entry.destAddress);
-    // TODO: heap operation
   }
   xSemaphoreGive(table->mu);
 }
@@ -220,8 +246,7 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
   routingTableSwapRouteEntry(table, index, table->size - 1);
   table->entries[table->size - 1] = EMPTY_ROUTE_ENTRY;
   table->size--;
-  // TODO: heap operation
-  routingTableRearrange(table, index, table->size - 1, COMPARE_BY_DEST_ADDRESS);
+  routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
   xSemaphoreGive(table->mu);
 }
 
