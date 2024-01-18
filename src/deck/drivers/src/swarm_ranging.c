@@ -1,5 +1,3 @@
-#define DEBUG_MODULE "SWARM_RANGING"
-
 #include <math.h>
 #include <string.h>
 #include "FreeRTOS.h"

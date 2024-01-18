@@ -1,5 +1,3 @@
-#define DEBUG_MODULE "ROUTING"
-
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -76,6 +74,7 @@ void routingInit() {
 
 /* Routing Table Operations */
 void routingTableInit(Routing_Table_t *table) {
+  table->mu = xSemaphoreCreateMutex();
   Route_Entry_t empty = {
       .destAddress = UWB_EMPTY_DEST_ADDRESS,
       .nextHop = UWB_EMPTY_DEST_ADDRESS,
@@ -103,9 +102,9 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
   // TODO
 }
 
-Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
-  // TODO
-}
+//Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
+//  // TODO
+//}
 
 void printRoutingTable(Routing_Table_t *table) {
   xSemaphoreTake(table->mu, portMAX_DELAY);
@@ -116,7 +115,7 @@ void printRoutingTable(Routing_Table_t *table) {
                 table->entries[i].nextHop,
                 table->entries[i].hopCount);
   }
-  DEBUG_PRINT("-------");
+  DEBUG_PRINT("---------------\n");
   xSemaphoreGive(table->mu);
 }
 
