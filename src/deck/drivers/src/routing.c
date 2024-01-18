@@ -189,6 +189,7 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
                 entry.destAddress);
     table->entries[index] = entry;
   } else {
+    ASSERT(ROUTING_TABLE_SIZE_MAX > 0);
     if (table->size == ROUTING_TABLE_SIZE_MAX) {
       int evictedIndex = -1;
       #ifdef ROUTING_TABLE_EVICT_POLICY_STALEST
