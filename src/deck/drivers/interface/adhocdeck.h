@@ -26,20 +26,21 @@
 #define UWB_TX_QUEUE_ITEM_SIZE sizeof(UWB_Packet_t)
 
 /* UWB Packet */
-#define UWB_PACKET_SIZE UWB_FRAME_LEN_MAX
-#define UWB_PAYLOAD_SIZE (UWB_PACKET_SIZE - sizeof(Packet_Header_t))
+#define UWB_PACKET_SIZE_MAX UWB_FRAME_LEN_MAX
+#define UWB_PAYLOAD_SIZE_MAX (UWB_PACKET_SIZE_MAX - sizeof(Packet_Header_t))
 #define UWB_DEST_ANY 65535
 #define UWB_DEST_ONE_HOP 65534
+#define UWB_EMPTY_DEST_ADDRESS (-1)
 
 /* TX options */
-static dwt_txconfig_t txconfig_options = {
+static dwt_txconfig_t uwbTxConfigOptions = {
     .PGcount = 0x0,
     .PGdly = 0x34,
     .power = 0xfdfdfdfd
 };
 
 /* PHR configuration */
-static dwt_config_t config = {
+static dwt_config_t uwbPhrConfig = {
     5,            /* Channel number. */
     DWT_PLEN_128, /* Preamble length. Used in TX only. */
     DWT_PAC8,     /* Preamble acquisition chunk size. Used in RX only. */
@@ -63,6 +64,7 @@ static dwt_config_t config = {
 };
 
 typedef uint16_t UWB_Address_t;
+typedef portTickType Time_t;
 
 /* UWB packet definition */
 typedef enum {
@@ -81,7 +83,7 @@ typedef struct {
 
 typedef struct {
   Packet_Header_t header; // Packet header
-  uint8_t payload[UWB_PAYLOAD_SIZE];
+  uint8_t payload[UWB_PAYLOAD_SIZE_MAX];
 } __attribute__((packed)) UWB_Packet_t;
 
 typedef void (*UWBCallback)(void *);

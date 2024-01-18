@@ -1,3 +1,5 @@
+#define DEBUG_MODULE "SWARM_RANGING"
+
 #include <math.h>
 #include <string.h>
 #include "FreeRTOS.h"
@@ -226,10 +228,11 @@ static void uwbRangingTxTask(void *parameters) {
   txPacketCache.header.srcAddress = uwbGetAddress();
   txPacketCache.header.destAddress = UWB_DEST_ONE_HOP;
   txPacketCache.header.type = UWB_RANGING_MESSAGE;
+  txPacketCache.header.length = 0;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;
 
   while (true) {
-    int taskDelay = generateRangingMessage(rangingMessage);
+    Time_t taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
     vTaskDelay(taskDelay);

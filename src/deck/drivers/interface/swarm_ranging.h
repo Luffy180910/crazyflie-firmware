@@ -2,6 +2,7 @@
 #define _SWARM_RANGING_H_
 
 #include "dwTypes.h"
+#include "adhocdeck.h"
 
 /* Function Switch */
 //#define ENABLE_BUS_BOARDING_SCHEME
@@ -29,7 +30,6 @@
 #define Tr_Rr_BUFFER_POOL_SIZE 3
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
 
-typedef portTickType Time_t;
 typedef short set_index_t;
 
 /* Timestamp Tuple */

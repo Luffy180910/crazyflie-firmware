@@ -171,14 +171,14 @@ static int uwbInit() {
     return DWT_ERROR;
   }
 
-  if (dwt_configure(&config) == DWT_ERROR) {
+  if (dwt_configure(&uwbPhrConfig) == DWT_ERROR) {
     return DWT_ERROR;
   }
 
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
   /* Configure the TX spectrum parameters (power, PG delay and PG count) */
-  dwt_configuretxrf(&txconfig_options);
+  dwt_configuretxrf(&uwbTxConfigOptions);
 
   /* Configure Antenna Delay */
   dwt_setrxantennadelay(UWB_RX_ANT_DLY);
