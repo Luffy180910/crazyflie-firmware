@@ -142,7 +142,7 @@ static int routingTableGetStalestEntry(Routing_Table_t *table) {
   }
   int stalestIndex = 0;
   for (int i = 0; i < table->size; i++) {
-    if (COMPARE_BY_EXPIRATION_TIME(&routingTable.entries[i], &routingTable.entries[stalestIndex]) > 0) {
+    if (COMPARE_BY_EXPIRATION_TIME(&table->entries[i], &table->entries[stalestIndex]) > 0) {
       stalestIndex = i;
     }
   }
