@@ -6,7 +6,7 @@
 #include "queue.h"
 
 /* Function Switch */
- #define UWB_ENABLE_PHR_EXT_MODE
+//#define UWB_ENABLE_PHR_EXT_MODE
 
 #define UWB_SPEED_OF_LIGHT 299702547
 #define UWB_MAX_TIMESTAMP 1099511627776  // 2**40
@@ -28,9 +28,9 @@
 /* UWB Packet */
 #define UWB_PACKET_SIZE_MAX UWB_FRAME_LEN_MAX
 #define UWB_PAYLOAD_SIZE_MAX (UWB_PACKET_SIZE_MAX - sizeof(Packet_Header_t))
-#define UWB_DEST_ANY 65535
-#define UWB_DEST_ONE_HOP 65534
-#define UWB_EMPTY_DEST_ADDRESS (-1)
+#define UWB_DEST_EMPTY 65535
+#define UWB_DEST_ANY 65534
+#define UWB_DEST_ONE_HOP 65533
 
 /* TX options */
 static dwt_txconfig_t uwbTxConfigOptions = {

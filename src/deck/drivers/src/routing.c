@@ -32,7 +32,7 @@ static void uwbRoutingTxTask(void *parameters) {
 
   UWB_Packet_t txPacketCache;
   txPacketCache.header.srcAddress = uwbGetAddress();
-  txPacketCache.header.destAddress = UWB_EMPTY_DEST_ADDRESS;
+  txPacketCache.header.destAddress = UWB_DEST_EMPTY;
   txPacketCache.header.type = UWB_DATA_MESSAGE;
   txPacketCache.header.length = 0;
 
@@ -76,8 +76,8 @@ void routingInit() {
 void routingTableInit(Routing_Table_t *table) {
   table->mu = xSemaphoreCreateMutex();
   Route_Entry_t empty = {
-      .destAddress = UWB_EMPTY_DEST_ADDRESS,
-      .nextHop = UWB_EMPTY_DEST_ADDRESS,
+      .destAddress = UWB_DEST_EMPTY,
+      .nextHop = UWB_DEST_EMPTY,
       .hopCount = 0,
       .expirationTime = 0,
       .destSeqNumber = 0,
@@ -103,19 +103,30 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
 }
 
 //Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
-//  // TODO
+  // TODO
 //}
+
+
+void printRoutingTableEntry(Route_Entry_t entry) {
+  DEBUG_PRINT("%u\t %u\t %u\n",
+              entry.destAddress,
+              entry.nextHop,
+              entry.hopCount);
+}
 
 void printRoutingTable(Routing_Table_t *table) {
   xSemaphoreTake(table->mu, portMAX_DELAY);
   DEBUG_PRINT("dest\t next\t hop\t \n");
   for (int i = 0; i < ROUTING_TABLE_SIZE; i++) {
+    if (table->entries[i].destAddress == UWB_DEST_EMPTY) {
+      continue;
+    }
     DEBUG_PRINT("%u\t %u\t %u\n",
                 table->entries[i].destAddress,
                 table->entries[i].nextHop,
                 table->entries[i].hopCount);
   }
-  DEBUG_PRINT("---------------\n");
+  DEBUG_PRINT("---\n");
   xSemaphoreGive(table->mu);
 }
 

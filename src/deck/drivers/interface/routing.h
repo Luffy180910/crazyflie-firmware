@@ -55,5 +55,6 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 
 /* Debug Operations */
+void printRoutingTableEntry(Route_Entry_t entry);
 void printRoutingTable(Routing_Table_t *table);
 #endif
