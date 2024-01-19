@@ -88,7 +88,7 @@ static Route_Entry_t EMPTY_ROUTE_ENTRY = {
     .hopCount = 0,
     .expirationTime = 0,
     .destSeqNumber = 0,
-    .validDestSeqFlag =false,
+    .validDestSeqFlag = false,
     .precursors = 0,
     // TODO: init metrics
 };
