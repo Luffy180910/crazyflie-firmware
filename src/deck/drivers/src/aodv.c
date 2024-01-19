@@ -30,7 +30,6 @@ static void aodvTxTask(void *parameters) {
 
   while (true) {
     // TODO: modify txDataPacketCache.header.destAddress
-    txDataPacketCache.header.seqNumber = seqNumber++;
     txDataPacketCache.header.length = sizeof(UWB_Data_Packet_Header_t);
     uwbSendDataPacketBlock(&txDataPacketCache);
     vTaskDelay(M2T(1000));

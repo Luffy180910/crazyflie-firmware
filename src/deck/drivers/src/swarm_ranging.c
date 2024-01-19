@@ -268,9 +268,13 @@ void rangingRxCallback(void *parameters) {
 }
 
 void rangingTxCallback(void *parameters) {
+  UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
+
   dwTime_t txTime;
   dwt_readtxtimestamp((uint8_t *) &txTime.raw);
-  Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingSeqNumber};
+
+  Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
   updateTfBuffer(timestamp);
 }
 

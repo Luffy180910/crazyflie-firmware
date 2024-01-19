@@ -64,15 +64,14 @@ static SemaphoreHandle_t irqSemaphore;
 static QueueHandle_t txQueue;
 static xQueueHandle queues[UWB_MESSAGE_TYPE_COUNT];
 static UWB_Message_Listener_t listeners[UWB_MESSAGE_TYPE_COUNT];
-static UWB_MESSAGE_TYPE LAST_TX_MESSAGE_TYPE;
 
 /* rx buffer used in rx_callback */
 static uint8_t rxBuffer[UWB_FRAME_LEN_MAX];
 
 static void txCallback() {
-  if (listeners[LAST_TX_MESSAGE_TYPE].txCb) {
-    listeners[LAST_TX_MESSAGE_TYPE].txCb(NULL); // TODO: no parameter passed into txCb now
-  }
+//  DEBUG_PRINT("txCallback \n");
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  vTaskNotifyGiveFromISR(uwbTxTaskHandle, &xHigherPriorityTaskWoken);
 }
 
 /* Packet dispatcher */
@@ -85,7 +84,7 @@ static void rxCallback() {
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
 
-  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
+//  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   UWB_MESSAGE_TYPE msgType = packet->header.type;
@@ -117,7 +116,7 @@ static void rxTimeoutCallback() {
 }
 
 static void rxErrorCallback() {
-//  DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
+  DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
 }
 
 uint16_t uwbGetAddress() {
@@ -223,14 +222,23 @@ static void uwbTxTask(void *parameters) {
       ASSERT(packetCache.header.type < UWB_MESSAGE_TYPE_COUNT);
       ASSERT(packetCache.header.length <= UWB_FRAME_LEN_MAX);
 
+      /* Reset DW3000 to idle state */
       dwt_forcetrxoff();
       dwt_writetxdata(packetCache.header.length, (uint8_t *) &packetCache, 0);
       dwt_writetxfctrl(packetCache.header.length + FCS_LEN, 0, 1);
-      LAST_TX_MESSAGE_TYPE = packetCache.header.type;
       /* Start transmission. */
       if (dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED) ==
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
+      } else {
+        if (ulTaskNotifyTake(pdTRUE, M2T(5)) == pdFALSE) {
+          DEBUG_PRINT("uwbTxTask: Timeout when waiting for tx success signal from txCallback, os may extremely busy now.\n");
+        } else {
+          /* Invoke txCallback */
+          if (listeners[packetCache.header.type].txCb) {
+            listeners[packetCache.header.type].txCb(&packetCache);
+          }
+        }
       }
       vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
     }
