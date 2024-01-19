@@ -54,7 +54,7 @@ typedef struct {
 void routingInit();
 
 /* Routing Table Operations */
-Routing_Table_t getGlobalRoutingTable();
+Routing_Table_t* getGlobalRoutingTable();
 void routingTableInit(Routing_Table_t *table);
 void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry);
 void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry);

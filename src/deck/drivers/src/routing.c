@@ -93,8 +93,8 @@ static Route_Entry_t EMPTY_ROUTE_ENTRY = {
     // TODO: init metrics
 };
 
-Routing_Table_t getGlobalRoutingTable() {
-  return routingTable;
+Routing_Table_t* getGlobalRoutingTable() {
+  return &routingTable;
 }
 
 void routingTableInit(Routing_Table_t *table) {
