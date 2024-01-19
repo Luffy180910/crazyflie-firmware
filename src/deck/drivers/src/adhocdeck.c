@@ -231,7 +231,7 @@ static void uwbTxTask(void *parameters) {
           DWT_ERROR) {
         DEBUG_PRINT("uwbTxTask:  TX ERROR\n");
       } else {
-        if (ulTaskNotifyTake(pdTRUE, M2T(5)) == pdFALSE) {
+        if (ulTaskNotifyTake(pdTRUE, M2T(20)) == pdFALSE) {
           DEBUG_PRINT("uwbTxTask: Timeout when waiting for tx success signal from txCallback, os may extremely busy now.\n");
         } else {
           /* Invoke txCallback */

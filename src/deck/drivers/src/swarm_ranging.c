@@ -447,6 +447,9 @@ static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
 
   /* Find corresponding Tf in TfBuffer, it is possible that can not find corresponding Tf. */
   rangingTable->Tf = findTfBySeqNumber(rangingTable->Rf.seqNumber);
+  if (!rangingTable->Tf.timestamp.full) {
+    DEBUG_PRINT("Cannot found corresponding Tf in Tf buffer, the ranging frequency may be too high or Tf buffer is in a small size.");
+  }
 
   /* Shift ranging table
    * Rp <- Rf
