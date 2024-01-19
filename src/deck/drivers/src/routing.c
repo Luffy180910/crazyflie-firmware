@@ -48,13 +48,17 @@ static void uwbRoutingTxTask(void *parameters) {
   txPacketCache.header.length = 0;
 
   UWB_Data_Packet_t *txDataPacketCache = (UWB_Data_Packet_t *) &txPacketCache.payload;
+  txDataPacketCache->header.length = 0;
 
   while (true) {
     if (xQueueReceive(txQueue, txDataPacketCache, portMAX_DELAY)) {
       ASSERT(txDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
-      ASSERT(txDataPacketCache->header.length > ROUTING_DATA_PACKET_SIZE_MAX);
+      ASSERT(txDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
       // TODO: modify txPacketCache.header.destAddress according to routing table.
-      // TODO: check data packet cache.
+      txPacketCache.header.destAddress = UWB_DEST_ANY; // TODO
+      txDataPacketCache->header.seqNumber = seqNumber++;
+      txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + txDataPacketCache->header.length;
+      DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", txPacketCache.header.length, txDataPacketCache->header.seqNumber);
       uwbSendPacketBlock(&txPacketCache);
       vTaskDelay(M2T(1));
     }
@@ -70,7 +74,7 @@ static void uwbRoutingRxTask(void *parameters) {
   while (true) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
       ASSERT(rxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
-      ASSERT(rxDataPacketCache->header.length > ROUTING_DATA_PACKET_SIZE_MAX);
+      ASSERT(rxDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
       /* Dispatch Data Message */
       if (listeners[rxDataPacketCache->header.type].rxQueue) {
         if (xQueueSend(listeners[rxDataPacketCache->header.type].rxQueue, rxDataPacketCache, M2T(100)) != pdPASS) {
@@ -105,7 +109,7 @@ void routingInit() {
               NULL,
               ADHOC_DECK_TASK_PRI,
               &uwbRoutingRxTaskHandle);
-//  aodvInit();
+  aodvInit();
 }
 
 /* Messaging Operations */

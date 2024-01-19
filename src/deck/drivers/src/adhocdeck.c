@@ -85,7 +85,7 @@ static void rxCallback() {
 
   dwt_readrxdata(rxBuffer, dataLength - FCS_LEN, 0); /* No need to read the FCS/CRC. */
 
-//  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
+  DEBUG_PRINT("rxCallback: data length = %lu \n", dataLength);
 
   UWB_Packet_t *packet = (UWB_Packet_t *) &rxBuffer;
   UWB_MESSAGE_TYPE msgType = packet->header.type;
@@ -117,7 +117,7 @@ static void rxTimeoutCallback() {
 }
 
 static void rxErrorCallback() {
-  DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
+//  DEBUG_PRINT("rxErrorCallback: some error occurs when rx\n");
 }
 
 uint16_t uwbGetAddress() {

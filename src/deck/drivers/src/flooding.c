@@ -47,7 +47,7 @@ static void uwbFloodingTxTask(void *parameters) {
   while (true) {
     printFloodingTopologyTableSet(&floodingTopologyTableSet);
     int msgLen = generateFloodingMessage((Flooding_Message_t *) &txPacketCache.payload);
-    txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
+    txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
     /* jitter */
     int jitter = (int) (rand() / (float) RAND_MAX * 9) - 4;

@@ -231,7 +231,7 @@ static void uwbRangingTxTask(void *parameters) {
 
   while (true) {
     Time_t taskDelay = generateRangingMessage(rangingMessage);
-    txPacketCache.header.length = sizeof(Packet_Header_t) + rangingMessage->header.msgLength;
+    txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
     vTaskDelay(taskDelay);
   }

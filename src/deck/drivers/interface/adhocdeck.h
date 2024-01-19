@@ -29,7 +29,7 @@
 
 /* UWB Packet */
 #define UWB_PACKET_SIZE_MAX UWB_FRAME_LEN_MAX
-#define UWB_PAYLOAD_SIZE_MAX (UWB_PACKET_SIZE_MAX - sizeof(Packet_Header_t))
+#define UWB_PAYLOAD_SIZE_MAX (UWB_PACKET_SIZE_MAX - sizeof(UWB_Packet_Header_t))
 #define UWB_DEST_EMPTY 65535
 #define UWB_DEST_ANY 65534
 #define UWB_DEST_ONE_HOP 65533
@@ -81,10 +81,10 @@ typedef struct {
   UWB_Address_t destAddress; // mac address
   UWB_MESSAGE_TYPE type: 6;
   uint16_t length: 10;
-} __attribute__((packed)) Packet_Header_t;
+} __attribute__((packed)) UWB_Packet_Header_t;
 
 typedef struct {
-  Packet_Header_t header; // Packet header
+  UWB_Packet_Header_t header; // Packet header
   uint8_t payload[UWB_PAYLOAD_SIZE_MAX];
 } __attribute__((packed)) UWB_Packet_t;
 
