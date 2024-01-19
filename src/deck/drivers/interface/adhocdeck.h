@@ -99,6 +99,7 @@ typedef struct {
 uint16_t uwbGetAddress();
 int uwbSendPacket(UWB_Packet_t *packet);
 int uwbSendPacketBlock(UWB_Packet_t *packet);
+int uwbSendPacketWait(UWB_Packet_t *packet, int wait);
 int uwbReceivePacket(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet);
 int uwbReceivePacketBlock(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet);
 int uwbReceivePacketWait(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet, int wait);

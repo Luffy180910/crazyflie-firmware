@@ -134,6 +134,11 @@ int uwbSendPacketBlock(UWB_Packet_t *packet) {
   return xQueueSend(txQueue, packet, portMAX_DELAY);
 }
 
+int uwbSendPacketWait(UWB_Packet_t *packet, int wait) {
+  ASSERT(packet);
+  return xQueueSend(txQueue, packet, M2T(wait));
+}
+
 int uwbReceivePacket(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet) {
   ASSERT(packet);
   ASSERT(type < UWB_MESSAGE_TYPE_COUNT);
