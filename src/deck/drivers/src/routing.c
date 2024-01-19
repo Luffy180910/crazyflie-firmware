@@ -12,20 +12,29 @@
 
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
+static QueueHandle_t txQueue;
 static QueueHandle_t rxQueue;
+static xQueueHandle queues[UWB_DATA_MESSAGE_TYPE_COUNT];
+static UWB_Data_Packet_Listener_t listeners[UWB_DATA_MESSAGE_TYPE_COUNT];
 static Routing_Table_t routingTable;
 static int seqNumber = 1;
 
 void routingRxCallback(void *parameters) {
-//  DEBUG_PRINT("routingRxCallback \n");
+  UWB_Packet_t *uwbPacket = (UWB_Packet_t *) parameters;
+  UWB_Data_Packet_t *uwbDataPacket = (UWB_Data_Packet_t *) &uwbPacket->payload;
+  ASSERT(uwbDataPacket->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
+  if (listeners[uwbDataPacket->header.type].rxCb) {
+    listeners[uwbDataPacket->header.type].rxCb(uwbDataPacket);
+  }
 }
 
 void routingTxCallback(void *parameters) {
-//  DEBUG_PRINT("routingTxCallback \n");
-}
-
-static void processRoutingDataMessage(UWB_Packet_t *packet) {
-  // TODO
+  UWB_Packet_t *uwbPacket = (UWB_Packet_t *) parameters;
+  UWB_Data_Packet_t *uwbDataPacket = (UWB_Data_Packet_t *) &uwbPacket->payload;
+  ASSERT(uwbDataPacket->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
+  if (listeners[uwbDataPacket->header.type].txCb) {
+    listeners[uwbDataPacket->header.type].txCb(uwbDataPacket);
+  }
 }
 
 static void uwbRoutingTxTask(void *parameters) {
@@ -37,10 +46,17 @@ static void uwbRoutingTxTask(void *parameters) {
   txPacketCache.header.type = UWB_DATA_MESSAGE;
   txPacketCache.header.length = 0;
 
+  UWB_Data_Packet_t *txDataPacketCache = (UWB_Data_Packet_t *) &txPacketCache.payload;
+
   while (true) {
-    // TODO
-    printRoutingTable(&routingTable);
-    vTaskDelay(M2T(2000));
+    if (xQueueReceive(txQueue, txDataPacketCache, portMAX_DELAY)) {
+      ASSERT(txDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
+      ASSERT(txDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+      // TODO: modify txPacketCache.header.destAddress according to routing table.
+      // TODO: check data packet cache.
+      uwbSendPacketBlock(&txPacketCache);
+      vTaskDelay(M2T(1));
+    }
   }
 }
 
@@ -48,15 +64,24 @@ static void uwbRoutingRxTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t rxPacketCache;
+  UWB_Data_Packet_t *rxDataPacketCache = (UWB_Data_Packet_t *) &rxPacketCache.payload;
 
   while (true) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
-      processRoutingDataMessage(&rxPacketCache);
+      ASSERT(rxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
+      ASSERT(rxDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+      /* Dispatch Data Message */
+      if (listeners[rxDataPacketCache->header.type].rxQueue) {
+        if (xQueueSend(listeners[rxDataPacketCache->header.type].rxQueue, rxDataPacketCache, M2T(100)) != pdPASS) {
+          DEBUG_PRINT("uwbRoutingRxTask: Timeout when dispatch data message type %d\n", rxDataPacketCache->header.type);
+        }
+      }
     }
   }
 }
 
 void routingInit() {
+  txQueue = xQueueCreate(ROUTING_TX_QUEUE_SIZE, ROUTING_TX_QUEUE_ITEM_SIZE);
   rxQueue = xQueueCreate(ROUTING_RX_QUEUE_SIZE, ROUTING_RX_QUEUE_ITEM_SIZE);
   routingTableInit(&routingTable);
 
@@ -81,6 +106,46 @@ void routingInit() {
               &uwbRoutingRxTaskHandle); // TODO optimize STACK SIZE
 }
 
+/* Messaging Operations */
+int uwbSendDataPacket(UWB_Data_Packet_t *packet) {
+  ASSERT(packet);
+  return xQueueSend(txQueue, packet, 0);
+}
+
+int uwbSendDataPacketBlock(UWB_Data_Packet_t *packet) {
+  ASSERT(packet);
+  return xQueueSend(txQueue, packet, portMAX_DELAY);
+}
+
+int uwbSendDataPacketWait(UWB_Data_Packet_t *packet, int wait) {
+  ASSERT(packet);
+  return xQueueSend(txQueue, packet, M2T(wait));
+}
+
+int uwbReceiveDataPacket(UWB_DATA_MESSAGE_TYPE type, UWB_Data_Packet_t *packet) {
+  ASSERT(packet);
+  ASSERT(type < UWB_DATA_MESSAGE_TYPE_COUNT);
+  return xQueueReceive(queues[type], packet, 0);
+}
+
+int uwbReceiveDataPacketBlock(UWB_DATA_MESSAGE_TYPE type, UWB_Data_Packet_t *packet) {
+  ASSERT(packet);
+  ASSERT(type < UWB_DATA_MESSAGE_TYPE_COUNT);
+  return xQueueReceive(queues[type], packet, portMAX_DELAY);
+}
+
+int uwbReceiveDataPacketWait(UWB_DATA_MESSAGE_TYPE type, UWB_Data_Packet_t *packet, int wait) {
+  ASSERT(packet);
+  ASSERT(type < UWB_DATA_MESSAGE_TYPE_COUNT);
+  return xQueueReceive(queues[type], packet, M2T(wait));
+}
+
+void uwbRegisterDataPacketListener(UWB_Data_Packet_Listener_t *listener) {
+  ASSERT(listener->type < UWB_DATA_MESSAGE_TYPE_COUNT);
+  queues[listener->type] = listener->rxQueue;
+  listeners[listener->type] = *listener;
+}
+
 /* Routing Table Operations */
 static Route_Entry_t EMPTY_ROUTE_ENTRY = {
     .destAddress = UWB_DEST_EMPTY,
@@ -93,7 +158,7 @@ static Route_Entry_t EMPTY_ROUTE_ENTRY = {
     // TODO: init metrics
 };
 
-Routing_Table_t* getGlobalRoutingTable() {
+Routing_Table_t *getGlobalRoutingTable() {
   return &routingTable;
 }
 

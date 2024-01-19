@@ -22,7 +22,7 @@
 #endif
 
 /* Queue Constants */
-#define UWB_TX_QUEUE_SIZE 10
+#define UWB_TX_QUEUE_SIZE 5
 #define UWB_TX_QUEUE_ITEM_SIZE sizeof(UWB_Packet_t)
 
 /* UWB Packet */

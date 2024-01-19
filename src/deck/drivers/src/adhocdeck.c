@@ -158,6 +158,7 @@ int uwbReceivePacketWait(UWB_MESSAGE_TYPE type, UWB_Packet_t *packet, int wait) 
 }
 
 void uwbRegisterListener(UWB_Message_Listener_t *listener) {
+  ASSERT(listener->type < UWB_MESSAGE_TYPE_COUNT);
   queues[listener->type] = listener->rxQueue;
   listeners[listener->type] = *listener;
 }
