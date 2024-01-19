@@ -7,7 +7,7 @@
 /* Queue Constants */
 #define ROUTING_RX_QUEUE_SIZE 5
 #define ROUTING_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
-#define ROUTING_TX_QUEUE_SIZE 10
+#define ROUTING_TX_QUEUE_SIZE 5
 #define ROUTING_TX_QUEUE_ITEM_SIZE sizeof (UWB_Data_Packet_t)
 
 /* Data Packet */

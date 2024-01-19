@@ -9,6 +9,7 @@
 #include "system.h"
 
 #include "routing.h"
+#include "aodv.h"
 
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
@@ -51,7 +52,7 @@ static void uwbRoutingTxTask(void *parameters) {
   while (true) {
     if (xQueueReceive(txQueue, txDataPacketCache, portMAX_DELAY)) {
       ASSERT(txDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
-      ASSERT(txDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+      ASSERT(txDataPacketCache->header.length > ROUTING_DATA_PACKET_SIZE_MAX);
       // TODO: modify txPacketCache.header.destAddress according to routing table.
       // TODO: check data packet cache.
       uwbSendPacketBlock(&txPacketCache);
@@ -69,7 +70,7 @@ static void uwbRoutingRxTask(void *parameters) {
   while (true) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
       ASSERT(rxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
-      ASSERT(rxDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+      ASSERT(rxDataPacketCache->header.length > ROUTING_DATA_PACKET_SIZE_MAX);
       /* Dispatch Data Message */
       if (listeners[rxDataPacketCache->header.type].rxQueue) {
         if (xQueueSend(listeners[rxDataPacketCache->header.type].rxQueue, rxDataPacketCache, M2T(100)) != pdPASS) {
@@ -94,16 +95,17 @@ void routingInit() {
 
   xTaskCreate(uwbRoutingTxTask,
               ADHOC_DECK_ROUTING_TX_TASK_NAME,
-              4 * configMINIMAL_STACK_SIZE,
+              UWB_TASK_STACK_SIZE,
               NULL,
               ADHOC_DECK_TASK_PRI,
-              &uwbRoutingTxTaskHandle); // TODO optimize STACK SIZE
+              &uwbRoutingTxTaskHandle);
   xTaskCreate(uwbRoutingRxTask,
               ADHOC_DECK_ROUTING_RX_TASK_NAME,
-              4 * configMINIMAL_STACK_SIZE,
+              UWB_TASK_STACK_SIZE,
               NULL,
               ADHOC_DECK_TASK_PRI,
-              &uwbRoutingRxTaskHandle); // TODO optimize STACK SIZE
+              &uwbRoutingRxTaskHandle);
+//  aodvInit();
 }
 
 /* Messaging Operations */

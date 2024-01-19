@@ -18,7 +18,7 @@
 #define MAX_NEIGHBOR 10 // default up to 10 neighbors
 
 /* Queue Constants */
-#define RANGING_RX_QUEUE_SIZE 10
+#define RANGING_RX_QUEUE_SIZE 5
 #define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
 
 /* Ranging Struct Constants */
@@ -28,7 +28,7 @@
 #define RANGING_TABLE_SIZE MAX_NEIGHBOR
 #define RANGING_TABLE_HOLD_TIME 10000
 #define Tr_Rr_BUFFER_POOL_SIZE 3
-#define Tf_BUFFER_POOL_SIZE (4 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
+#define Tf_BUFFER_POOL_SIZE (2 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
 
 typedef short set_index_t;
 

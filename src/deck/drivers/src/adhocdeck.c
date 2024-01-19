@@ -357,10 +357,10 @@ static void queueInit() {
 
 static void uwbTaskInit() {
   /* Create UWB Task */
-  xTaskCreate(uwbTask, ADHOC_DECK_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
-              ADHOC_DECK_TASK_PRI, &uwbTaskHandle); // TODO optimize STACK SIZE
-  xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, 4 * configMINIMAL_STACK_SIZE, NULL,
-              ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle); // TODO optimize STACK SIZE
+  xTaskCreate(uwbTask, ADHOC_DECK_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
+              ADHOC_DECK_TASK_PRI, &uwbTaskHandle);
+  xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
+              ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle);
   rangingInit();
   routingInit();
 //  floodingInit();
