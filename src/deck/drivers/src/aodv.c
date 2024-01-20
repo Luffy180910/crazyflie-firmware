@@ -11,7 +11,7 @@
 static TaskHandle_t aodvTxTaskHandle = 0;
 static TaskHandle_t aodvRxTaskHandle = 0;
 static QueueHandle_t rxQueue;
-static uint32_t seqNumber = 0;
+static uint32_t aodvMsgSeqNumber = 0;
 
 static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
 

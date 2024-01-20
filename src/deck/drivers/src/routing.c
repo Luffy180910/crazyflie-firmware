@@ -18,7 +18,7 @@ static QueueHandle_t rxQueue;
 static xQueueHandle queues[UWB_DATA_MESSAGE_TYPE_COUNT];
 static UWB_Data_Packet_Listener_t listeners[UWB_DATA_MESSAGE_TYPE_COUNT];
 static Routing_Table_t routingTable;
-static int seqNumber = 1;
+static int routingSeqNumber = 1;
 
 void routingRxCallback(void *parameters) {
   UWB_Packet_t *uwbPacket = (UWB_Packet_t *) parameters;
@@ -56,7 +56,7 @@ static void uwbRoutingTxTask(void *parameters) {
       ASSERT(txDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
       // TODO: modify txPacketCache.header.destAddress according to routing table.
       txPacketCache.header.destAddress = UWB_DEST_ANY; // TODO
-      txDataPacketCache->header.seqNumber = seqNumber++;
+      txDataPacketCache->header.seqNumber = routingSeqNumber++;
       txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + txDataPacketCache->header.length;
       DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", txPacketCache.header.length, txDataPacketCache->header.seqNumber);
       uwbSendPacketBlock(&txPacketCache);
