@@ -12,7 +12,6 @@
 #include "routing.h"
 #include "aodv.h"
 
-
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
 static QueueHandle_t txQueue;
@@ -118,7 +117,9 @@ static void uwbRoutingTxTask(void *parameters) {
         /* Populate mac layer dest address */
         uwbTxPacketCache.header.destAddress = nextHopToDest;
         uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketCache->header.length;
-        DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", uwbTxPacketCache.header.length, dataTxPacketCache->header.seqNumber);
+        DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n",
+                    uwbTxPacketCache.header.length,
+                    dataTxPacketCache->header.seqNumber);
         uwbSendPacketBlock(&uwbTxPacketCache);
       }
       vTaskDelay(M2T(1));
