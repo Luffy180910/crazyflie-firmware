@@ -20,6 +20,17 @@ static UWB_Data_Packet_Listener_t listeners[UWB_DATA_MESSAGE_TYPE_COUNT];
 static Routing_Table_t routingTable;
 static int routingSeqNumber = 1;
 
+static Route_Entry_t EMPTY_ROUTE_ENTRY = {
+    .destAddress = UWB_DEST_EMPTY,
+    .nextHop = UWB_DEST_EMPTY,
+    .hopCount = 0,
+    .expirationTime = 0,
+    .destSeqNumber = 0,
+    .validDestSeqFlag = false,
+    .precursors = 0,
+    // TODO: init metrics
+};
+
 void routingRxCallback(void *parameters) {
   UWB_Packet_t *uwbPacket = (UWB_Packet_t *) parameters;
   UWB_Data_Packet_t *uwbDataPacket = (UWB_Data_Packet_t *) &uwbPacket->payload;
@@ -54,12 +65,22 @@ static void uwbRoutingTxTask(void *parameters) {
     if (xQueueReceive(txQueue, txDataPacketCache, portMAX_DELAY)) {
       ASSERT(txDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(txDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
-      // TODO: modify txPacketCache.header.destAddress according to routing table.
-      txPacketCache.header.destAddress = UWB_DEST_ANY; // TODO
-      txDataPacketCache->header.seqNumber = routingSeqNumber++;
-      txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + txDataPacketCache->header.length;
-      DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", txPacketCache.header.length, txDataPacketCache->header.seqNumber);
-      uwbSendPacketBlock(&txPacketCache);
+      if (txDataPacketCache->header.destAddress == uwbGetAddress()) {
+        DEBUG_PRINT("uwbRoutingTxTask: Try to send data packet dest to self.\n");
+        ASSERT(0);
+      }
+      UWB_Address_t nextHopToDest = routingTableFindEntry(&routingTable, txDataPacketCache->header.destAddress).destAddress;
+      if (nextHopToDest == EMPTY_ROUTE_ENTRY.destAddress) {
+        /* Unknown dest, start route discovery procedure */
+        // TODO
+      } else {
+        /* Populate mac layer dest address */
+        txPacketCache.header.destAddress = nextHopToDest;
+        txDataPacketCache->header.seqNumber = routingSeqNumber++;
+        txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + txDataPacketCache->header.length;
+        DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", txPacketCache.header.length, txDataPacketCache->header.seqNumber);
+        uwbSendPacketBlock(&txPacketCache);
+      }
       vTaskDelay(M2T(1));
     }
   }
@@ -153,17 +174,6 @@ void uwbRegisterDataPacketListener(UWB_Data_Packet_Listener_t *listener) {
 }
 
 /* Routing Table Operations */
-static Route_Entry_t EMPTY_ROUTE_ENTRY = {
-    .destAddress = UWB_DEST_EMPTY,
-    .nextHop = UWB_DEST_EMPTY,
-    .hopCount = 0,
-    .expirationTime = 0,
-    .destSeqNumber = 0,
-    .validDestSeqFlag = false,
-    .precursors = 0,
-    // TODO: init metrics
-};
-
 Routing_Table_t *getGlobalRoutingTable() {
   return &routingTable;
 }
@@ -180,6 +190,22 @@ static void routingTableSwapRouteEntry(Routing_Table_t *table, int first, int se
   Route_Entry_t temp = table->entries[first];
   table->entries[first] = table->entries[second];
   table->entries[second] = temp;
+}
+
+static int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
+  /* Binary Search */
+  int left = -1, right = table->size;
+  while (left + 1 != right) {
+    int mid = left + (right - left) / 2;
+    if (table->entries[mid].destAddress == targetAddress) {
+      return mid;
+    } else if (table->entries[mid].destAddress > targetAddress) {
+      right = mid;
+    } else {
+      left = mid;
+    }
+  }
+  return -1;
 }
 
 typedef int (*routeEntryCompareFunc)(Route_Entry_t *, Route_Entry_t *);
@@ -251,7 +277,7 @@ static void routingTableRearrange(Routing_Table_t *table, routeEntryCompareFunc 
 
 void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
   xSemaphoreTake(table->mu, portMAX_DELAY);
-  int index = routingTableFindEntry(table, entry.destAddress);
+  int index = routingTableSearchEntry(table, entry.destAddress);
   if (index != -1) {
     DEBUG_PRINT("routingTableAddEntry: Try to add an already added route entry for dest %u, update it instead.\n",
                 entry.destAddress);
@@ -287,7 +313,7 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
 
 void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry) {
   xSemaphoreTake(table->mu, portMAX_DELAY);
-  int index = routingTableFindEntry(table, entry.destAddress);
+  int index = routingTableSearchEntry(table, entry.destAddress);
   if (index == -1) {
     DEBUG_PRINT("routingTableUpdateEntry: Cannot find correspond route entry for dest %u, add it instead.\n",
                 entry.destAddress);
@@ -305,7 +331,7 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
     DEBUG_PRINT("routingTableRemoveEntry: Routing table is empty, ignore.\n");
     return;
   }
-  int index = routingTableFindEntry(table, destAddress);
+  int index = routingTableSearchEntry(table, destAddress);
   if (index == -1) {
     DEBUG_PRINT("routingTableRemoveEntry: Cannot find correspond route entry for dest %u, ignore.\n", destAddress);
     return;
@@ -317,20 +343,17 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
   xSemaphoreGive(table->mu);
 }
 
-int routingTableFindEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
-  /* Binary Search */
-  int left = -1, right = table->size;
-  while (left + 1 != right) {
-    int mid = left + (right - left) / 2;
-    if (table->entries[mid].destAddress == targetAddress) {
-      return mid;
-    } else if (table->entries[mid].destAddress > targetAddress) {
-      right = mid;
-    } else {
-      left = mid;
-    }
+Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
+  xSemaphoreTake(table->mu, portMAX_DELAY);
+  int index = routingTableSearchEntry(table, destAddress);
+  Route_Entry_t entry = EMPTY_ROUTE_ENTRY;
+  if (index == -1) {
+    DEBUG_PRINT("routingTableFindEntry: Cannot find correspond route entry for dest %u\n", destAddress);
+  } else {
+    entry = table->entries[index];
   }
-  return -1;
+  xSemaphoreGive(table->mu);
+  return entry;
 }
 
 void printRouteEntry(Route_Entry_t entry) {
