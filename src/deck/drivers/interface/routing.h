@@ -12,7 +12,7 @@
 
 /* Data Packet */
 #define ROUTING_DATA_PACKET_SIZE_MAX UWB_PAYLOAD_SIZE_MAX
-#define ROUTING_DATA_PACKET_PAYLOAD_SIZE_MAX sizeof (UWB_Packet_t) - sizeof(UWB_Data_Packet_Header_t)
+#define ROUTING_DATA_PACKET_PAYLOAD_SIZE_MAX (ROUTING_DATA_PACKET_SIZE_MAX - sizeof(UWB_Data_Packet_Header_t))
 
 /* Routing Table */
 #define ROUTING_TABLE_SIZE_MAX 15
