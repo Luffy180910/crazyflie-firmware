@@ -13,6 +13,22 @@ static TaskHandle_t aodvRxTaskHandle = 0;
 static QueueHandle_t rxQueue;
 static uint32_t seqNumber = 0;
 
+static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
+
+}
+
+static void aodvProcessRREP(AODV_RREP_Message_t *message) {
+
+}
+
+static void aodvProcessRERR(AODV_RERR_Message_t *message) {
+
+}
+
+static void aodvProcessRREPACK(AODV_RREP_ACK_Message_t *message) {
+
+}
+
 void aodvRxCallback(void *parameters) {
   DEBUG_PRINT("aodvRxCallback\n");
 }
@@ -46,6 +62,18 @@ static void aodvRxTask(void *parameters) {
       DEBUG_PRINT("aodvRxTask: receive aodv message from %u, seq = %lu.\n",
                   rxDataPacketCache.header.srcAddress,
                   rxDataPacketCache.header.seqNumber);
+    }
+    uint8_t type = rxDataPacketCache.payload[0];
+    switch (type) {
+      case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxDataPacketCache.payload);
+        break;
+      case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxDataPacketCache.payload);
+        break;
+      case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxDataPacketCache.payload);
+        break;
+      case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxDataPacketCache.payload);
+        break;
+      default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u.\n", type);
     }
     vTaskDelay(M2T(1));
   }
