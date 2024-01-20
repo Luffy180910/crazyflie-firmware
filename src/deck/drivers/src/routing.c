@@ -52,34 +52,35 @@ void routingTxCallback(void *parameters) {
 static void uwbRoutingTxTask(void *parameters) {
   systemWaitStart();
 
-  UWB_Packet_t txPacketCache;
-  txPacketCache.header.srcAddress = uwbGetAddress();
-  txPacketCache.header.destAddress = UWB_DEST_EMPTY;
-  txPacketCache.header.type = UWB_DATA_MESSAGE;
-  txPacketCache.header.length = 0;
+  UWB_Packet_t uwbTxPacketCache;
+  uwbTxPacketCache.header.srcAddress = uwbGetAddress();
+  uwbTxPacketCache.header.destAddress = UWB_DEST_EMPTY;
+  uwbTxPacketCache.header.type = UWB_DATA_MESSAGE;
+  uwbTxPacketCache.header.length = 0;
 
-  UWB_Data_Packet_t *txDataPacketCache = (UWB_Data_Packet_t *) &txPacketCache.payload;
-  txDataPacketCache->header.length = 0;
+  UWB_Data_Packet_t *dataTxPacketCache = (UWB_Data_Packet_t *) &uwbTxPacketCache.payload;
+  dataTxPacketCache->header.length = 0;
 
   while (true) {
-    if (xQueueReceive(txQueue, txDataPacketCache, portMAX_DELAY)) {
-      ASSERT(txDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
-      ASSERT(txDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
-      if (txDataPacketCache->header.destAddress == uwbGetAddress()) {
+    if (xQueueReceive(txQueue, dataTxPacketCache, portMAX_DELAY)) {
+      ASSERT(dataTxPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
+      ASSERT(dataTxPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+      if (dataTxPacketCache->header.destAddress == uwbGetAddress()) {
         DEBUG_PRINT("uwbRoutingTxTask: Try to send data packet dest to self.\n");
         ASSERT(0);
       }
-      UWB_Address_t nextHopToDest = routingTableFindEntry(&routingTable, txDataPacketCache->header.destAddress).destAddress;
+      UWB_Address_t nextHopToDest = routingTableFindEntry(&routingTable, dataTxPacketCache->header.destAddress).destAddress;
       if (nextHopToDest == EMPTY_ROUTE_ENTRY.destAddress) {
         /* Unknown dest, start route discovery procedure */
         // TODO
+
       } else {
         /* Populate mac layer dest address */
-        txPacketCache.header.destAddress = nextHopToDest;
-        txDataPacketCache->header.seqNumber = routingSeqNumber++;
-        txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + txDataPacketCache->header.length;
-        DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", txPacketCache.header.length, txDataPacketCache->header.seqNumber);
-        uwbSendPacketBlock(&txPacketCache);
+        uwbTxPacketCache.header.destAddress = nextHopToDest;
+        dataTxPacketCache->header.seqNumber = routingSeqNumber++;
+        uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketCache->header.length;
+        DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", uwbTxPacketCache.header.length, dataTxPacketCache->header.seqNumber);
+        uwbSendPacketBlock(&uwbTxPacketCache);
       }
       vTaskDelay(M2T(1));
     }
