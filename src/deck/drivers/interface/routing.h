@@ -9,6 +9,9 @@
 #define ROUTING_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
 #define ROUTING_TX_QUEUE_SIZE 5
 #define ROUTING_TX_QUEUE_ITEM_SIZE sizeof (UWB_Data_Packet_t)
+#define ROUTING_TX_BUFFER_QUEUE_SIZE 10
+#define ROUTING_TX_BUFFER_QUEUE_ITEM_SIZE sizeof(UWB_Data_Packet_With_Timestamp_t)
+#define ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME 2000 // default 2 seconds
 
 /* Data Packet */
 #define ROUTING_DATA_PACKET_SIZE_MAX UWB_PAYLOAD_SIZE_MAX
@@ -40,6 +43,11 @@ typedef struct {
   UWB_Data_Packet_Header_t header;
   uint8_t payload[ROUTING_DATA_PACKET_PAYLOAD_SIZE_MAX];
 } __attribute__((packed)) UWB_Data_Packet_t;
+
+typedef struct {
+  UWB_Data_Packet_t packet;
+  Time_t rxTime;
+} __attribute__((packed)) UWB_Data_Packet_With_Timestamp_t;
 
 typedef struct {
   UWB_DATA_MESSAGE_TYPE type;

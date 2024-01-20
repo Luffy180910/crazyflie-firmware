@@ -123,5 +123,6 @@ typedef struct {
 } __attribute__((packed)) AODV_RERR_Message_t;
 
 void aodvInit();
+void aodvDiscoveryRoute(UWB_Address_t destAddress);
 
 #endif

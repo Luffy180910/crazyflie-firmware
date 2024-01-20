@@ -29,6 +29,10 @@ static void aodvProcessRREPACK(AODV_RREP_ACK_Message_t *message) {
 
 }
 
+void aodvDiscoveryRoute(UWB_Address_t destAddress) {
+  // TODO
+}
+
 void aodvRxCallback(void *parameters) {
   DEBUG_PRINT("aodvRxCallback\n");
 }

@@ -2,6 +2,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
+#include "timers.h"
 
 #include "autoconf.h"
 #include "debug.h"
@@ -11,10 +12,14 @@
 #include "routing.h"
 #include "aodv.h"
 
+
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
 static QueueHandle_t txQueue;
 static QueueHandle_t rxQueue;
+static QueueHandle_t txBufferQueue;
+static SemaphoreHandle_t txBufferMutex;
+static TimerHandle_t txBufferEvictionTimer;
 static xQueueHandle queues[UWB_DATA_MESSAGE_TYPE_COUNT];
 static UWB_Data_Packet_Listener_t listeners[UWB_DATA_MESSAGE_TYPE_COUNT];
 static Routing_Table_t routingTable;
@@ -30,6 +35,38 @@ static Route_Entry_t EMPTY_ROUTE_ENTRY = {
     .precursors = 0,
     // TODO: init metrics
 };
+
+static void bufferDataPacket(UWB_Data_Packet_t *packet) {
+  xSemaphoreTake(txBufferMutex, portMAX_DELAY);
+
+  Time_t rxTime = xTaskGetTickCount() + M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME);
+  UWB_Data_Packet_With_Timestamp_t bufferedPacket = {.packet = *packet, .rxTime = rxTime};
+  while (xQueueSend(txBufferQueue, &bufferedPacket, portMAX_DELAY) == pdFALSE) {
+    UWB_Data_Packet_With_Timestamp_t evictedPacket;
+    xQueueReceive(txBufferQueue, &evictedPacket, 0);
+    DEBUG_PRINT("bufferDataPacket: Tx buffer is full, evict oldest one that dest to %u, seq = %lu.\n",
+                evictedPacket.packet.header.destAddress,
+                evictedPacket.packet.header.seqNumber);
+  }
+
+  xSemaphoreGive(txBufferMutex);
+}
+
+static void evictDataPacketTimerCallback(TimerHandle_t timer) {
+  xSemaphoreTake(txBufferMutex, portMAX_DELAY);
+
+  DEBUG_PRINT("evictDataPacketTimerCallback: Trigger eviction timer at %lu.\n", xTaskGetTickCount());
+  UWB_Data_Packet_With_Timestamp_t evictedPacket;
+  if (xQueueReceive(txBufferQueue, &evictedPacket, 0) == pdTRUE) {
+    DEBUG_PRINT("evictDataPacketTimerCallback: Evict dest to %u, seq = %lu.\n",
+                evictedPacket.packet.header.destAddress,
+                evictedPacket.packet.header.seqNumber);
+  } else {
+    DEBUG_PRINT("evictDataPacketTimerCallback: evict none.\n");
+  }
+
+  xSemaphoreGive(txBufferMutex);
+}
 
 void routingRxCallback(void *parameters) {
   UWB_Packet_t *uwbPacket = (UWB_Packet_t *) parameters;
@@ -69,15 +106,17 @@ static void uwbRoutingTxTask(void *parameters) {
         DEBUG_PRINT("uwbRoutingTxTask: Try to send data packet dest to self.\n");
         ASSERT(0);
       }
+      dataTxPacketCache->header.seqNumber = routingSeqNumber++;
       UWB_Address_t nextHopToDest = routingTableFindEntry(&routingTable, dataTxPacketCache->header.destAddress).destAddress;
+      /* Unknown dest, start route discovery procedure */
       if (nextHopToDest == EMPTY_ROUTE_ENTRY.destAddress) {
-        /* Unknown dest, start route discovery procedure */
-        // TODO
-
+        /* Buffer this data packet since there is no certain route to dest */
+        bufferDataPacket(dataTxPacketCache);
+        /* Then trigger route discovery */
+        aodvDiscoveryRoute(dataTxPacketCache->header.destAddress);
       } else {
         /* Populate mac layer dest address */
         uwbTxPacketCache.header.destAddress = nextHopToDest;
-        dataTxPacketCache->header.seqNumber = routingSeqNumber++;
         uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketCache->header.length;
         DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu\n", uwbTxPacketCache.header.length, dataTxPacketCache->header.seqNumber);
         uwbSendPacketBlock(&uwbTxPacketCache);
@@ -110,6 +149,15 @@ static void uwbRoutingRxTask(void *parameters) {
 void routingInit() {
   txQueue = xQueueCreate(ROUTING_TX_QUEUE_SIZE, ROUTING_TX_QUEUE_ITEM_SIZE);
   rxQueue = xQueueCreate(ROUTING_RX_QUEUE_SIZE, ROUTING_RX_QUEUE_ITEM_SIZE);
+  txBufferQueue = xQueueCreate(ROUTING_TX_BUFFER_QUEUE_SIZE, ROUTING_TX_BUFFER_QUEUE_ITEM_SIZE);
+  txBufferMutex = xSemaphoreCreateMutex();
+  txBufferEvictionTimer = xTimerCreate("txBufferTimer",
+                                       M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME),
+                                       pdTRUE,
+                                       (void *) 0,
+                                       evictDataPacketTimerCallback);
+  xTimerStart(txBufferEvictionTimer, M2T(0));
+
   routingTableInit(&routingTable);
 
   UWB_Message_Listener_t listener;
@@ -194,19 +242,22 @@ static void routingTableSwapRouteEntry(Routing_Table_t *table, int first, int se
 }
 
 static int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
+  xSemaphoreTake(table->mu, portMAX_DELAY);
   /* Binary Search */
-  int left = -1, right = table->size;
+  int left = -1, right = table->size, res = -1;
   while (left + 1 != right) {
     int mid = left + (right - left) / 2;
     if (table->entries[mid].destAddress == targetAddress) {
-      return mid;
+      res = mid;
+      break;
     } else if (table->entries[mid].destAddress > targetAddress) {
       right = mid;
     } else {
       left = mid;
     }
   }
-  return -1;
+  xSemaphoreGive(table->mu);
+  return res;
 }
 
 typedef int (*routeEntryCompareFunc)(Route_Entry_t *, Route_Entry_t *);
@@ -232,8 +283,10 @@ static int COMPARE_BY_EXPIRATION_TIME(Route_Entry_t *first, Route_Entry_t *secon
 }
 
 static int routingTableGetStalestEntry(Routing_Table_t *table) {
+  xSemaphoreTake(table->mu, portMAX_DELAY);
   if (table->size == 0) {
     DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is empty, ignore.\n");
+    xSemaphoreGive(table->mu);
     return -1;
   }
   int stalestIndex = 0;
@@ -242,11 +295,13 @@ static int routingTableGetStalestEntry(Routing_Table_t *table) {
       stalestIndex = i;
     }
   }
+  xSemaphoreGive(table->mu);
   return stalestIndex;
 }
 
 /* Build the heap */
 static void routingTableArrange(Routing_Table_t *table, int index, int len, routeEntryCompareFunc compare) {
+  xSemaphoreTake(table->mu, portMAX_DELAY);
   int leftChild = 2 * index + 1;
   int rightChild = 2 * index + 2;
   int maxIndex = index;
@@ -260,6 +315,7 @@ static void routingTableArrange(Routing_Table_t *table, int index, int len, rout
     routingTableSwapRouteEntry(table, index, maxIndex);
     routingTableArrange(table, maxIndex, len, compare);
   }
+  xSemaphoreGive(table->mu);
 }
 
 /* Sort the routing table */
