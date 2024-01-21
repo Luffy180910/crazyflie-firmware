@@ -43,7 +43,7 @@ void aodvTxCallback(void *parameters) {
 
 static void aodvTxTask(void *parameters) {
   systemWaitStart();
-
+  // TODO: use raw UWB
   UWB_Data_Packet_t txDataPacketCache;
   txDataPacketCache.header.type = UWB_DATA_MESSAGE_AODV;
   txDataPacketCache.header.srcAddress = uwbGetAddress();
