@@ -62,16 +62,13 @@ static void evictDataPacketTimerCallback(TimerHandle_t timer) {
   UWB_Data_Packet_With_Timestamp_t evictedPacket;
   Time_t curTime = xTaskGetTickCount();
   bool evicted = false;
-  while (xQueuePeek(txBufferQueue, &evictedPacket, M2T(0))) {
-    if (evictedPacket.evictTime < curTime) {
-      xQueueReceive(txBufferQueue, &evictedPacket, M2T(0));
-      DEBUG_PRINT("evictDataPacketTimerCallback: Evict dest to %u, seq = %lu.\n",
-                  evictedPacket.packet.header.destAddress,
-                  evictedPacket.packet.header.seqNumber);
-      evicted = true;
-    } else {
-      break;
-    }
+  while (xQueuePeek(txBufferQueue, &evictedPacket, M2T(0)) && evictedPacket.evictTime < curTime) {
+    /* Discard this packet */
+    xQueueReceive(txBufferQueue, &evictedPacket, M2T(0));
+    DEBUG_PRINT("evictDataPacketTimerCallback: Evict dest to %u, seq = %lu.\n",
+                evictedPacket.packet.header.destAddress,
+                evictedPacket.packet.header.seqNumber);
+    evicted = true;
   }
   if (!evicted) {
     DEBUG_PRINT("evictDataPacketTimerCallback: Evict none.\n");
@@ -117,7 +114,10 @@ static void uwbRoutingTxTask(void *parameters) {
     if (xQueueReceive(txQueue, dataTxPacketCache, M2T(ROUTING_TX_QUEUE_WAIT_TIME))) {
       ASSERT(dataTxPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(dataTxPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
-      dataTxPacketCache->header.seqNumber = routingSeqNumber++;
+      /* Data packet that originate from self. */
+      if (dataTxPacketCache->header.srcAddress == uwbGetAddress()) {
+        dataTxPacketCache->header.seqNumber = routingSeqNumber++;
+      }
       if (dataTxPacketCache->header.destAddress == uwbGetAddress()) {
         DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
         xQueueSend(rxQueue, dataTxPacketCache, portMAX_DELAY);
