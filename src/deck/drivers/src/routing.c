@@ -62,12 +62,16 @@ static void evictDataPacketTimerCallback(TimerHandle_t timer) {
   UWB_Data_Packet_With_Timestamp_t evictedPacket;
   Time_t curTime = xTaskGetTickCount();
   bool evicted = false;
-  while (xQueuePeek(txBufferQueue, &evictedPacket, M2T(0)) && evictedPacket.evictTime < curTime) {
-    xQueueReceive(txBufferQueue, &evictedPacket, M2T(0));
-    DEBUG_PRINT("evictDataPacketTimerCallback: Evict dest to %u, seq = %lu.\n",
-                evictedPacket.packet.header.destAddress,
-                evictedPacket.packet.header.seqNumber);
-    evicted = true;
+  while (xQueuePeek(txBufferQueue, &evictedPacket, M2T(0))) {
+    if (evictedPacket.evictTime < curTime) {
+      xQueueReceive(txBufferQueue, &evictedPacket, M2T(0));
+      DEBUG_PRINT("evictDataPacketTimerCallback: Evict dest to %u, seq = %lu.\n",
+                  evictedPacket.packet.header.destAddress,
+                  evictedPacket.packet.header.seqNumber);
+      evicted = true;
+    } else {
+      break;
+    }
   }
   if (!evicted) {
     DEBUG_PRINT("evictDataPacketTimerCallback: Evict none.\n");
@@ -129,7 +133,7 @@ static void uwbRoutingTxTask(void *parameters) {
           /* Populate mac layer dest address */
           uwbTxPacketCache.header.destAddress = nextHopToDest;
           uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketCache->header.length;
-          DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu, dest = %u\n",
+          DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu, dest = %u.\n",
                       dataTxPacketCache->header.length,
                       dataTxPacketCache->header.seqNumber,
                       dataTxPacketCache->header.destAddress);
@@ -152,7 +156,7 @@ static void uwbRoutingTxTask(void *parameters) {
         uwbTxPacketCache.header.destAddress = nextHopToDest;
         uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketBufferCache.packet.header.length;
         memcpy(uwbTxPacketCache.payload, &dataTxPacketBufferCache.packet, dataTxPacketBufferCache.packet.header.length);
-        DEBUG_PRINT("uwbRoutingTxTask: Consume buffered data packet : len = %d, seq = %lu, dest = %u\n",
+        DEBUG_PRINT("uwbRoutingTxTask: Consume buffered data packet : len = %d, seq = %lu, dest = %u.\n",
                     dataTxPacketBufferCache.packet.header.length,
                     dataTxPacketBufferCache.packet.header.seqNumber,
                     dataTxPacketBufferCache.packet.header.destAddress);
@@ -175,14 +179,23 @@ static void uwbRoutingRxTask(void *parameters) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
       ASSERT(rxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(rxDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
-      /* Dispatch Data Message */
-      // TODO: self
-      if (listeners[rxDataPacketCache->header.type].rxQueue) {
-        if (xQueueSend(listeners[rxDataPacketCache->header.type].rxQueue, rxDataPacketCache, M2T(100)) != pdPASS) {
-          DEBUG_PRINT("uwbRoutingRxTask: Timeout when dispatch data message type %d\n", rxDataPacketCache->header.type);
+      DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
+                  rxDataPacketCache->header.srcAddress,
+                  rxDataPacketCache->header.destAddress,
+                  rxDataPacketCache->header.seqNumber);
+      if (rxDataPacketCache->header.destAddress == uwbGetAddress()) {
+        /* Dispatch Data Message */
+        if (listeners[rxDataPacketCache->header.type].rxQueue) {
+          if (xQueueSend(listeners[rxDataPacketCache->header.type].rxQueue, rxDataPacketCache, M2T(1000)) != pdPASS) {
+            DEBUG_PRINT("uwbRoutingRxTask: Timeout when dispatch data message type %d.\n", rxDataPacketCache->header.type);
+          }
         }
+      } else {
+       /* Forward the packet */
+        uwbSendDataPacketBlock(rxDataPacketCache);
       }
     }
+    vTaskDelay(M2T(1)); // TODO: rate limiter
   }
 }
 
