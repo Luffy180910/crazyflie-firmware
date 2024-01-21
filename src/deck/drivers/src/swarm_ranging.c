@@ -10,6 +10,7 @@
 #include "log.h"
 #include "adhocdeck.h"
 #include "swarm_ranging.h"
+#include "semphr.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -21,9 +22,10 @@ static Ranging_Table_Set_t rangingTableSet;
 static UWB_Message_Listener_t listener;
 static TaskHandle_t uwbRangingTxTaskHandle = 0;
 static TaskHandle_t uwbRangingRxTaskHandle = 0;
-
+static int TfBufferIndex = 0;
+static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
+static SemaphoreHandle_t TfBufferMutex;
 static int rangingSeqNumber = 1;
-
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
 
@@ -283,6 +285,7 @@ void rangingInit() {
   DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetInit(&rangingTableSet);
+  TfBufferMutex = xSemaphoreCreateMutex();
 
   listener.type = UWB_RANGING_MESSAGE;
   listener.rxQueue = NULL; // handle rxQueue in swarm_ranging.c instead of adhocdeck.c
@@ -339,33 +342,36 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
   return candidate;
 }
 
-static int TfBufferIndex = 0;
-static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
-
 void updateTfBuffer(Timestamp_Tuple_t timestamp) {
+  xSemaphoreTake(TfBufferMutex, portMAX_DELAY);
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex] = timestamp;
 //  DEBUG_PRINT("updateTfBuffer: time = %llu, seq = %d\n", TfBuffer[TfBufferIndex].timestamp.full, TfBuffer[TfBufferIndex].seqNumber);
+  xSemaphoreGive(TfBufferMutex);
 }
 
 Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
+  xSemaphoreTake(TfBufferMutex, portMAX_DELAY);
   Timestamp_Tuple_t Tf = {.timestamp.full = 0, .seqNumber = 0};
   int startIndex = TfBufferIndex;
   /* Backward search */
   for (int i = startIndex; i >= 0; i--) {
     if (TfBuffer[i].seqNumber == seqNumber) {
       Tf = TfBuffer[i];
-      return Tf;
-    }
-  }
-  /* Forward search */
-  for (int i = startIndex + 1; i < Tf_BUFFER_POOL_SIZE; i++) {
-    if (TfBuffer[i].seqNumber == seqNumber) {
-      Tf = TfBuffer[i];
       break;
     }
   }
+  if (!Tf.timestamp.full) {
+    /* Forward search */
+    for (int i = startIndex + 1; i < Tf_BUFFER_POOL_SIZE; i++) {
+      if (TfBuffer[i].seqNumber == seqNumber) {
+        Tf = TfBuffer[i];
+        break;
+      }
+    }
+  }
+  xSemaphoreGive(TfBufferMutex);
   return Tf;
 }
 
@@ -375,11 +381,13 @@ Timestamp_Tuple_t getLatestTxTimestamp() {
 
 void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n) {
   ASSERT(n <= Tf_BUFFER_POOL_SIZE);
+  xSemaphoreTake(TfBufferMutex, portMAX_DELAY);
   int startIndex = (TfBufferIndex + 1 - n + Tf_BUFFER_POOL_SIZE) % Tf_BUFFER_POOL_SIZE;
   for (int i = n - 1; i >= 0; i--) {
     timestamps[i] = TfBuffer[startIndex];
     startIndex = (startIndex + 1) % Tf_BUFFER_POOL_SIZE;
   }
+  xSemaphoreGive(TfBufferMutex);
 }
 
 void rangingTableInit(Ranging_Table_t *rangingTable, UWB_Address_t address) {
@@ -767,33 +775,6 @@ void printRangingTable(Ranging_Table_t *table) {
               table->Tf.seqNumber,
               table->Re.seqNumber);
   DEBUG_PRINT("====\n");
-//  DEBUG_PRINT("Rp = %2x%8lx, Tr = %2x%8lx, Rf = %2x%8lx, \n",
-//              table->Rp.timestamp.high8,
-//              table->Rp.timestamp.low32,
-//              table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Tr.timestamp.high8,
-//              table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Tr.timestamp.low32,
-//              table->Rf.timestamp.high8,
-//              table->Rf.timestamp.low32);
-//  DEBUG_PRINT("Tp = %2x%8lx, Rr = %2x%8lx, Tf = %2x%8lx, Re = %2x%8lx, \n",
-//              table->Tp.timestamp.high8,
-//              table->Tp.timestamp.low32,
-//              table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Rr.timestamp.high8,
-//              table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Rr.timestamp.low32,
-//              table->Tf.timestamp.high8,
-//              table->Tf.timestamp.low32,
-//              table->Re.timestamp.high8,
-//              table->Re.timestamp.low32);
-//  DEBUG_PRINT("====\n");
-//  DEBUG_PRINT("Rp = %llu, Tr = %llu, Rf = %llu, \n",
-//              table->Rp.timestamp.full,
-//              table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Tr.seqNumber,
-//              table->Rf.timestamp.full);
-//  DEBUG_PRINT("Tp = %llu, Rr = %llu, Tf = %llu, Re = %llu, \n",
-//              table->Tp.timestamp.full,
-//              table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Rr.seqNumber,
-//              table->Tf.timestamp.full,
-//              table->Re.timestamp.full);
-//  DEBUG_PRINT("====\n");
 }
 
 void printRangingTableSet(Ranging_Table_Set_t *rangingTableSet) {
