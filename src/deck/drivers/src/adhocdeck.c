@@ -91,8 +91,7 @@ static void rxCallback() {
 
   ASSERT(msgType < UWB_MESSAGE_TYPE_COUNT);
 
-  if (!(packet->header.destAddress == MY_UWB_ADDRESS || packet->header.destAddress == UWB_DEST_ANY
-      || packet->header.destAddress == UWB_DEST_ONE_HOP)) {
+  if (!(packet->header.destAddress == MY_UWB_ADDRESS || packet->header.destAddress == UWB_DEST_ANY)) {
     dwt_forcetrxoff();
     dwt_rxenable(DWT_START_RX_IMMEDIATE);
     return;

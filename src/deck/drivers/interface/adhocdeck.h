@@ -30,9 +30,8 @@
 /* UWB Packet */
 #define UWB_PACKET_SIZE_MAX UWB_FRAME_LEN_MAX
 #define UWB_PAYLOAD_SIZE_MAX (UWB_PACKET_SIZE_MAX - sizeof(UWB_Packet_Header_t))
-#define UWB_DEST_EMPTY 65535
-#define UWB_DEST_ANY 65534
-#define UWB_DEST_ONE_HOP 65533
+#define UWB_DEST_ANY 65535
+#define UWB_DEST_EMPTY 65534
 
 /* TX options */
 static dwt_txconfig_t uwbTxConfigOptions = {
@@ -73,6 +72,8 @@ typedef enum {
   UWB_RANGING_MESSAGE = 0,
   UWB_FLOODING_MESSAGE = 1,
   UWB_DATA_MESSAGE = 2,
+  UWB_AODV_MESSAGE = 3,
+  UWB_OLSR_MESSAGE = 4,
   UWB_MESSAGE_TYPE_COUNT, /* only used for counting message types. */
 } UWB_MESSAGE_TYPE;
 

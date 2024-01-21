@@ -224,7 +224,7 @@ static void uwbRangingTxTask(void *parameters) {
 
   UWB_Packet_t txPacketCache;
   txPacketCache.header.srcAddress = uwbGetAddress();
-  txPacketCache.header.destAddress = UWB_DEST_ONE_HOP;
+  txPacketCache.header.destAddress = UWB_DEST_ANY;
   txPacketCache.header.type = UWB_RANGING_MESSAGE;
   txPacketCache.header.length = 0;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;

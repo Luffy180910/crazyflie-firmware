@@ -1,36 +1,51 @@
+#include <stdbool.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
 #include "autoconf.h"
 #include "debug.h"
-#include "log.h"
 #include "system.h"
 #include "routing.h"
 #include "aodv.h"
 
-static TaskHandle_t aodvTxTaskHandle = 0;
 static TaskHandle_t aodvRxTaskHandle = 0;
 static QueueHandle_t rxQueue;
 static uint32_t aodvMsgSeqNumber = 0;
+static uint32_t aodvRequestId = 0;
 
 static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
-
+// TODO
 }
 
 static void aodvProcessRREP(AODV_RREP_Message_t *message) {
-
+// TODO
 }
 
 static void aodvProcessRERR(AODV_RERR_Message_t *message) {
-
+// TODO
 }
 
 static void aodvProcessRREPACK(AODV_RREP_ACK_Message_t *message) {
-
+// TODO
 }
 
 void aodvDiscoveryRoute(UWB_Address_t destAddress) {
-  // TODO
+  UWB_Packet_t packet;
+  packet.header.type = UWB_AODV_MESSAGE;
+  packet.header.srcAddress = uwbGetAddress();
+  packet.header.destAddress = UWB_DEST_ANY;
+  packet.header.length = sizeof(UWB_Packet_t) + sizeof(AODV_RREQ_Message_t);
+  AODV_RREQ_Message_t *rreqMsg = (AODV_RREQ_Message_t *) &packet.payload;
+  // TODO: check
+  rreqMsg->flags.U = true;
+  rreqMsg->type = AODV_RREQ;
+  rreqMsg->hopCount = 0;
+  rreqMsg->requestId = ++aodvRequestId;
+  rreqMsg->destAddress = destAddress;
+  rreqMsg->destSeqNumber = 0;
+  rreqMsg->origAddress = uwbGetAddress();
+  rreqMsg->origSeqNumber = ++aodvMsgSeqNumber;
+  uwbSendPacketBlock(&packet);
 }
 
 void aodvRxCallback(void *parameters) {
@@ -41,43 +56,26 @@ void aodvTxCallback(void *parameters) {
   DEBUG_PRINT("aodvTxCallback\n");
 }
 
-static void aodvTxTask(void *parameters) {
-  systemWaitStart();
-  // TODO: use raw UWB
-  UWB_Data_Packet_t txDataPacketCache;
-  txDataPacketCache.header.type = UWB_DATA_MESSAGE_AODV;
-  txDataPacketCache.header.srcAddress = uwbGetAddress();
-
-  while (true) {
-    // TODO: modify txDataPacketCache.header.destAddress
-    txDataPacketCache.header.length = sizeof(UWB_Data_Packet_Header_t);
-    uwbSendDataPacketBlock(&txDataPacketCache);
-    vTaskDelay(M2T(1000));
-  }
-}
-
 static void aodvRxTask(void *parameters) {
   systemWaitStart();
 
-  UWB_Data_Packet_t rxDataPacketCache;
+  UWB_Packet_t rxPacketCache;
 
   while (true) {
-    if (uwbReceiveDataPacketBlock(UWB_DATA_MESSAGE_AODV, &rxDataPacketCache)) {
-      DEBUG_PRINT("aodvRxTask: receive aodv message from %u, seq = %lu.\n",
-                  rxDataPacketCache.header.srcAddress,
-                  rxDataPacketCache.header.seqNumber);
+    if (uwbReceivePacketBlock(UWB_AODV_MESSAGE, &rxPacketCache)) {
+      DEBUG_PRINT("aodvRxTask: receive aodv message from %u.\n", rxPacketCache.header.srcAddress);
     }
-    uint8_t type = rxDataPacketCache.payload[0];
-    switch (type) {
-      case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxDataPacketCache.payload);
+    uint8_t msgType = rxPacketCache.payload[0];
+    switch (msgType) {
+      case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxPacketCache.payload);
         break;
-      case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxDataPacketCache.payload);
+      case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxPacketCache.payload);
         break;
-      case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxDataPacketCache.payload);
+      case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxPacketCache.payload);
         break;
-      case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxDataPacketCache.payload);
+      case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxPacketCache.payload);
         break;
-      default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u.\n", type);
+      default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u.\n", msgType);
     }
     vTaskDelay(M2T(1));
   }
@@ -86,19 +84,13 @@ static void aodvRxTask(void *parameters) {
 
 void aodvInit() {
   rxQueue = xQueueCreate(AODV_RX_QUEUE_SIZE, AODV_RX_QUEUE_ITEM_SIZE);
-  UWB_Data_Packet_Listener_t listener;
-  listener.type = UWB_DATA_MESSAGE_AODV;
+  UWB_Message_Listener_t listener;
+  listener.type = UWB_AODV_MESSAGE;
   listener.rxQueue = rxQueue;
   listener.rxCb = aodvRxCallback;
   listener.txCb = aodvTxCallback;
-  uwbRegisterDataPacketListener(&listener);
+  uwbRegisterListener(&listener);
 
-  xTaskCreate(aodvTxTask,
-              ADHOC_DECK_AODV_TX_TASK_NAME,
-              UWB_TASK_STACK_SIZE,
-              NULL,
-              ADHOC_DECK_TASK_PRI,
-              &aodvTxTaskHandle);
   xTaskCreate(aodvRxTask,
               ADHOC_DECK_AODV_RX_TASK_NAME,
               UWB_TASK_STACK_SIZE,
