@@ -439,11 +439,13 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
   xSemaphoreTake(table->mu, portMAX_DELAY);
   if (table->size == 0) {
     DEBUG_PRINT("routingTableRemoveEntry: Routing table is empty, ignore.\n");
+    xSemaphoreGive(table->mu);
     return;
   }
   int index = routingTableSearchEntry(table, destAddress);
   if (index == -1) {
     DEBUG_PRINT("routingTableRemoveEntry: Cannot find correspond route entry for dest %u, ignore.\n", destAddress);
+    xSemaphoreGive(table->mu);
     return;
   }
   routingTableSwapRouteEntry(table, index, table->size - 1);
@@ -458,7 +460,7 @@ Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAd
   int index = routingTableSearchEntry(table, destAddress);
   Route_Entry_t entry = EMPTY_ROUTE_ENTRY;
   if (index == -1) {
-    DEBUG_PRINT("routingTableFindEntry: Cannot find correspond route entry for dest %u\n", destAddress);
+    DEBUG_PRINT("routingTableFindEntry: Cannot find correspond route entry for dest %u.\n", destAddress);
   } else {
     entry = table->entries[index];
   }

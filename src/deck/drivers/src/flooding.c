@@ -95,7 +95,7 @@ int generateFloodingMessage(Flooding_Message_t *floodingMessage) {
   int curSeqNumber = floodingSeqNumber;
   /* generate message body */
   uint16_t addressIndex;
-  for (addressIndex = 0; addressIndex < RANGING_TABLE_SIZE; addressIndex++) {
+  for (addressIndex = 0; addressIndex < RANGING_TABLE_SIZE_MAX; addressIndex++) {
     if (bodyUnitNumber >= MAX_BODY_UNIT) {
       break;
     }
