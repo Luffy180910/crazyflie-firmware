@@ -28,9 +28,11 @@ static int rangingSeqNumber = 1;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
 static Ranging_Table_t EMPTY_RANGING_TABLE = {
-  .neighborAddress = UWB_DEST_EMPTY,
-  .distance = -1,
-  .state = RANGING_STATE_RESERVED
+    .state = RANGING_STATE_S1,
+    .neighborAddress = UWB_DEST_EMPTY,
+    .period = RANGING_PERIOD,
+    .nextExpectedDeliveryTime = M2T(RANGING_PERIOD),
+    .expirationTime = M2T(RANGING_TABLE_HOLD_TIME),
 };
 
 int16_t distanceTowards[RANGING_TABLE_SIZE_MAX + 1] = {[0 ... RANGING_TABLE_SIZE_MAX] = -1};
@@ -158,7 +160,6 @@ static void rangingTableSetSwapTable(Ranging_Table_Set_t *set, int first, int se
 }
 
 static int rangingTableSetSearchTable(Ranging_Table_Set_t *set, UWB_Address_t targetAddress) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   /* Binary Search */
   int left = -1, right = set->size, res = -1;
   while (left + 1 != right) {
@@ -172,7 +173,6 @@ static int rangingTableSetSearchTable(Ranging_Table_Set_t *set, UWB_Address_t ta
       left = mid;
     }
   }
-  xSemaphoreGive(set->mu);
   return res;
 }
 
@@ -210,7 +210,6 @@ static int COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME(Ranging_Table_t *first, Rangin
 
 /* Build the heap */
 static void rangingTableSetArrange(Ranging_Table_Set_t *set, int index, int len, rangingTableCompareFunc compare) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   int leftChild = 2 * index + 1;
   int rightChild = 2 * index + 2;
   int maxIndex = index;
@@ -224,12 +223,10 @@ static void rangingTableSetArrange(Ranging_Table_Set_t *set, int index, int len,
     rangingTableSetSwapTable(set, index, maxIndex);
     rangingTableSetArrange(set, maxIndex, len, compare);
   }
-  xSemaphoreGive(set->mu);
 }
 
 /* Sort the ranging table */
 static void rangingTableSetRearrange(Ranging_Table_Set_t *set, rangingTableCompareFunc compare) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   /* Build max heap */
   for (int i = set->size / 2 - 1; i >= 0; i--) {
     rangingTableSetArrange(set, i, set->size, compare);
@@ -238,11 +235,9 @@ static void rangingTableSetRearrange(Ranging_Table_Set_t *set, rangingTableCompa
     rangingTableSetSwapTable(set, 0, i);
     rangingTableSetArrange(set, 0, i, compare);
   }
-  xSemaphoreGive(set->mu);
 }
 
 void rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   int index = rangingTableSetSearchTable(set, table.neighborAddress);
   if (index != -1) {
     DEBUG_PRINT(
@@ -264,11 +259,9 @@ void rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
       DEBUG_PRINT("rangingTableSetAddTable: Add new neighbor %u to ranging table.\n", table.neighborAddress);
     }
   }
-  xSemaphoreGive(set->mu);
 }
 
 void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   int index = rangingTableSetSearchTable(set, table.neighborAddress);
   if (index == -1) {
     DEBUG_PRINT("rangingTableSetUpdateTable: Cannot find correspond table for neighbor %u, add it instead.\n",
@@ -278,31 +271,25 @@ void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table)
     set->tables[index] = table;
     DEBUG_PRINT("rangingTableSetUpdateTable: Update table for neighbor %u.\n", table.neighborAddress);
   }
-  xSemaphoreGive(set->mu);
 }
 
 void rangingTableSetRemoveTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   if (set->size == 0) {
     DEBUG_PRINT("rangingTableSetRemoveTable: Ranging table is empty, ignore.\n");
-    xSemaphoreGive(set->mu);
     return;
   }
   int index = rangingTableSetSearchTable(set, neighborAddress);
   if (index == -1) {
     DEBUG_PRINT("rangingTableSetRemoveTable: Cannot find correspond table for neighbor %u, ignore.\n", neighborAddress);
-    xSemaphoreGive(set->mu);
     return;
   }
   rangingTableSetSwapTable(set, index, set->size - 1);
   set->tables[set->size - 1] = EMPTY_RANGING_TABLE;
   set->size--;
   rangingTableSetRearrange(set, COMPARE_BY_ADDRESS);
-  xSemaphoreGive(set->mu);
 }
 
 Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   int index = rangingTableSetSearchTable(set, neighborAddress);
   Ranging_Table_t table = EMPTY_RANGING_TABLE;
   if (index == -1) {
@@ -310,12 +297,13 @@ Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t
   } else {
     table = set->tables[index];
   }
-  xSemaphoreGive(set->mu);
   return table;
 }
 
 Ranging_Table_t rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
   // TODO: timer
+  Ranging_Table_t table;
+  return table;
 }
 
 void printRangingTable(Ranging_Table_t *table) {
@@ -332,7 +320,6 @@ void printRangingTable(Ranging_Table_t *table) {
 }
 
 void printRangingTableSet(Ranging_Table_Set_t *set) {
-  xSemaphoreTake(set->mu, portMAX_DELAY);
   DEBUG_PRINT("neighbor\t distance\t period\t expire\t \n");
   for (int i = 0; i < set->size; i++) {
     if (set->tables[i].neighborAddress == UWB_DEST_EMPTY) {
@@ -345,7 +332,6 @@ void printRangingTableSet(Ranging_Table_Set_t *set) {
                 set->tables[i].expirationTime);
   }
   DEBUG_PRINT("---\n");
-  xSemaphoreGive(set->mu);
 }
 
 void printRangingMessage(Ranging_Message_t *rangingMessage) {
@@ -661,6 +647,7 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
     Ranging_Table_t table;
     rangingTableInit(&table, neighborAddress);
     rangingTableSetAddTable(&rangingTableSet, table);
+    neighborIndex = rangingTableSetSearchTable(&rangingTableSet, neighborAddress);
   }
 
   Ranging_Table_t *neighborRangingTable = &rangingTableSet.tables[neighborIndex];
