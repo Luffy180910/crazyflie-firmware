@@ -64,18 +64,18 @@ static void aodvRxTask(void *parameters) {
   while (true) {
     if (uwbReceivePacketBlock(UWB_AODV_MESSAGE, &rxPacketCache)) {
       DEBUG_PRINT("aodvRxTask: receive aodv message from %u.\n", rxPacketCache.header.srcAddress);
-    }
-    uint8_t msgType = rxPacketCache.payload[0];
-    switch (msgType) {
-      case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxPacketCache.payload);
-        break;
-      case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxPacketCache.payload);
-        break;
-      case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxPacketCache.payload);
-        break;
-      case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxPacketCache.payload);
-        break;
-      default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u.\n", msgType);
+      uint8_t msgType = rxPacketCache.payload[0];
+      switch (msgType) {
+        case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxPacketCache.payload);
+          break;
+        case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxPacketCache.payload);
+          break;
+        case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxPacketCache.payload);
+          break;
+        case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxPacketCache.payload);
+          break;
+        default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u.\n", msgType);
+      }
     }
     vTaskDelay(M2T(1));
   }
