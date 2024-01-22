@@ -239,7 +239,7 @@ static void uwbTxTask(void *parameters) {
           }
         }
       }
-      vTaskDelay(M2T(1)); // TODO: workaround to fix strange packet loss when sending packet (i.e. routing packet) except ranging packet, need further debugging.
+      vTaskDelay(M2T(1));
     }
   }
 }
@@ -343,7 +343,13 @@ static void pinInit() {
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
-
+#ifdef CONFIG_DECK_ADHOCDECK_USE_ALT_PINS
+  DEBUG_PRINT("USE_ALT_PINS\n");
+#elif CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
+  DEBUG_PRINT("USE_UART2_PINS\n");
+#else
+  DEBUG_PRINT("USE_UART1_PINS\n");
+#endif
   // Init pins
 #ifdef CONFIG_DECK_ADHOCDECK_USE_UART2_PINS
   pinMode(CS_PIN, OUTPUT);
