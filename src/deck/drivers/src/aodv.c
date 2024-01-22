@@ -35,7 +35,7 @@ void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   packet.header.type = UWB_AODV_MESSAGE;
   packet.header.srcAddress = uwbGetAddress();
   packet.header.destAddress = UWB_DEST_ANY;
-  packet.header.length = sizeof(UWB_Packet_t) + sizeof(AODV_RREQ_Message_t);
+  packet.header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RREQ_Message_t);
   AODV_RREQ_Message_t *rreqMsg = (AODV_RREQ_Message_t *) &packet.payload;
   // TODO: check
   rreqMsg->flags.U = true;
