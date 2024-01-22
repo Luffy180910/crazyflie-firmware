@@ -187,7 +187,7 @@ static void uwbRoutingRxTask(void *parameters) {
   while (true) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &rxPacketCache)) {
       ASSERT(rxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
-      ASSERT(rxDataPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+      ASSERT(rxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
       DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
                   rxDataPacketCache->header.srcAddress,
                   rxDataPacketCache->header.destAddress,
