@@ -10,6 +10,7 @@
 #include "log.h"
 #include "adhocdeck.h"
 #include "swarm_ranging.h"
+#include "timers.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -18,6 +19,7 @@ static uint16_t MY_UWB_ADDRESS;
 
 static QueueHandle_t rxQueue;
 static Ranging_Table_Set_t rangingTableSet;
+static TimerHandle_t rangingTableSetEvictionTimer;
 static UWB_Message_Listener_t listener;
 static TaskHandle_t uwbRangingTxTaskHandle = 0;
 static TaskHandle_t uwbRangingRxTaskHandle = 0;
@@ -35,15 +37,15 @@ static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .expirationTime = M2T(RANGING_TABLE_HOLD_TIME),
 };
 
-int16_t distanceTowards[RANGING_TABLE_SIZE_MAX + 1] = {[0 ... RANGING_TABLE_SIZE_MAX] = -1};
+int16_t distanceTowards[31] = {[0 ... 30] = -1};
 
 int16_t getDistance(UWB_Address_t neighborAddress) {
-  ASSERT(neighborAddress <= RANGING_TABLE_SIZE_MAX);
+//  ASSERT(neighborAddress <= RANGING_TABLE_SIZE_MAX);
   return distanceTowards[neighborAddress];
 }
 
 void setDistance(UWB_Address_t neighborAddress, int16_t distance) {
-  ASSERT(neighborAddress <= RANGING_TABLE_SIZE_MAX);
+//  ASSERT(neighborAddress <= RANGING_TABLE_SIZE_MAX);
   distanceTowards[neighborAddress] = distance;
 }
 
@@ -132,6 +134,10 @@ void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n) {
     startIndex = (startIndex + 1) % Tf_BUFFER_POOL_SIZE;
   }
   xSemaphoreGive(TfBufferMutex);
+}
+
+Ranging_Table_Set_t *getGlobalRangingTableSet() {
+  return &rangingTableSet;
 }
 
 void rangingTableInit(Ranging_Table_t *table, UWB_Address_t neighborAddress) {
@@ -237,28 +243,29 @@ static void rangingTableSetRearrange(Ranging_Table_Set_t *set, rangingTableCompa
   }
 }
 
-void rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
+bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
   int index = rangingTableSetSearchTable(set, table.neighborAddress);
   if (index != -1) {
     DEBUG_PRINT(
         "rangingTableSetAddTable: Try to add an already added ranging table for neighbor %u, update it instead.\n",
         table.neighborAddress);
     set->tables[index] = table;
-  } else {
-    if (set->size == RANGING_TABLE_SIZE_MAX) {
-      DEBUG_PRINT("rangingTableSetAddTable: Ranging table if full, ignore new neighbor %u.\n",
-                  table.neighborAddress);
-      // TODO?: clear expire then retry
-    } else {
-      /* Add the new entry to the last */
-      uint8_t curIndex = set->size;
-      set->tables[curIndex] = table;
-      set->size++;
-      /* Sort the ranging table, keep it in order. */
-      rangingTableSetRearrange(set, COMPARE_BY_ADDRESS);
-      DEBUG_PRINT("rangingTableSetAddTable: Add new neighbor %u to ranging table.\n", table.neighborAddress);
-    }
+    return true;
   }
+  /* If ranging table is full now and there is no expired ranging table, then ignore. */
+  if (set->size == RANGING_TABLE_SIZE_MAX && rangingTableSetClearExpire(&rangingTableSet) == 0) {
+    DEBUG_PRINT("rangingTableSetAddTable: Ranging table if full, ignore new neighbor %u.\n",
+                table.neighborAddress);
+    return false;
+  }
+  /* Add the new entry to the last */
+  uint8_t curIndex = set->size;
+  set->tables[curIndex] = table;
+  set->size++;
+  /* Sort the ranging table, keep it in order. */
+  rangingTableSetRearrange(set, COMPARE_BY_ADDRESS);
+  DEBUG_PRINT("rangingTableSetAddTable: Add new neighbor %u to ranging table.\n", table.neighborAddress);
+  return true;
 }
 
 void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
@@ -300,10 +307,40 @@ Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t
   return table;
 }
 
-Ranging_Table_t rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
-  // TODO: timer
-  Ranging_Table_t table;
-  return table;
+int rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
+  Time_t curTime = xTaskGetTickCount();
+  int evictionCount = 0;
+
+  for (int i = 0; i < rangingTableSet.size; i++) {
+    if (rangingTableSet.tables[i].expirationTime <= curTime) {
+      DEBUG_PRINT("rangingTableSetClearExpire: Clean ranging table for neighbor %u that expire at %lu.\n",
+                  rangingTableSet.tables[i].neighborAddress,
+                  rangingTableSet.tables[i].expirationTime);
+      rangingTableSet.tables[i] = EMPTY_RANGING_TABLE;
+      evictionCount++;
+    }
+  }
+  rangingTableSet.size -= evictionCount;
+  /* Keeps ranging table set in order. */
+  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
+
+  return evictionCount;
+}
+
+static void rangingTableSetClearExpireTimerCallback(TimerHandle_t timer) {
+  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+
+  Time_t curTime = xTaskGetTickCount();
+  DEBUG_PRINT("rangingTableClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
+
+  int evictionCount = rangingTableSetClearExpire(&rangingTableSet);
+  if (evictionCount > 0) {
+    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict total %d ranging tables.\n", evictionCount);
+  } else {
+    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict none.\n");
+  }
+
+  xSemaphoreGive(rangingTableSet.mu);
 }
 
 void printRangingTable(Ranging_Table_t *table) {
@@ -630,24 +667,23 @@ void rangingTableOnEvent(Ranging_Table_t *table, RANGING_TABLE_EVENT event) {
 
 /* Swarm Ranging */
 static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithTimestamp) {
-  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-
   Ranging_Message_t *rangingMessage = &rangingMessageWithTimestamp->rangingMessage;
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
   int neighborIndex = rangingTableSetSearchTable(&rangingTableSet, neighborAddress);
 
   /* Handle new neighbor */
   if (neighborIndex == -1) {
-    if (rangingTableSet.size == RANGING_TABLE_SIZE_MAX) {
-      /* Ranging table set is full, ignore this ranging message. */
-      DEBUG_PRINT("Ranging table is full, cannot handle new neighbor %d\n", neighborAddress);
-      xSemaphoreGive(rangingTableSet.mu);
-      return;
-    }
     Ranging_Table_t table;
     rangingTableInit(&table, neighborAddress);
-    rangingTableSetAddTable(&rangingTableSet, table);
-    neighborIndex = rangingTableSetSearchTable(&rangingTableSet, neighborAddress);
+    /* Ranging table set is full, ignore this ranging message. */
+    if (!rangingTableSetAddTable(&rangingTableSet, table)) {
+      DEBUG_PRINT("processRangingMessage: Ranging table is full = %d, cannot handle new neighbor %d.\n",
+                  rangingTableSet.size,
+                  neighborAddress);
+      return;
+    } else {
+      neighborIndex = rangingTableSetSearchTable(&rangingTableSet, neighborAddress);
+    }
   }
 
   Ranging_Table_t *neighborRangingTable = &rangingTableSet.tables[neighborIndex];
@@ -705,16 +741,9 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
   neighborRangingTable->period = MAX(neighborRangingTable->period, M2T(RANGING_PERIOD_MIN));
   neighborRangingTable->period = MIN(neighborRangingTable->period, M2T(RANGING_PERIOD_MAX));
   #endif
-
-  xSemaphoreGive(rangingTableSet.mu);
 }
 
 static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
-  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-
-#ifdef ENABLE_BUS_BOARDING_SCHEME
-  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME);
-#endif
   int8_t bodyUnitNumber = 0;
   rangingSeqNumber++;
   int curSeqNumber = rangingSeqNumber;
@@ -723,6 +752,9 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   /* Using the default RANGING_PERIOD when DYNAMIC_RANGING_PERIOD is not enabled. */
   Time_t taskDelay = M2T(RANGING_PERIOD);
   /* Generate message body */
+  #ifdef ENABLE_BUS_BOARDING_SCHEME
+  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME);
+  #endif
   for (int index = 0; index < rangingTableSet.size; index++) {
     Ranging_Table_t *table = &rangingTableSet.tables[index];
     if (bodyUnitNumber >= MAX_BODY_UNIT) {
@@ -752,6 +784,9 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
       rangingTableOnEvent(table, RANGING_EVENT_TX_Tf);
     }
   }
+  #ifdef ENABLE_BUS_BOARDING_SCHEME
+  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
+  #endif
   /* Generate message header */
   rangingMessage->header.srcAddress = MY_UWB_ADDRESS;
   rangingMessage->header.msgLength = sizeof(Ranging_Message_Header_t) + sizeof(Body_Unit_t) * bodyUnitNumber;
@@ -764,11 +799,6 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short) (velocity * 100);
   //  printRangingMessage(rangingMessage);
-#ifdef ENABLE_BUS_BOARDING_SCHEME
-  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
-#endif
-
-  xSemaphoreGive(rangingTableSet.mu);
   return taskDelay;
 }
 
@@ -788,9 +818,14 @@ static void uwbRangingTxTask(void *parameters) {
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;
 
   while (true) {
+    xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
+    printRangingTableSet(&rangingTableSet);
+
+    xSemaphoreGive(rangingTableSet.mu);
     vTaskDelay(taskDelay);
   }
 }
@@ -802,9 +837,13 @@ static void uwbRangingRxTask(void *parameters) {
 
   while (true) {
     if (xQueueReceive(rxQueue, &rxPacketCache, portMAX_DELAY)) {
-//      DEBUG_PRINT("uwbRangingRxTask: received ranging message \n");
+      xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+
       processRangingMessage(&rxPacketCache);
+
+      xSemaphoreGive(rangingTableSet.mu);
     }
+    vTaskDelay(M2T(1));
   }
 }
 
@@ -841,6 +880,12 @@ void rangingInit() {
   DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetInit(&rangingTableSet);
+  rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetCleanTimer",
+                                              M2T(RANGING_TABLE_HOLD_TIME / 2),
+                                              pdTRUE,
+                                              (void *) 0,
+                                              rangingTableSetClearExpireTimerCallback);
+  xTimerStart(rangingTableSetEvictionTimer, M2T(0));
   TfBufferMutex = xSemaphoreCreateMutex();
 
   listener.type = UWB_RANGING_MESSAGE;

@@ -151,14 +151,15 @@ Timestamp_Tuple_t getLatestTxTimestamp();
 void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n);
 
 /* Ranging Table Operations */
+Ranging_Table_Set_t *getGlobalRangingTableSet();
 void rangingTableInit(Ranging_Table_t *table, UWB_Address_t neighborAddress);
 void rangingTableOnEvent(Ranging_Table_t *table, RANGING_TABLE_EVENT event);
 void rangingTableSetInit(Ranging_Table_Set_t *set);
-void rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table);
+bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table);
 void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table);
 void rangingTableSetRemoveTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress);
 Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress);
-Ranging_Table_t rangingTableSetClearExpire(Ranging_Table_Set_t *set);
+int rangingTableSetClearExpire(Ranging_Table_Set_t *set);
 
 /* Debug Operations */
 void printRangingTable(Ranging_Table_t *rangingTable);

@@ -214,7 +214,7 @@ void routingInit() {
   txBufferQueue = xQueueCreate(ROUTING_TX_BUFFER_QUEUE_SIZE, ROUTING_TX_BUFFER_QUEUE_ITEM_SIZE);
   txBufferMutex = xSemaphoreCreateMutex();
   txBufferEvictionTimer = xTimerCreate("txBufferTimer",
-                                       M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME),
+                                       M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME / 2),
                                        pdTRUE,
                                        (void *) 0,
                                        evictDataPacketTimerCallback);

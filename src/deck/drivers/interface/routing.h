@@ -12,7 +12,7 @@
 #define ROUTING_TX_QUEUE_WAIT_TIME 100 // default 1 seconds
 #define ROUTING_TX_BUFFER_QUEUE_SIZE 10
 #define ROUTING_TX_BUFFER_QUEUE_ITEM_SIZE sizeof(UWB_Data_Packet_With_Timestamp_t)
-#define ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME 2000 // default 2 seconds
+#define ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME 10000 // default 10 seconds
 
 /* Data Packet */
 #define ROUTING_DATA_PACKET_SIZE_MAX UWB_PAYLOAD_SIZE_MAX
