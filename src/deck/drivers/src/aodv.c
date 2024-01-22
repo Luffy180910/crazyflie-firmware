@@ -30,6 +30,7 @@ static void aodvProcessRREPACK(AODV_RREP_ACK_Message_t *message) {
 }
 
 void aodvDiscoveryRoute(UWB_Address_t destAddress) {
+  DEBUG_PRINT("aodvDiscoveryRoute: Try to discovery route to %u.\n", destAddress);
   UWB_Packet_t packet;
   packet.header.type = UWB_AODV_MESSAGE;
   packet.header.srcAddress = uwbGetAddress();
