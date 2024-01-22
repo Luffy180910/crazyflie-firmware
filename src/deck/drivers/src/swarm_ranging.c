@@ -823,7 +823,7 @@ static void uwbRangingTxTask(void *parameters) {
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
-    printRangingTableSet(&rangingTableSet);
+//    printRangingTableSet(&rangingTableSet);
 
     xSemaphoreGive(rangingTableSet.mu);
     vTaskDelay(taskDelay);
