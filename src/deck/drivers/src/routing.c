@@ -114,6 +114,9 @@ static void uwbRoutingTxTask(void *parameters) {
     if (xQueueReceive(txQueue, dataTxPacketCache, M2T(ROUTING_TX_QUEUE_WAIT_TIME))) {
       ASSERT(dataTxPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(dataTxPacketCache->header.length < ROUTING_DATA_PACKET_SIZE_MAX);
+
+      xSemaphoreTake(routingTable.mu, portMAX_DELAY);
+
       /* Data packet that originate from self. */
       if (dataTxPacketCache->header.srcAddress == uwbGetAddress()) {
         dataTxPacketCache->header.seqNumber = routingSeqNumber++;
@@ -140,10 +143,14 @@ static void uwbRoutingTxTask(void *parameters) {
           uwbSendPacketBlock(&uwbTxPacketCache);
         }
       }
+
+      xSemaphoreGive(routingTable.mu);
     }
     // TODO: test
     /* Try to consume valid tx buffer queue item */
     xSemaphoreTake(txBufferMutex, portMAX_DELAY);
+    xSemaphoreTake(routingTable.mu, portMAX_DELAY);
+
     Time_t curTime = xTaskGetTickCount();
     if (xQueuePeek(txBufferQueue, &dataTxPacketBufferCache, M2T(0))) {
       UWB_Address_t nextHopToDest =
@@ -163,6 +170,8 @@ static void uwbRoutingTxTask(void *parameters) {
         uwbSendPacketBlock(&uwbTxPacketCache);
       }
     }
+
+    xSemaphoreGive(routingTable.mu);
     xSemaphoreGive(txBufferMutex);
 
     vTaskDelay(M2T(1)); // TODO: rate limiter
@@ -295,7 +304,6 @@ static void routingTableSwapRouteEntry(Routing_Table_t *table, int first, int se
 }
 
 static int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   /* Binary Search */
   int left = -1, right = table->size, res = -1;
   while (left + 1 != right) {
@@ -309,7 +317,6 @@ static int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetA
       left = mid;
     }
   }
-  xSemaphoreGive(table->mu);
   return res;
 }
 
@@ -336,10 +343,8 @@ static int COMPARE_BY_EXPIRATION_TIME(Route_Entry_t *first, Route_Entry_t *secon
 }
 
 static int routingTableGetStalestEntry(Routing_Table_t *table) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   if (table->size == 0) {
     DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is empty, ignore.\n");
-    xSemaphoreGive(table->mu);
     return -1;
   }
   int stalestIndex = 0;
@@ -348,13 +353,11 @@ static int routingTableGetStalestEntry(Routing_Table_t *table) {
       stalestIndex = i;
     }
   }
-  xSemaphoreGive(table->mu);
   return stalestIndex;
 }
 
 /* Build the heap */
 static void routingTableArrange(Routing_Table_t *table, int index, int len, routeEntryCompareFunc compare) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   int leftChild = 2 * index + 1;
   int rightChild = 2 * index + 2;
   int maxIndex = index;
@@ -368,12 +371,10 @@ static void routingTableArrange(Routing_Table_t *table, int index, int len, rout
     routingTableSwapRouteEntry(table, index, maxIndex);
     routingTableArrange(table, maxIndex, len, compare);
   }
-  xSemaphoreGive(table->mu);
 }
 
 /* Sort the routing table */
 static void routingTableRearrange(Routing_Table_t *table, routeEntryCompareFunc compare) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   /* Build max heap */
   for (int i = table->size / 2 - 1; i >= 0; i--) {
     routingTableArrange(table, i, table->size, compare);
@@ -382,11 +383,9 @@ static void routingTableRearrange(Routing_Table_t *table, routeEntryCompareFunc 
     routingTableSwapRouteEntry(table, 0, i);
     routingTableArrange(table, 0, i, compare);
   }
-  xSemaphoreGive(table->mu);
 }
 
 void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   int index = routingTableSearchEntry(table, entry.destAddress);
   if (index != -1) {
     DEBUG_PRINT("routingTableAddEntry: Try to add an already added route entry for dest %u, update it instead.\n",
@@ -418,11 +417,9 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
     /* Sort the routing table */
     routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
   }
-  xSemaphoreGive(table->mu);
 }
 
 void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   int index = routingTableSearchEntry(table, entry.destAddress);
   if (index == -1) {
     DEBUG_PRINT("routingTableUpdateEntry: Cannot find correspond route entry for dest %u, add it instead.\n",
@@ -432,31 +429,25 @@ void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry) {
     table->entries[index] = entry;
     DEBUG_PRINT("routingTableUpdateEntry: Update route entry for dest %u.\n", entry.destAddress);
   }
-  xSemaphoreGive(table->mu);
 }
 
 void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   if (table->size == 0) {
     DEBUG_PRINT("routingTableRemoveEntry: Routing table is empty, ignore.\n");
-    xSemaphoreGive(table->mu);
     return;
   }
   int index = routingTableSearchEntry(table, destAddress);
   if (index == -1) {
     DEBUG_PRINT("routingTableRemoveEntry: Cannot find correspond route entry for dest %u, ignore.\n", destAddress);
-    xSemaphoreGive(table->mu);
     return;
   }
   routingTableSwapRouteEntry(table, index, table->size - 1);
   table->entries[table->size - 1] = EMPTY_ROUTE_ENTRY;
   table->size--;
   routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
-  xSemaphoreGive(table->mu);
 }
 
 Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   int index = routingTableSearchEntry(table, destAddress);
   Route_Entry_t entry = EMPTY_ROUTE_ENTRY;
   if (index == -1) {
@@ -464,7 +455,6 @@ Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAd
   } else {
     entry = table->entries[index];
   }
-  xSemaphoreGive(table->mu);
   return entry;
 }
 
@@ -479,7 +469,6 @@ void printRouteEntry(Route_Entry_t entry) {
 }
 
 void printRoutingTable(Routing_Table_t *table) {
-  xSemaphoreTake(table->mu, portMAX_DELAY);
   DEBUG_PRINT("dest\t next\t hop\t destSeq\t expire\t \n");
   for (int i = 0; i < table->size; i++) {
     if (table->entries[i].destAddress == UWB_DEST_EMPTY) {
@@ -493,6 +482,5 @@ void printRoutingTable(Routing_Table_t *table) {
                 table->entries[i].expirationTime);
   }
   DEBUG_PRINT("---\n");
-  xSemaphoreGive(table->mu);
 }
 
