@@ -23,7 +23,7 @@ typedef struct {
 
 static TaskHandle_t aodvRxTaskHandle = 0;
 static QueueHandle_t rxQueue;
-static uint32_t aodvMsgSeqNumber = 0;
+static uint32_t aodvSeqNumber = 0;
 static uint32_t aodvRequestId = 0;
 static RREQ_Buffer_t rreqBuffer;
 static Routing_Table_t *routingTable;
@@ -67,15 +67,215 @@ static uint64_t precursorListRemove(uint64_t precursors, UWB_Address_t address) 
   return precursors & ~(1ULL << address);
 }
 
-static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
-  if (rreqBufferIsDuplicate(&rreqBuffer, message->origAddress, message->requestId)) {
-    DEBUG_PRINT("aodvProcessRREQ: Discard duplicate rreq message originator = %u, dest = %u, reqId = %lu.\n",
-                message->origAddress,
-                message->destAddress,
-                message->requestId);
+static int aodvCompareSeqNumber(uint32_t first, uint32_t second) {
+  int32_t firstV = (int32_t) first;
+  int32_t secondV = (int32_t) second;
+  if (firstV == secondV) {
+    return 0;
+  }
+  if (firstV - secondV > 0) {
+    return 1;
+  }
+  return -1;
+}
+
+static void sendRREP(AODV_RREQ_Message_t *rreq, Route_Entry_t toOrigin) {
+  /*
+   * Destination node MUST increment its own sequence number by one if the sequence number in the
+   * RREQ packet is equal to that incremented value. Otherwise, the destination does not change
+   * its sequence number before generating the  RREP message.
+   */
+  if (!rreq->flags.U && rreq->destSeqNumber == aodvSeqNumber + 1) {
+    aodvSeqNumber++;
+  }
+  // TODO: check
+  UWB_Packet_t packet = {
+      .header.type = UWB_AODV_MESSAGE,
+      .header.srcAddress = uwbGetAddress(),
+      .header.destAddress = toOrigin.nextHop,
+      .header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RREP_Message_t)
+  };
+  AODV_RREP_Message_t *rrep = (AODV_RREP_Message_t *) &packet.payload;
+  rrep->type = AODV_RREP;
+  rrep->hopCount = 0;
+  rrep->destAddress = rreq->destAddress;
+  rrep->destSeqNumber = aodvSeqNumber;
+  rrep->origAddress = toOrigin.destAddress;
+  rrep->lifetime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+  uwbSendPacketBlock(&packet);
+}
+
+static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOrigin) {
+  /* Have not implement gratuitous rrep here. */
+
+  // TODO: check
+  UWB_Packet_t packet = {
+      .header.type = UWB_AODV_MESSAGE,
+      .header.srcAddress = uwbGetAddress(),
+      .header.destAddress = toOrigin.nextHop,
+      .header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RREP_Message_t)
+  };
+
+  AODV_RREP_Message_t *rrep = (AODV_RREP_Message_t *) &packet.payload;
+  rrep->type = AODV_RREP;
+  rrep->flags.prefixSize = 0;
+  rrep->hopCount = toDest.hopCount;
+  rrep->destAddress = toDest.destAddress;
+  rrep->destSeqNumber = toDest.destSeqNumber;
+  rrep->origAddress = toOrigin.destAddress;
+  rrep->lifetime = toDest.expirationTime;
+
+  /* If the node we received a RREQ for is a neighbor we are
+   * probably facing a unidirectional link... Better request a RREP-ack
+   */
+  if (toDest.hopCount == 1) {
+    rrep->flags.A = true;
+  }
+
+  toDest.precursors = precursorListAdd(toDest.precursors, toOrigin.nextHop);
+  toOrigin.precursors = precursorListAdd(toOrigin.precursors, toDest.nextHop);
+  routingTableUpdateEntry(routingTable, toDest);
+  routingTableUpdateEntry(routingTable, toOrigin);
+
+  uwbSendPacketBlock(&packet);
+}
+
+static void aodvProcessRREQ(UWB_Packet_t *packet) {
+  AODV_RREQ_Message_t *rreq = (AODV_RREQ_Message_t *) &packet->payload;
+  DEBUG_PRINT("aodvProcessRREQ: %u forward RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu.\n",
+              uwbGetAddress(),
+              rreq->origAddress,
+              rreq->requestId,
+              packet->header.srcAddress,
+              rreq->destAddress,
+              rreq->destSeqNumber
+  );
+  if (rreqBufferIsDuplicate(&rreqBuffer, rreq->origAddress, rreq->requestId)) {
+    DEBUG_PRINT("aodvProcessRREQ: Discard duplicate rreq origin = %u, reqId = %lu, dest = %u.\n",
+                rreq->origAddress,
+                rreq->requestId,
+                rreq->destAddress
+    );
+    return;
+  } else {
+    rreqBufferAdd(&rreqBuffer, rreq->origAddress, rreq->requestId);
+  }
+  rreq->hopCount++;
+
+  /*  Origin -> Neighbor -> Me -> Dest
+   *  When the reverse route is created or updated, the following actions on the route are also
+   * carried out:
+   *  1. the Originator Sequence Number from the RREQ is compared to the corresponding destination
+   * sequence number in the route table entry and copied if greater than the existing value there;
+   *  2. the valid sequence number field is set to true;
+   *  3. the next hop in the routing table becomes the node from which the RREQ was received
+   *  4. the hop count is copied from the Hop Count in the rreq;
+   *  5. the Lifetime is updated.
+   */
+
+  /* Update route for Me to Origin through Neighbor */
+  Route_Entry_t toOrigin = routingTableFindEntry(routingTable, rreq->origAddress);
+  if (toOrigin.destAddress == UWB_DEST_EMPTY) {
+    toOrigin.destAddress = rreq->origAddress;
+    toOrigin.validDestSeqFlag = true;
+    toOrigin.destSeqNumber = rreq->origSeqNumber;
+    toOrigin.hopCount = rreq->hopCount;
+    toOrigin.nextHop = packet->header.srcAddress;
+    toOrigin.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+    routingTableAddEntry(routingTable, toOrigin);
+  } else {
+    if (toOrigin.validDestSeqFlag) {
+      if (aodvCompareSeqNumber(rreq->origSeqNumber, toOrigin.destSeqNumber) > 0) {
+        toOrigin.destSeqNumber = rreq->origSeqNumber;
+      }
+    } else {
+      toOrigin.destSeqNumber = rreq->origSeqNumber;
+    }
+    toOrigin.validDestSeqFlag = true;
+    toOrigin.nextHop = packet->header.srcAddress;
+    toOrigin.hopCount = rreq->hopCount;
+    toOrigin.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+    routingTableUpdateEntry(routingTable, toOrigin);
+  }
+
+  /* Update route for Me to Neighbor */
+  Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, packet->header.srcAddress);
+  if (toNeighbor.destAddress == UWB_DEST_EMPTY) {
+    toNeighbor.destAddress = packet->header.srcAddress;
+    toNeighbor.validDestSeqFlag = false;
+    toNeighbor.destSeqNumber = rreq->origSeqNumber;
+    toNeighbor.hopCount = 1;
+    toNeighbor.nextHop = packet->header.srcAddress;
+    toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+    routingTableAddEntry(routingTable, toNeighbor);
+  } else {
+    toNeighbor.flags.aodvValidRoute = true;
+    toNeighbor.validDestSeqFlag = false;
+    toNeighbor.destAddress = rreq->origSeqNumber;
+    toNeighbor.hopCount = 1;
+    toNeighbor.nextHop = packet->header.srcAddress;
+    toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+    routingTableUpdateEntry(routingTable, toNeighbor);
+  }
+
+  /* A node generates a RREP if either:
+   * (i) it is itself the destination,
+   */
+  if (rreq->destAddress == uwbGetAddress()) {
+    sendRREP(rreq, toOrigin);
     return;
   }
-//  rreqBufferAdd(&rreqBuffer, message->origAddress, message->requestId);
+  /*
+   * (ii) or it has an active route to the destination, the destination sequence number in the
+   * node's existing route table entry for the destination is valid and greater than or equal to
+   * the Destination Sequence Number of the RREQ, and the "destination only" flag is NOT set.
+   */
+  Route_Entry_t toDest = routingTableFindEntry(routingTable, rreq->destAddress);
+  if (toDest.destAddress != UWB_DEST_EMPTY) {
+    /* Drop RREQ that will make a loop. (i.e. A->D but get A->B->C->B->C->B->C) */
+    if (toDest.nextHop == packet->header.srcAddress) {
+      DEBUG_PRINT(
+          "aodvProcessRREQ: %u drop RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu, next hop = %u.\n",
+          uwbGetAddress(),
+          rreq->origAddress,
+          rreq->requestId,
+          packet->header.srcAddress,
+          rreq->destAddress,
+          rreq->destSeqNumber,
+          toDest.nextHop);
+      return;
+    }
+    /*
+     * The Destination Sequence number for the requested destination is set to the maximum of
+     * the corresponding value received in the RREQ message, and the destination sequence value
+     * currently maintained by the node for the requested destination. However, the forwarding
+     * node MUST NOT modify its maintained value for the destination sequence number, even if
+     * the value received in the incoming RREQ is larger than the value currently maintained by
+     * the forwarding node.
+     */
+    if (rreq->flags.U || (toDest.validDestSeqFlag && aodvCompareSeqNumber(toDest.destSeqNumber, rreq->destSeqNumber))) {
+      if (!rreq->flags.D && toDest.flags.aodvValidRoute) {
+        toOrigin = routingTableFindEntry(routingTable, rreq->origAddress);
+        sendRREPByIntermediateNode(toDest, toOrigin);
+        return;
+      }
+      rreq->destSeqNumber = toDest.destSeqNumber;
+      rreq->flags.U = false;
+    }
+
+    DEBUG_PRINT("aodvProcessRREQ: %u forward RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu.\n",
+                uwbGetAddress(),
+                rreq->origAddress,
+                rreq->requestId,
+                packet->header.srcAddress,
+                rreq->destAddress,
+                rreq->destSeqNumber
+    );
+    /* Forward this RREQ message. */
+    packet->header.srcAddress = uwbGetAddress();
+    packet->header.destAddress = UWB_DEST_ANY;
+    uwbSendPacketBlock(packet);
+  }
 }
 
 static void aodvProcessRREP(AODV_RREP_Message_t *message) {
@@ -104,7 +304,7 @@ void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   rreqMsg->hopCount = 1;
   rreqMsg->requestId = aodvRequestId++;
   rreqMsg->origAddress = uwbGetAddress();
-  rreqMsg->origSeqNumber = aodvMsgSeqNumber++;
+  rreqMsg->origSeqNumber = aodvSeqNumber++;
   rreqMsg->destAddress = destAddress;
 
   Route_Entry_t routeEntry = routingTableFindEntry(routingTable, destAddress);
@@ -164,23 +364,24 @@ static void aodvRxTask(void *parameters) {
     if (uwbReceivePacketBlock(UWB_AODV_MESSAGE, &rxPacketCache)) {
       xSemaphoreTake(routingTable->mu, portMAX_DELAY);
       DEBUG_PRINT("aodvRxTask: receive aodv message from neighbor %u.\n", rxPacketCache.header.srcAddress);
-      /* Update route to neighbor (reverse route) */
-      Route_Entry_t routeEntry = routingTableFindEntry(routingTable, rxPacketCache.header.srcAddress);
-      if (routeEntry.destAddress != UWB_DEST_EMPTY && routeEntry.validDestSeqFlag && routeEntry.hopCount == 1) {
-        routeEntry.expirationTime = MAX(routeEntry.expirationTime, xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME));
-        routingTableUpdateEntry(routingTable, routeEntry);
+      /* Update route for Me to Neighbor (reverse route) */
+      Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, rxPacketCache.header.srcAddress);
+      if (toNeighbor.destAddress != UWB_DEST_EMPTY && toNeighbor.validDestSeqFlag && toNeighbor.hopCount == 1) {
+        toNeighbor.expirationTime = MAX(toNeighbor.expirationTime, xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME));
+        routingTableUpdateEntry(routingTable, toNeighbor);
       } else {
-        routeEntry = emptyRouteEntry();
-        routeEntry.destAddress = rxPacketCache.header.srcAddress;
-        routeEntry.nextHop = rxPacketCache.header.srcAddress;
-        routeEntry.hopCount = 1;
-        routeEntry.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
-        routingTableAddEntry(routingTable, routeEntry);
+        toNeighbor.destAddress = rxPacketCache.header.srcAddress;
+        toNeighbor.nextHop = rxPacketCache.header.srcAddress;
+        toNeighbor.destSeqNumber = 0;
+        toNeighbor.hopCount = 1;
+        toNeighbor.validDestSeqFlag = false;
+        toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+        routingTableAddEntry(routingTable, toNeighbor);
       }
 
       uint8_t msgType = rxPacketCache.payload[0];
       switch (msgType) {
-        case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxPacketCache.payload);
+        case AODV_RREQ:aodvProcessRREQ(&rxPacketCache);
           break;
         case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxPacketCache.payload);
           break;

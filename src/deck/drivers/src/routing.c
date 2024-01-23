@@ -127,7 +127,8 @@ static void uwbRoutingTxTask(void *parameters) {
       } else if (dataTxPacketBufferCache.packet.header.ttl > 0) {
         Time_t curTime = xTaskGetTickCount();
         Route_Entry_t routeEntry = routingTableFindEntry(&routingTable, uwbTxDataPacketCache->header.destAddress);
-        if (routeEntry.expirationTime > curTime) {
+        if (routeEntry.expirationTime > curTime
+            && (routeEntry.flags.aodvValidRoute || routeEntry.flags.olsrValidRoute)) {
           UWB_Address_t nextHopToDest = routeEntry.destAddress;
           /* Unknown dest, start route discovery procedure */
           if (nextHopToDest == EMPTY_ROUTE_ENTRY.destAddress) {
@@ -170,8 +171,10 @@ static void uwbRoutingTxTask(void *parameters) {
           routeEntry = routingTableFindEntry(&routingTable, dataTxPacketBufferCache.packet.header.destAddress);
       UWB_Address_t nextHopToDest = routeEntry.destAddress;
       /* Consume if packet is not stale and have found corresponding next hop to dest. */
-      if (curTime < routeEntry.expirationTime && curTime < dataTxPacketBufferCache.evictTime
-          && nextHopToDest != EMPTY_ROUTE_ENTRY.destAddress) {
+      if (nextHopToDest != EMPTY_ROUTE_ENTRY.destAddress
+          && curTime < routeEntry.expirationTime
+          && curTime < dataTxPacketBufferCache.evictTime
+          && (routeEntry.flags.aodvValidRoute || routeEntry.flags.olsrValidRoute)) {
         /* Dequeue */
         xQueueReceive(txBufferQueue, &dataTxPacketBufferCache, M2T(0));
         /* Forward */
