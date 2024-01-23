@@ -102,6 +102,7 @@ static void uwbRoutingTxTask(void *parameters) {
 
   UWB_Data_Packet_t *uwbTxDataPacketCache = (UWB_Data_Packet_t *) &uwbTxPacketCache.payload;
   uwbTxDataPacketCache->header.length = 0;
+  uwbTxDataPacketCache->header.ttl = 1;
 
   UWB_Data_Packet_With_Timestamp_t dataTxPacketBufferCache;
 
@@ -117,12 +118,13 @@ static void uwbRoutingTxTask(void *parameters) {
       if (uwbTxDataPacketCache->header.srcAddress == uwbGetAddress()) {
         uwbTxDataPacketCache->header.seqNumber = routingSeqNumber++;
       }
+      dataTxPacketBufferCache.packet.header.ttl--;
       if (uwbTxDataPacketCache->header.destAddress == uwbGetAddress()) {
         DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
         xSemaphoreGive(txBufferMutex);
         xSemaphoreGive(routingTable.mu);
         xQueueSend(rxQueue, uwbTxDataPacketCache, portMAX_DELAY);
-      } else {
+      } else if (dataTxPacketBufferCache.packet.header.ttl > 0) {
         Time_t curTime = xTaskGetTickCount();
         Route_Entry_t routeEntry = routingTableFindEntry(&routingTable, uwbTxDataPacketCache->header.destAddress);
         if (routeEntry.expirationTime > curTime) {
@@ -137,13 +139,22 @@ static void uwbRoutingTxTask(void *parameters) {
             /* Populate mac layer dest address */
             uwbTxPacketCache.header.destAddress = nextHopToDest;
             uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + uwbTxDataPacketCache->header.length;
-            DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu, dest = %u.\n",
+            DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu, dest = %u, ttl = %u.\n",
                         uwbTxDataPacketCache->header.length,
                         uwbTxDataPacketCache->header.seqNumber,
-                        uwbTxDataPacketCache->header.destAddress);
+                        uwbTxDataPacketCache->header.destAddress,
+                        uwbTxDataPacketCache->header.ttl);
             uwbSendPacketBlock(&uwbTxPacketCache);
           }
         }
+        xSemaphoreGive(txBufferMutex);
+        xSemaphoreGive(routingTable.mu);
+      } else {
+        DEBUG_PRINT("uwbRoutingTxTask: Discard packet originator = %u, dest = %u, seq = %lu, ttl = %u\n",
+                    uwbTxDataPacketCache->header.srcAddress,
+                    uwbTxDataPacketCache->header.destAddress,
+                    uwbTxDataPacketCache->header.seqNumber,
+                    uwbTxDataPacketCache->header.ttl);
         xSemaphoreGive(txBufferMutex);
         xSemaphoreGive(routingTable.mu);
       }
@@ -167,10 +178,11 @@ static void uwbRoutingTxTask(void *parameters) {
         uwbTxPacketCache.header.destAddress = nextHopToDest;
         uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketBufferCache.packet.header.length;
         memcpy(uwbTxPacketCache.payload, &dataTxPacketBufferCache.packet, dataTxPacketBufferCache.packet.header.length);
-        DEBUG_PRINT("uwbRoutingTxTask: Consume buffered data packet : len = %d, seq = %lu, dest = %u.\n",
+        DEBUG_PRINT("uwbRoutingTxTask: Consume buffered data packet : len = %d, seq = %lu, dest = %u, ttl = %u.\n",
                     dataTxPacketBufferCache.packet.header.length,
                     dataTxPacketBufferCache.packet.header.seqNumber,
-                    dataTxPacketBufferCache.packet.header.destAddress);
+                    dataTxPacketBufferCache.packet.header.destAddress,
+                    dataTxPacketBufferCache.packet.header.ttl);
         uwbSendPacketBlock(&uwbTxPacketCache);
       }
 
@@ -199,7 +211,8 @@ static void uwbRoutingRxTask(void *parameters) {
                   uwbRxDataPacketCache->header.srcAddress,
                   uwbRxDataPacketCache->header.destAddress,
                   uwbRxDataPacketCache->header.seqNumber);
-      if (uwbRxDataPacketCache->header.destAddress == uwbGetAddress()) {
+      if (uwbRxDataPacketCache->header.destAddress == UWB_DEST_ANY
+          || uwbRxDataPacketCache->header.destAddress == uwbGetAddress()) {
         /* Dispatch Data Message */
         if (listeners[uwbRxDataPacketCache->header.type].rxQueue) {
           if (xQueueSend(listeners[uwbRxDataPacketCache->header.type].rxQueue, uwbRxDataPacketCache, M2T(1000))

@@ -36,6 +36,7 @@ typedef struct {
   uint32_t seqNumber;
   UWB_DATA_MESSAGE_TYPE type: 6;
   uint16_t length: 10;
+  uint8_t ttl;
 } __attribute__((packed)) UWB_Data_Packet_Header_t;
 
 typedef struct {
