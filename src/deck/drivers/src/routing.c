@@ -121,43 +121,46 @@ static void uwbRoutingTxTask(void *parameters) {
         DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
         xSemaphoreGive(txBufferMutex);
         xSemaphoreGive(routingTable.mu);
-
         xQueueSend(rxQueue, uwbTxDataPacketCache, portMAX_DELAY);
       } else {
-        UWB_Address_t
-            nextHopToDest = routingTableFindEntry(&routingTable, uwbTxDataPacketCache->header.destAddress).destAddress;
-        /* Unknown dest, start route discovery procedure */
-        if (nextHopToDest == EMPTY_ROUTE_ENTRY.destAddress) {
-          /* Buffer this data packet since there is no certain route to dest */
-          bufferDataPacket(uwbTxDataPacketCache);
-          /* Then trigger route discovery */
-          aodvDiscoveryRoute(uwbTxDataPacketCache->header.destAddress);
-        } else {
-          /* Populate mac layer dest address */
-          uwbTxPacketCache.header.destAddress = nextHopToDest;
-          uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + uwbTxDataPacketCache->header.length;
-          DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu, dest = %u.\n",
-                      uwbTxDataPacketCache->header.length,
-                      uwbTxDataPacketCache->header.seqNumber,
-                      uwbTxDataPacketCache->header.destAddress);
-          uwbSendPacketBlock(&uwbTxPacketCache);
+        Time_t curTime = xTaskGetTickCount();
+        Route_Entry_t routeEntry = routingTableFindEntry(&routingTable, uwbTxDataPacketCache->header.destAddress);
+        if (routeEntry.expirationTime > curTime) {
+          UWB_Address_t nextHopToDest = routeEntry.destAddress;
+          /* Unknown dest, start route discovery procedure */
+          if (nextHopToDest == EMPTY_ROUTE_ENTRY.destAddress) {
+            /* Buffer this data packet since there is no certain route to dest */
+            bufferDataPacket(uwbTxDataPacketCache);
+            /* Then trigger route discovery */
+            aodvDiscoveryRoute(uwbTxDataPacketCache->header.destAddress);
+          } else {
+            /* Populate mac layer dest address */
+            uwbTxPacketCache.header.destAddress = nextHopToDest;
+            uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + uwbTxDataPacketCache->header.length;
+            DEBUG_PRINT("uwbRoutingTxTask: len = %d, seq = %lu, dest = %u.\n",
+                        uwbTxDataPacketCache->header.length,
+                        uwbTxDataPacketCache->header.seqNumber,
+                        uwbTxDataPacketCache->header.destAddress);
+            uwbSendPacketBlock(&uwbTxPacketCache);
+          }
         }
-
         xSemaphoreGive(txBufferMutex);
         xSemaphoreGive(routingTable.mu);
       }
     }
     // TODO: test
     /* Try to consume valid tx buffer queue item */
-    Time_t curTime = xTaskGetTickCount();
     if (xQueuePeek(txBufferQueue, &dataTxPacketBufferCache, M2T(0))) {
       xSemaphoreTake(routingTable.mu, portMAX_DELAY);
       xSemaphoreTake(txBufferMutex, portMAX_DELAY);
 
-      UWB_Address_t nextHopToDest =
-          routingTableFindEntry(&routingTable, dataTxPacketBufferCache.packet.header.destAddress).destAddress;
+      Time_t curTime = xTaskGetTickCount();
+      Route_Entry_t
+          routeEntry = routingTableFindEntry(&routingTable, dataTxPacketBufferCache.packet.header.destAddress);
+      UWB_Address_t nextHopToDest = routeEntry.destAddress;
       /* Consume if packet is not stale and have found corresponding next hop to dest. */
-      if (curTime < dataTxPacketBufferCache.evictTime && nextHopToDest != EMPTY_ROUTE_ENTRY.destAddress) {
+      if (curTime < routeEntry.expirationTime && curTime < dataTxPacketBufferCache.evictTime
+          && nextHopToDest != EMPTY_ROUTE_ENTRY.destAddress) {
         /* Dequeue */
         xQueueReceive(txBufferQueue, &dataTxPacketBufferCache, M2T(0));
         /* Forward */
