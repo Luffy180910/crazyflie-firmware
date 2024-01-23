@@ -112,7 +112,7 @@ static void uwbRoutingTxTask(void *parameters) {
       ASSERT(uwbTxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
       xSemaphoreTake(routingTable.mu, portMAX_DELAY);
       xSemaphoreTake(txBufferMutex, portMAX_DELAY);
-
+      // TODO: update expiration time of each route to originator & sender & next hop & dest
       /* Data packet that originate from self. */
       if (uwbTxDataPacketCache->header.srcAddress == uwbGetAddress()) {
         uwbTxDataPacketCache->header.seqNumber = routingSeqNumber++;
