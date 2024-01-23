@@ -7,6 +7,7 @@
 
 /* AODV Message Constants */
 #define AODV_RERR_UNREACHABLE_DEST_SIZE_MAX ((ROUTING_DATA_PACKET_PAYLOAD_SIZE_MAX - 4) / sizeof(Unreachable_Dest_t))
+#define AODV_RREQ_BUFFER_SIZE_MAX 15
 
 typedef enum {
   AODV_RREQ = 1,

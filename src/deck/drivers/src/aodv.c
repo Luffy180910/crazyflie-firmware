@@ -8,10 +8,43 @@
 #include "routing.h"
 #include "aodv.h"
 
+typedef struct {
+  UWB_Address_t neighborAddress;
+  uint32_t requestId;
+} RREQ_Buffer_Item_t;
+
+typedef struct {
+  uint8_t index;
+  RREQ_Buffer_Item_t items[AODV_RREQ_BUFFER_SIZE_MAX];
+} RREQ_Buffer_t;
+
 static TaskHandle_t aodvRxTaskHandle = 0;
 static QueueHandle_t rxQueue;
 static uint32_t aodvMsgSeqNumber = 0;
 static uint32_t aodvRequestId = 0;
+static RREQ_Buffer_t rreqBuffer;
+
+static void rreqBufferInit(RREQ_Buffer_t *buffer) {
+  for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
+    buffer->items[i].requestId = 0;
+    buffer->items[i].neighborAddress = UWB_DEST_EMPTY;
+  }
+}
+
+static void rreqBufferAdd(RREQ_Buffer_t *buffer, UWB_Address_t neighborAddress, uint32_t requestId) {
+  RREQ_Buffer_Item_t item = {.neighborAddress = neighborAddress, .requestId = requestId};
+  buffer->items[buffer->index] = item;
+  buffer->index = (buffer->index + 1) % AODV_RREQ_BUFFER_SIZE_MAX;
+}
+
+static int rreqBufferFind(RREQ_Buffer_t *buffer, UWB_Address_t neighborAddress, uint32_t requestId) {
+  for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
+    if (neighborAddress == buffer->items[i].neighborAddress && requestId == buffer->items[i].requestId) {
+      return i;
+    }
+  }
+  return -1;
+}
 
 static uint64_t precursorListAdd(uint64_t precursors, UWB_Address_t address) {
   return precursors | (1ULL << address);
@@ -93,6 +126,8 @@ static void aodvRxTask(void *parameters) {
 
 void aodvInit() {
   rxQueue = xQueueCreate(AODV_RX_QUEUE_SIZE, AODV_RX_QUEUE_ITEM_SIZE);
+  rreqBufferInit(&rreqBuffer);
+
   UWB_Message_Listener_t listener;
   listener.type = UWB_AODV_MESSAGE;
   listener.rxQueue = rxQueue;
