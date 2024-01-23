@@ -90,6 +90,7 @@ int uwbReceiveDataPacketWait(UWB_DATA_MESSAGE_TYPE type, UWB_Data_Packet_t *pack
 void uwbRegisterDataPacketListener(UWB_Data_Packet_Listener_t *listener);
 
 /* Routing Table Operations */
+Route_Entry_t emptyRouteEntry();
 Routing_Table_t* getGlobalRoutingTable();
 void routingTableInit(Routing_Table_t *table);
 void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry);

@@ -311,6 +311,10 @@ void uwbRegisterDataPacketListener(UWB_Data_Packet_Listener_t *listener) {
 }
 
 /* Routing Table Operations */
+Route_Entry_t emptyRouteEntry() {
+  return EMPTY_ROUTE_ENTRY;
+}
+
 Routing_Table_t *getGlobalRoutingTable() {
   return &routingTable;
 }

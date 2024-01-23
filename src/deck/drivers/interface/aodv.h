@@ -6,6 +6,9 @@
 #define AODV_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)
 
 /* AODV Message Constants */
+#define AODV_DESTINATION_ONLY 0
+#define AODV_GRATUITOUS_REPLY 0
+#define AODV_ROUTE_DISCOVERY_TIME 3000 // default 3 seconds
 #define AODV_RERR_UNREACHABLE_DEST_SIZE_MAX ((ROUTING_DATA_PACKET_PAYLOAD_SIZE_MAX - 4) / sizeof(Unreachable_Dest_t))
 #define AODV_RREQ_BUFFER_SIZE_MAX 15
 

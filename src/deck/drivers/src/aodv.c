@@ -9,7 +9,7 @@
 #include "aodv.h"
 
 typedef struct {
-  UWB_Address_t neighborAddress;
+  UWB_Address_t origAddress;
   uint32_t requestId;
 } RREQ_Buffer_Item_t;
 
@@ -27,23 +27,32 @@ static RREQ_Buffer_t rreqBuffer;
 static void rreqBufferInit(RREQ_Buffer_t *buffer) {
   for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
     buffer->items[i].requestId = 0;
-    buffer->items[i].neighborAddress = UWB_DEST_EMPTY;
+    buffer->items[i].origAddress = UWB_DEST_EMPTY;
   }
 }
 
 static void rreqBufferAdd(RREQ_Buffer_t *buffer, UWB_Address_t neighborAddress, uint32_t requestId) {
-  RREQ_Buffer_Item_t item = {.neighborAddress = neighborAddress, .requestId = requestId};
+  RREQ_Buffer_Item_t item = {.origAddress = neighborAddress, .requestId = requestId};
   buffer->items[buffer->index] = item;
   buffer->index = (buffer->index + 1) % AODV_RREQ_BUFFER_SIZE_MAX;
 }
 
 static int rreqBufferFind(RREQ_Buffer_t *buffer, UWB_Address_t neighborAddress, uint32_t requestId) {
   for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
-    if (neighborAddress == buffer->items[i].neighborAddress && requestId == buffer->items[i].requestId) {
+    if (neighborAddress == buffer->items[i].origAddress && requestId == buffer->items[i].requestId) {
       return i;
     }
   }
   return -1;
+}
+
+static bool rreqBufferIsDuplicate(RREQ_Buffer_t *buffer, UWB_Address_t neighborAddress, uint32_t requestId) {
+  for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
+    if (neighborAddress == buffer->items[i].origAddress && requestId == buffer->items[i].requestId) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static uint64_t precursorListAdd(uint64_t precursors, UWB_Address_t address) {
@@ -55,7 +64,14 @@ static uint64_t precursorListRemove(uint64_t precursors, UWB_Address_t address) 
 }
 
 static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
-// TODO
+  if (rreqBufferIsDuplicate(&rreqBuffer, message->origAddress, message->requestId)) {
+    DEBUG_PRINT("aodvProcessRREQ: Discard duplicate rreq message originator = %u, dest = %u, reqId = %lu.\n",
+                message->origAddress,
+                message->destAddress,
+                message->requestId);
+    return;
+  }
+  // TODO
 }
 
 static void aodvProcessRREP(AODV_RREP_Message_t *message) {
@@ -70,6 +86,7 @@ static void aodvProcessRREPACK(AODV_RREP_ACK_Message_t *message) {
 // TODO
 }
 
+// TODO: test
 void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   DEBUG_PRINT("aodvDiscoveryRoute: Try to discovery route to %u.\n", destAddress);
   UWB_Packet_t packet;
@@ -77,16 +94,54 @@ void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   packet.header.srcAddress = uwbGetAddress();
   packet.header.destAddress = UWB_DEST_ANY;
   packet.header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RREQ_Message_t);
+
   AODV_RREQ_Message_t *rreqMsg = (AODV_RREQ_Message_t *) &packet.payload;
-  // TODO: check
-  rreqMsg->flags.U = true;
   rreqMsg->type = AODV_RREQ;
-  rreqMsg->hopCount = 0;
-  rreqMsg->requestId = ++aodvRequestId;
-  rreqMsg->destAddress = destAddress;
-  rreqMsg->destSeqNumber = 0;
+  rreqMsg->hopCount = 1;
+  rreqMsg->requestId = aodvRequestId++;
   rreqMsg->origAddress = uwbGetAddress();
-  rreqMsg->origSeqNumber = ++aodvMsgSeqNumber;
+  rreqMsg->origSeqNumber = aodvMsgSeqNumber++;
+  rreqMsg->destAddress = destAddress;
+
+  Routing_Table_t *routingTable = getGlobalRoutingTable();
+  Route_Entry_t routeEntry = routingTableFindEntry(routingTable, destAddress);
+
+  /* Find corresponding route entry for destAddress. */
+  if (routeEntry.destAddress != UWB_DEST_EMPTY) {
+    if (routeEntry.validDestSeqFlag) {
+      rreqMsg->destSeqNumber = routeEntry.destSeqNumber;
+    } else {
+      rreqMsg->destSeqNumber = 0;
+      rreqMsg->flags.U = true;
+    }
+    routeEntry.expirationTime = xTaskGetTickCount() + M2T(AODV_ROUTE_DISCOVERY_TIME);
+    routingTableUpdateEntry(routingTable, routeEntry);
+  } else {
+    rreqMsg->flags.U = true;
+    rreqMsg->destSeqNumber = 0;
+    /* Add new route entry for destAddress. */
+    Route_Entry_t newRouteEntry = emptyRouteEntry();
+    newRouteEntry.destAddress = destAddress;
+    newRouteEntry.expirationTime = xTaskGetTickCount() + M2T(AODV_ROUTE_DISCOVERY_TIME);
+    routingTableAddEntry(routingTable, newRouteEntry);
+  }
+
+  if (AODV_GRATUITOUS_REPLY) {
+    rreqMsg->flags.G = true;
+  }
+
+  if (AODV_DESTINATION_ONLY) {
+    rreqMsg->flags.D = true;
+  }
+
+  DEBUG_PRINT("aodvDiscoveryRoute: Send aodv rreq, reqId = %lu, orig = %u, origSeq = %lu, dest = %u, destSeq = %lu.\n",
+              rreqMsg->requestId,
+              rreqMsg->origAddress,
+              rreqMsg->origSeqNumber,
+              rreqMsg->destAddress,
+              rreqMsg->destSeqNumber
+  );
+
   uwbSendPacketBlock(&packet);
 }
 
