@@ -110,7 +110,6 @@ static void uwbRoutingTxTask(void *parameters) {
     if (xQueueReceive(txQueue, uwbTxDataPacketCache, M2T(ROUTING_TX_QUEUE_WAIT_TIME))) {
       ASSERT(uwbTxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(uwbTxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
-
       xSemaphoreTake(routingTable.mu, portMAX_DELAY);
       xSemaphoreTake(txBufferMutex, portMAX_DELAY);
 
@@ -120,6 +119,9 @@ static void uwbRoutingTxTask(void *parameters) {
       }
       if (uwbTxDataPacketCache->header.destAddress == uwbGetAddress()) {
         DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
+        xSemaphoreGive(txBufferMutex);
+        xSemaphoreGive(routingTable.mu);
+
         xQueueSend(rxQueue, uwbTxDataPacketCache, portMAX_DELAY);
       } else {
         UWB_Address_t
@@ -140,18 +142,18 @@ static void uwbRoutingTxTask(void *parameters) {
                       uwbTxDataPacketCache->header.destAddress);
           uwbSendPacketBlock(&uwbTxPacketCache);
         }
-      }
 
-      xSemaphoreGive(txBufferMutex);
-      xSemaphoreGive(routingTable.mu);
+        xSemaphoreGive(txBufferMutex);
+        xSemaphoreGive(routingTable.mu);
+      }
     }
     // TODO: test
     /* Try to consume valid tx buffer queue item */
-    xSemaphoreTake(routingTable.mu, portMAX_DELAY);
-    xSemaphoreTake(txBufferMutex, portMAX_DELAY);
-
     Time_t curTime = xTaskGetTickCount();
     if (xQueuePeek(txBufferQueue, &dataTxPacketBufferCache, M2T(0))) {
+      xSemaphoreTake(routingTable.mu, portMAX_DELAY);
+      xSemaphoreTake(txBufferMutex, portMAX_DELAY);
+
       UWB_Address_t nextHopToDest =
           routingTableFindEntry(&routingTable, dataTxPacketBufferCache.packet.header.destAddress).destAddress;
       /* Consume if packet is not stale and have found corresponding next hop to dest. */
@@ -168,10 +170,10 @@ static void uwbRoutingTxTask(void *parameters) {
                     dataTxPacketBufferCache.packet.header.destAddress);
         uwbSendPacketBlock(&uwbTxPacketCache);
       }
-    }
 
-    xSemaphoreGive(txBufferMutex);
-    xSemaphoreGive(routingTable.mu);
+      xSemaphoreGive(txBufferMutex);
+      xSemaphoreGive(routingTable.mu);
+    }
 
     vTaskDelay(M2T(1)); // TODO: rate limiter
   }
@@ -187,6 +189,9 @@ static void uwbRoutingRxTask(void *parameters) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &uwbRxPacketCache)) {
       ASSERT(uwbRxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(uwbRxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
+      xSemaphoreTake(routingTable.mu, portMAX_DELAY);
+      xSemaphoreTake(txBufferMutex, portMAX_DELAY);
+
       DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
                   uwbRxDataPacketCache->header.srcAddress,
                   uwbRxDataPacketCache->header.destAddress,
@@ -200,7 +205,11 @@ static void uwbRoutingRxTask(void *parameters) {
                         uwbRxDataPacketCache->header.type);
           }
         }
+        xSemaphoreGive(txBufferMutex);
+        xSemaphoreGive(routingTable.mu);
       } else {
+        xSemaphoreGive(txBufferMutex);
+        xSemaphoreGive(routingTable.mu);
         /* Forward the packet */
         uwbSendDataPacketBlock(uwbRxDataPacketCache);
       }
