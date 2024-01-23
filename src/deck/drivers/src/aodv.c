@@ -13,6 +13,14 @@ static QueueHandle_t rxQueue;
 static uint32_t aodvMsgSeqNumber = 0;
 static uint32_t aodvRequestId = 0;
 
+static uint64_t precursorListAdd(uint64_t precursors, UWB_Address_t address) {
+  return precursors | (1ULL << address);
+}
+
+static uint64_t precursorListRemove(uint64_t precursors, UWB_Address_t address) {
+  return precursors & ~(1ULL << address);
+}
+
 static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
 // TODO
 }
