@@ -8,6 +8,9 @@
 #include "routing.h"
 #include "aodv.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 typedef struct {
   UWB_Address_t origAddress;
   uint32_t requestId;
@@ -23,6 +26,7 @@ static QueueHandle_t rxQueue;
 static uint32_t aodvMsgSeqNumber = 0;
 static uint32_t aodvRequestId = 0;
 static RREQ_Buffer_t rreqBuffer;
+static Routing_Table_t *routingTable;
 
 static void rreqBufferInit(RREQ_Buffer_t *buffer) {
   for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
@@ -71,7 +75,7 @@ static void aodvProcessRREQ(AODV_RREQ_Message_t *message) {
                 message->requestId);
     return;
   }
-  // TODO
+//  rreqBufferAdd(&rreqBuffer, message->origAddress, message->requestId);
 }
 
 static void aodvProcessRREP(AODV_RREP_Message_t *message) {
@@ -103,9 +107,7 @@ void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   rreqMsg->origSeqNumber = aodvMsgSeqNumber++;
   rreqMsg->destAddress = destAddress;
 
-  Routing_Table_t *routingTable = getGlobalRoutingTable();
   Route_Entry_t routeEntry = routingTableFindEntry(routingTable, destAddress);
-
   /* Find corresponding route entry for destAddress. */
   if (routeEntry.destAddress != UWB_DEST_EMPTY) {
     if (routeEntry.validDestSeqFlag) {
@@ -160,7 +162,22 @@ static void aodvRxTask(void *parameters) {
 
   while (true) {
     if (uwbReceivePacketBlock(UWB_AODV_MESSAGE, &rxPacketCache)) {
-      DEBUG_PRINT("aodvRxTask: receive aodv message from %u.\n", rxPacketCache.header.srcAddress);
+      xSemaphoreTake(routingTable->mu, portMAX_DELAY);
+      DEBUG_PRINT("aodvRxTask: receive aodv message from neighbor %u.\n", rxPacketCache.header.srcAddress);
+      /* Update route to neighbor (reverse route) */
+      Route_Entry_t routeEntry = routingTableFindEntry(routingTable, rxPacketCache.header.srcAddress);
+      if (routeEntry.destAddress != UWB_DEST_EMPTY && routeEntry.validDestSeqFlag && routeEntry.hopCount == 1) {
+        routeEntry.expirationTime = MAX(routeEntry.expirationTime, xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME));
+        routingTableUpdateEntry(routingTable, routeEntry);
+      } else {
+        routeEntry = emptyRouteEntry();
+        routeEntry.destAddress = rxPacketCache.header.srcAddress;
+        routeEntry.nextHop = rxPacketCache.header.srcAddress;
+        routeEntry.hopCount = 1;
+        routeEntry.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+        routingTableAddEntry(routingTable, routeEntry);
+      }
+
       uint8_t msgType = rxPacketCache.payload[0];
       switch (msgType) {
         case AODV_RREQ:aodvProcessRREQ((AODV_RREQ_Message_t *) rxPacketCache.payload);
@@ -171,8 +188,10 @@ static void aodvRxTask(void *parameters) {
           break;
         case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxPacketCache.payload);
           break;
-        default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u.\n", msgType);
+        default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u from %u, discard.\n", msgType,
+                            rxPacketCache.header.srcAddress);
       }
+      xSemaphoreGive(routingTable->mu);
     }
     vTaskDelay(M2T(1));
   }
@@ -182,6 +201,7 @@ static void aodvRxTask(void *parameters) {
 void aodvInit() {
   rxQueue = xQueueCreate(AODV_RX_QUEUE_SIZE, AODV_RX_QUEUE_ITEM_SIZE);
   rreqBufferInit(&rreqBuffer);
+  routingTable = getGlobalRoutingTable();
 
   UWB_Message_Listener_t listener;
   listener.type = UWB_AODV_MESSAGE;
