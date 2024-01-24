@@ -111,6 +111,15 @@ static void uwbRoutingTxTask(void *parameters) {
     if (xQueueReceive(txQueue, uwbTxDataPacketCache, M2T(ROUTING_TX_QUEUE_WAIT_TIME))) {
       ASSERT(uwbTxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(uwbTxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
+      DEBUG_PRINT(
+          "uwbRoutingTxTask: TX type = %u, len = %u, origin = %u, dest = %u, seq = %lu, ttl = %u.\n",
+          uwbTxDataPacketCache->header.type,
+          uwbTxDataPacketCache->header.length,
+          uwbTxDataPacketCache->header.srcAddress,
+          uwbTxDataPacketCache->header.destAddress,
+          uwbTxDataPacketCache->header.seqNumber,
+          uwbTxDataPacketCache->header.ttl
+      );
       xSemaphoreTake(routingTable.mu, portMAX_DELAY);
       xSemaphoreTake(txBufferMutex, portMAX_DELAY);
       // TODO: update expiration time of each route to originator & sender & next hop & dest
@@ -123,7 +132,7 @@ static void uwbRoutingTxTask(void *parameters) {
         DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
         xSemaphoreGive(txBufferMutex);
         xSemaphoreGive(routingTable.mu);
-        xQueueSend(rxQueue, uwbTxDataPacketCache, portMAX_DELAY);
+        xQueueSend(rxQueue, &uwbTxPacketCache, portMAX_DELAY);
       } else if (dataTxPacketBufferCache.packet.header.ttl > 0) {
         Time_t curTime = xTaskGetTickCount();
         Route_Entry_t routeEntry = routingTableFindEntry(&routingTable, uwbTxDataPacketCache->header.destAddress);
@@ -201,12 +210,26 @@ static void uwbRoutingRxTask(void *parameters) {
   systemWaitStart();
 
   UWB_Packet_t uwbRxPacketCache;
+  uwbRxPacketCache.header.type = UWB_DATA_MESSAGE;
+  uwbRxPacketCache.header.length = 0;
+
   UWB_Data_Packet_t *uwbRxDataPacketCache = (UWB_Data_Packet_t *) &uwbRxPacketCache.payload;
+  uwbRxDataPacketCache->header.type = UWB_DATA_MESSAGE_RESERVED;
+  uwbRxDataPacketCache->header.length = 0;
 
   while (true) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &uwbRxPacketCache)) {
       ASSERT(uwbRxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(uwbRxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
+      DEBUG_PRINT(
+          "uwbRoutingRxTask: RX type = %u, len = %u, origin = %u, dest = %u, seq = %lu, ttl = %u.\n",
+          uwbRxDataPacketCache->header.type,
+          uwbRxDataPacketCache->header.length,
+          uwbRxDataPacketCache->header.srcAddress,
+          uwbRxDataPacketCache->header.destAddress,
+          uwbRxDataPacketCache->header.seqNumber,
+          uwbRxDataPacketCache->header.ttl
+      );
       xSemaphoreTake(routingTable.mu, portMAX_DELAY);
       xSemaphoreTake(txBufferMutex, portMAX_DELAY);
 
