@@ -277,9 +277,118 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
     uwbSendPacketBlock(packet);
   }
 }
+// TODO: test
+static void aodvProcessRREP(UWB_Packet_t *packet) {
+  AODV_RREP_Message_t *rrep = (AODV_RREP_Message_t *) &packet->payload;
+  rrep->hopCount++;
+  /* This RREP is a hello message */
+  if (rrep->destAddress == rrep->origAddress) {
+    // TODO: process hello
+    DEBUG_PRINT("aodvProcessRREP: %u Receive hello from %u.\n", uwbGetAddress(), rrep->origAddress);
+    return;
+  }
+  /*
+   * If the route table entry to the destination is created or updated, then the following actions
+   * occur:
+   * -  the route is marked as active,
+   * -  the destination sequence number is marked as valid,
+   * -  the next hop in the route entry is assigned to be the node from which the RREP is
+   * received, which is indicated by the source UWB address field in the UWB packet header,
+   * -  the hop count is set to the value of the hop count from RREP message + 1
+   * -  the expiry time is set to the current time plus the value of the Lifetime in the RREP
+   * message,
+   * -  and the destination sequence number is the Destination Sequence Number in the RREP
+   * message.
+   */
+  Route_Entry_t newEntry = {
+      .destAddress = rrep->destAddress,
+      .validDestSeqFlag = true,
+      .destSeqNumber = rrep->destSeqNumber,
+      .hopCount = rrep->hopCount,
+      .nextHop = packet->header.srcAddress,
+      .expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME)
+  };
+  Route_Entry_t toDest = routingTableFindEntry(routingTable, rrep->destAddress);
+  if (toDest.destAddress != UWB_DEST_EMPTY) {
+    /*
+     * The existing entry is updated only in the following circumstances:
+     * (i) the sequence number in the routing table is marked as invalid in route table entry.
+     */
+    if (!toDest.validDestSeqFlag) {
+      routingTableUpdateEntry(routingTable, newEntry);
+    } else if (aodvCompareSeqNumber(rrep->destSeqNumber, toDest.destSeqNumber)) {
+      /* (ii)the Destination Sequence Number in the RREP is greater than the node's copy of the
+       * destination sequence number and the known value is valid.
+       */
+      routingTableUpdateEntry(routingTable, newEntry);
+    } else {
+      /* (iii) the sequence numbers are the same, but the route is marked as inactive. */
+      if (rrep->destSeqNumber == toDest.destSeqNumber && !toDest.flags.aodvValidRoute) {
+        routingTableUpdateEntry(routingTable, newEntry);
+      } else if (rrep->destSeqNumber == toDest.destSeqNumber && rrep->hopCount < toDest.hopCount) {
+        /* (iv) the sequence numbers are the same, and the New Hop Count is smaller than the hop count
+         * in route table entry.
+         */
+        routingTableUpdateEntry(routingTable, newEntry);
+      }
+    }
+  } else {
+    /* The forward route for this destination is created if it does not already exist. */
+    routingTableAddEntry(routingTable, newEntry);
+  }
+  /* Acknowledge receipt of the RREP by sending a RREP-ACK message back. */
+  if (rrep->flags.A) {
+    // TODO: send reply ack
+    rrep->flags.A = false;
+  }
+  Route_Entry_t toOrigin = routingTableFindEntry(routingTable, rrep->origAddress);
+  if (toOrigin.destAddress == UWB_DEST_EMPTY) {
+    // TODO: check
+    DEBUG_PRINT("aodvProcessRREP: Impossible, just drop the RREP.\n");
+    return;
+  }
+  toOrigin.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+  routingTableUpdateEntry(routingTable, toOrigin);
 
-static void aodvProcessRREP(AODV_RREP_Message_t *message) {
-// TODO
+  /* Update precursors */
+  // TODO: check
+  toDest = routingTableFindEntry(routingTable, rrep->destAddress);
+  if (toDest.flags.aodvValidRoute) {
+    toDest.precursors = precursorListAdd(toDest.precursors, toOrigin.nextHop);
+    routingTableUpdateEntry(routingTable, toDest);
+
+    Route_Entry_t toNextHopToDest = routingTableFindEntry(routingTable, toDest.nextHop);
+    if (toNextHopToDest.destAddress == UWB_DEST_EMPTY) {
+      DEBUG_PRINT("aodvProcessRREP: Empty toNextHopToDest.\n");
+    } else {
+      toNextHopToDest.precursors = precursorListAdd(toNextHopToDest.precursors, toOrigin.nextHop);
+      routingTableUpdateEntry(routingTable, toNextHopToDest);
+    }
+
+    toOrigin.precursors = precursorListAdd(toOrigin.precursors, toDest.nextHop);
+    routingTableUpdateEntry(routingTable, toOrigin);
+
+    Route_Entry_t toNextHopToOrigin = routingTableFindEntry(routingTable, toOrigin.nextHop);
+    if (toNextHopToOrigin.destAddress == UWB_DEST_EMPTY) {
+      DEBUG_PRINT("aodvProcessRREP: Empty toNextHopToOrigin.\n");
+    } else {
+      toNextHopToOrigin.precursors = precursorListAdd(toNextHopToOrigin.precursors, toDest.nextHop);
+      routingTableUpdateEntry(routingTable, toNextHopToOrigin);
+    }
+  }
+
+  DEBUG_PRINT("aodvProcessRREP: %u forward RREQ from src = %u, origin = %u, dest = %u, destSeq = %lu, hop = %u.\n",
+              uwbGetAddress(),
+              packet->header.srcAddress,
+              rrep->origAddress,
+              rrep->destAddress,
+              rrep->destSeqNumber,
+              rrep->hopCount
+  );
+  /* Forward RREP */
+  packet->header.srcAddress = uwbGetAddress();
+  packet->header.destAddress = toOrigin.nextHop;
+  uwbSendPacketBlock(packet);
 }
 
 static void aodvProcessRERR(AODV_RERR_Message_t *message) {
@@ -383,7 +492,7 @@ static void aodvRxTask(void *parameters) {
       switch (msgType) {
         case AODV_RREQ:aodvProcessRREQ(&rxPacketCache);
           break;
-        case AODV_RREP:aodvProcessRREP((AODV_RREP_Message_t *) rxPacketCache.payload);
+        case AODV_RREP:aodvProcessRREP(&rxPacketCache);
           break;
         case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxPacketCache.payload);
           break;
