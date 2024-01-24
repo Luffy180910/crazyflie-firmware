@@ -39,7 +39,11 @@ static Route_Entry_t EMPTY_ROUTE_ENTRY = {
 static void bufferDataPacket(UWB_Data_Packet_t *packet) {
   Time_t evictTime = xTaskGetTickCount() + M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME);
   UWB_Data_Packet_With_Timestamp_t bufferedPacket = {.packet = *packet, .evictTime = evictTime};
-  while (xQueueSend(txBufferQueue, &bufferedPacket, portMAX_DELAY) == pdFALSE) {
+  DEBUG_PRINT("bufferDataPacket: Try to buffer data packet src = %u, dest = %u, seq = %lu.\n",
+              packet->header.srcAddress,
+              packet->header.destAddress,
+              packet->header.seqNumber);
+  if (xQueueSend(txBufferQueue, &bufferedPacket, M2T(0)) == pdFALSE) {
     UWB_Data_Packet_With_Timestamp_t evictedPacket;
     xQueueReceive(txBufferQueue, &evictedPacket, M2T(0));
     DEBUG_PRINT("bufferDataPacket: Buffer is full, evict oldest one that dest to %u, seq = %lu.\n",
@@ -244,9 +248,6 @@ static void uwbRoutingRxTask(void *parameters) {
           uwbRxDataPacketCache->header.seqNumber,
           uwbRxDataPacketCache->header.ttl
       );
-      xSemaphoreTake(routingTable.mu, portMAX_DELAY);
-      xSemaphoreTake(txBufferMutex, portMAX_DELAY);
-
       DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
                   uwbRxDataPacketCache->header.srcAddress,
                   uwbRxDataPacketCache->header.destAddress,
@@ -261,11 +262,7 @@ static void uwbRoutingRxTask(void *parameters) {
                         uwbRxDataPacketCache->header.type);
           }
         }
-        xSemaphoreGive(txBufferMutex);
-        xSemaphoreGive(routingTable.mu);
       } else {
-        xSemaphoreGive(txBufferMutex);
-        xSemaphoreGive(routingTable.mu);
         /* Forward the packet */
         uwbSendDataPacketBlock(uwbRxDataPacketCache);
       }
@@ -532,7 +529,7 @@ void routingTableSort(Routing_Table_t *table) {
   routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
 }
 
-void printRouteEntry(Route_Entry_t* entry) {
+void printRouteEntry(Route_Entry_t *entry) {
   DEBUG_PRINT("dest\t next\t hop\t destSeq\t expire\t validDestSeq\t valid \t \n");
   DEBUG_PRINT("%u\t %u\t %u\t %lu\t %lu\t %d\t %d\t \n",
               entry->destAddress,
