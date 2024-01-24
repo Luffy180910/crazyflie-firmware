@@ -530,7 +530,7 @@ void routingTableSort(Routing_Table_t *table) {
 }
 
 void printRouteEntry(Route_Entry_t *entry) {
-  DEBUG_PRINT("dest\t next\t hop\t destSeq\t expire\t validDestSeq\t valid \t \n");
+  DEBUG_PRINT("dest\t next\t hop\t destSeq\t expire\t validSeq\t valid \t \n");
   DEBUG_PRINT("%u\t %u\t %u\t %lu\t %lu\t %d\t %d\t \n",
               entry->destAddress,
               entry->nextHop,
@@ -542,18 +542,19 @@ void printRouteEntry(Route_Entry_t *entry) {
 }
 
 void printRoutingTable(Routing_Table_t *table) {
-  DEBUG_PRINT("dest\t next\t hop\t destSeq\t expire\t \n");
+  DEBUG_PRINT("dest\t next\t hop\t destSeq\t expire\t validSeq\t valid \t \n");
   for (int i = 0; i < table->size; i++) {
     if (table->entries[i].destAddress == UWB_DEST_EMPTY) {
       continue;
     }
-    printRouteEntry(&table->entries[i]);
-//    DEBUG_PRINT("%u\t %u\t %u\t %lu\t %lu\t \n",
-//                table->entries[i].destAddress,
-//                table->entries[i].nextHop,
-//                table->entries[i].hopCount,
-//                table->entries[i].destSeqNumber,
-//                table->entries[i].expirationTime);
+    DEBUG_PRINT("%u\t %u\t %u\t %lu\t %lu\t %d\t %d\t \n",
+                table->entries[i].destAddress,
+                table->entries[i].nextHop,
+                table->entries[i].hopCount,
+                table->entries[i].destSeqNumber,
+                table->entries[i].expirationTime,
+                table->entries[i].validDestSeqFlag,
+                table->entries[i].valid);
   }
   DEBUG_PRINT("---\n");
 }

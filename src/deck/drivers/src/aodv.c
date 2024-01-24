@@ -150,8 +150,9 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
               rreq->destAddress,
               rreq->destSeqNumber
   );
-  if (rreqBufferIsDuplicate(&rreqBuffer, rreq->origAddress, rreq->requestId)) {
-    DEBUG_PRINT("aodvProcessRREQ: Discard duplicate rreq origin = %u, reqId = %lu, dest = %u.\n",
+  if (rreq->origAddress == uwbGetAddress() || rreqBufferIsDuplicate(&rreqBuffer, rreq->origAddress, rreq->requestId)) {
+    DEBUG_PRINT("aodvProcessRREQ: %u discard duplicate rreq origin = %u, reqId = %lu, dest = %u.\n",
+                uwbGetAddress(),
                 rreq->origAddress,
                 rreq->requestId,
                 rreq->destAddress
@@ -214,7 +215,8 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
   } else {
     toNeighbor.valid = true;
     toNeighbor.validDestSeqFlag = false;
-    toNeighbor.destAddress = rreq->origSeqNumber;
+    toNeighbor.destAddress = rreq->origAddress;
+    toNeighbor.destSeqNumber = rreq->origSeqNumber;
     toNeighbor.hopCount = 1;
     toNeighbor.nextHop = packet->header.srcAddress;
     toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
