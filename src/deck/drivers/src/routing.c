@@ -111,6 +111,14 @@ static void uwbRoutingTxTask(void *parameters) {
     if (xQueueReceive(txQueue, uwbTxDataPacketCache, M2T(ROUTING_TX_QUEUE_WAIT_TIME))) {
       ASSERT(uwbTxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(uwbTxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
+      xSemaphoreTake(routingTable.mu, portMAX_DELAY);
+      xSemaphoreTake(txBufferMutex, portMAX_DELAY);
+      // TODO: update expiration time of each route to originator & sender & next hop & dest
+      /* Data packet that originate from self. */
+      if (uwbTxDataPacketCache->header.srcAddress == uwbGetAddress()) {
+        uwbTxDataPacketCache->header.seqNumber = routingSeqNumber++;
+      }
+      dataTxPacketBufferCache.packet.header.ttl--;
       DEBUG_PRINT(
           "uwbRoutingTxTask: TX type = %u, len = %u, origin = %u, dest = %u, seq = %lu, ttl = %u.\n",
           uwbTxDataPacketCache->header.type,
@@ -120,14 +128,6 @@ static void uwbRoutingTxTask(void *parameters) {
           uwbTxDataPacketCache->header.seqNumber,
           uwbTxDataPacketCache->header.ttl
       );
-      xSemaphoreTake(routingTable.mu, portMAX_DELAY);
-      xSemaphoreTake(txBufferMutex, portMAX_DELAY);
-      // TODO: update expiration time of each route to originator & sender & next hop & dest
-      /* Data packet that originate from self. */
-      if (uwbTxDataPacketCache->header.srcAddress == uwbGetAddress()) {
-        uwbTxDataPacketCache->header.seqNumber = routingSeqNumber++;
-      }
-      dataTxPacketBufferCache.packet.header.ttl--;
       if (uwbTxDataPacketCache->header.destAddress == uwbGetAddress()) {
         DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
         xSemaphoreGive(txBufferMutex);
