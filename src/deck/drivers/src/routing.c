@@ -336,7 +336,7 @@ static void routingTableSwapRouteEntry(Routing_Table_t *table, int first, int se
   table->entries[second] = temp;
 }
 
-static int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
+int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
   /* Binary Search */
   int left = -1, right = table->size, res = -1;
   while (left + 1 != right) {
@@ -489,6 +489,10 @@ Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAd
     entry = table->entries[index];
   }
   return entry;
+}
+
+void routingTableSort(Routing_Table_t *table) {
+  routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
 }
 
 void printRouteEntry(Route_Entry_t entry) {

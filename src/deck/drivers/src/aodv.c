@@ -385,18 +385,63 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
               rrep->destSeqNumber,
               rrep->hopCount
   );
-  /* Forward RREP */
+  /* Forward this RREP message. */
   packet->header.srcAddress = uwbGetAddress();
   packet->header.destAddress = toOrigin.nextHop;
   uwbSendPacketBlock(packet);
 }
 
-static void aodvProcessRERR(AODV_RERR_Message_t *message) {
-// TODO
+// TODO: test
+static void aodvProcessRERR(UWB_Packet_t *packet) {
+  AODV_RERR_Message_t *rerr = (AODV_RERR_Message_t *) &packet->payload;
+  DEBUG_PRINT("aodvProcessRERR: %u Received RERR from neighbor %u, errDestCount = %u.\n",
+              uwbGetAddress(),
+              packet->header.srcAddress,
+              rerr->destCount
+  );
+
+  /* We don't uni-cast or broadcast RERR to each corresponding precursors here, instead, we just broadcast it to all
+   * one-hop neighbors. Each neighbor checks if it is the effected node (mostly the precursor of the packet.srcAddress).
+   * If it has the local route to the unreachable.destAddress, delete the effected route entries and lastly forward the
+   * RERR, or not effected then just ignore this RERR to prevent broadcast storm. This approach differs from the RFC.
+   */
+  int dropCount = 0;
+  for (int i = 0; i < rerr->destCount; i++) {
+    /* Drop all route dest in unreachable list and route entries that next hop set to unreachable. */
+    Unreachable_Dest_t unreachable = rerr->unreachableList[i];
+    int index = routingTableSearchEntry(routingTable, unreachable.destAddress);
+    if (index != -1) {
+      routingTable->entries[index] = emptyRouteEntry();
+      dropCount++;
+      for (int j = 0; j < routingTable->size; j++) {
+        if (routingTable->entries[j].destAddress != UWB_DEST_EMPTY
+            && routingTable->entries[j].nextHop == unreachable.destAddress) {
+          routingTable->entries[j] = emptyRouteEntry();
+          dropCount++;
+        }
+      }
+    }
+  }
+  if (dropCount > 0) {
+    routingTableSort(routingTable);
+    routingTable->size -= dropCount;
+    packet->header.srcAddress = uwbGetAddress();
+    packet->header.destAddress = UWB_DEST_ANY;
+    uwbSendPacketBlock(packet);
+  }
 }
 
-static void aodvProcessRREPACK(AODV_RREP_ACK_Message_t *message) {
-// TODO
+// TODO: test
+static void aodvProcessRREPACK(UWB_Packet_t *packet) {
+  AODV_RREP_ACK_Message_t *rrepAck = (AODV_RREP_ACK_Message_t *) &packet->payload;
+  Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, packet->header.srcAddress);
+  if (toNeighbor.destAddress != UWB_DEST_EMPTY) {
+    toNeighbor.flags.aodvValidRoute = true;
+    routingTableUpdateEntry(routingTable, toNeighbor);
+    DEBUG_PRINT("aodvProcessRREPACK: %u received RREP_ACK from neighbor %u, mark route as valid.\n",
+                uwbGetAddress(),
+                packet->header.srcAddress);
+  }
 }
 
 // TODO: test
@@ -473,6 +518,7 @@ static void aodvRxTask(void *parameters) {
     if (uwbReceivePacketBlock(UWB_AODV_MESSAGE, &rxPacketCache)) {
       xSemaphoreTake(routingTable->mu, portMAX_DELAY);
       DEBUG_PRINT("aodvRxTask: receive aodv message from neighbor %u.\n", rxPacketCache.header.srcAddress);
+
       /* Update route for Me to Neighbor (reverse route) */
       Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, rxPacketCache.header.srcAddress);
       if (toNeighbor.destAddress != UWB_DEST_EMPTY && toNeighbor.validDestSeqFlag && toNeighbor.hopCount == 1) {
@@ -488,15 +534,16 @@ static void aodvRxTask(void *parameters) {
         routingTableAddEntry(routingTable, toNeighbor);
       }
 
+      /* Dispatch message to corresponding handler. */
       uint8_t msgType = rxPacketCache.payload[0];
       switch (msgType) {
         case AODV_RREQ:aodvProcessRREQ(&rxPacketCache);
           break;
         case AODV_RREP:aodvProcessRREP(&rxPacketCache);
           break;
-        case AODV_RERR:aodvProcessRERR((AODV_RERR_Message_t *) rxPacketCache.payload);
+        case AODV_RERR:aodvProcessRERR(&rxPacketCache);
           break;
-        case AODV_RREP_ACK:aodvProcessRREPACK((AODV_RREP_ACK_Message_t *) rxPacketCache.payload);
+        case AODV_RREP_ACK:aodvProcessRREPACK(&rxPacketCache);
           break;
         default:DEBUG_PRINT("aodvRxTask: Receive unknown aodv message type %u from %u, discard.\n", msgType,
                             rxPacketCache.header.srcAddress);

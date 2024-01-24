@@ -102,6 +102,8 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry);
 void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry);
 void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress);
+int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress);
+void routingTableSort(Routing_Table_t *table);
 
 /* Debug Operations */
 void printRouteEntry(Route_Entry_t entry);
