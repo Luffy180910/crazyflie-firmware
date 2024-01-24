@@ -21,8 +21,8 @@ static void appTxTask() {
   UWB_Data_Packet_t dataTxPacket;
   dataTxPacket.header.type = UWB_DATA_MESSAGE_COMMAND;
   dataTxPacket.header.srcAddress = uwbGetAddress();
-  dataTxPacket.header.destAddress = uwbGetAddress();
-  dataTxPacket.header.ttl = 2;
+  dataTxPacket.header.destAddress = 5;
+  dataTxPacket.header.ttl = 15;
   dataTxPacket.header.length = sizeof(UWB_Data_Packet_Header_t);
   while (1) {
     vTaskDelay(M2T(APP_TX_INTERVAL));

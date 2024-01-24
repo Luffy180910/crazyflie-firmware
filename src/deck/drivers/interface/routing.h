@@ -62,11 +62,7 @@ typedef struct {
 } Route_Metric_t;
 
 typedef struct {
-  struct {
-    uint8_t aodvValidRoute: 1;
-    uint8_t olsrValidRoute: 1;
-    uint8_t Reserved: 6;
-  } flags;
+  bool valid;
   UWB_Address_t destAddress;
   UWB_Address_t nextHop;
   uint8_t hopCount;
@@ -107,6 +103,6 @@ int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress)
 void routingTableSort(Routing_Table_t *table);
 
 /* Debug Operations */
-void printRouteEntry(Route_Entry_t entry);
+void printRouteEntry(Route_Entry_t *entry);
 void printRoutingTable(Routing_Table_t *table);
 #endif

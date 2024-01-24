@@ -142,7 +142,7 @@ static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOri
 
 static void aodvProcessRREQ(UWB_Packet_t *packet) {
   AODV_RREQ_Message_t *rreq = (AODV_RREQ_Message_t *) &packet->payload;
-  DEBUG_PRINT("aodvProcessRREQ: %u forward RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu.\n",
+  DEBUG_PRINT("aodvProcessRREQ: %u received RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu.\n",
               uwbGetAddress(),
               rreq->origAddress,
               rreq->requestId,
@@ -177,6 +177,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
   Route_Entry_t toOrigin = routingTableFindEntry(routingTable, rreq->origAddress);
   if (toOrigin.destAddress == UWB_DEST_EMPTY) {
     toOrigin.destAddress = rreq->origAddress;
+    toOrigin.valid = true;
     toOrigin.validDestSeqFlag = true;
     toOrigin.destSeqNumber = rreq->origSeqNumber;
     toOrigin.hopCount = rreq->hopCount;
@@ -191,6 +192,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
     } else {
       toOrigin.destSeqNumber = rreq->origSeqNumber;
     }
+    toOrigin.valid = true;
     toOrigin.validDestSeqFlag = true;
     toOrigin.nextHop = packet->header.srcAddress;
     toOrigin.hopCount = rreq->hopCount;
@@ -201,6 +203,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
   /* Update route for Me to Neighbor */
   Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, packet->header.srcAddress);
   if (toNeighbor.destAddress == UWB_DEST_EMPTY) {
+    toNeighbor.valid = true;
     toNeighbor.destAddress = packet->header.srcAddress;
     toNeighbor.validDestSeqFlag = false;
     toNeighbor.destSeqNumber = rreq->origSeqNumber;
@@ -209,7 +212,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
     toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
     routingTableAddEntry(routingTable, toNeighbor);
   } else {
-    toNeighbor.flags.aodvValidRoute = true;
+    toNeighbor.valid = true;
     toNeighbor.validDestSeqFlag = false;
     toNeighbor.destAddress = rreq->origSeqNumber;
     toNeighbor.hopCount = 1;
@@ -254,7 +257,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
      * the forwarding node.
      */
     if (rreq->flags.U || (toDest.validDestSeqFlag && aodvCompareSeqNumber(toDest.destSeqNumber, rreq->destSeqNumber))) {
-      if (!rreq->flags.D && toDest.flags.aodvValidRoute) {
+      if (!rreq->flags.D && toDest.valid) {
         toOrigin = routingTableFindEntry(routingTable, rreq->origAddress);
         sendRREPByIntermediateNode(toDest, toOrigin);
         return;
@@ -302,6 +305,7 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
    */
   Route_Entry_t newEntry = {
       .destAddress = rrep->destAddress,
+      .valid = true,
       .validDestSeqFlag = true,
       .destSeqNumber = rrep->destSeqNumber,
       .hopCount = rrep->hopCount,
@@ -323,7 +327,7 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
       routingTableUpdateEntry(routingTable, newEntry);
     } else {
       /* (iii) the sequence numbers are the same, but the route is marked as inactive. */
-      if (rrep->destSeqNumber == toDest.destSeqNumber && !toDest.flags.aodvValidRoute) {
+      if (rrep->destSeqNumber == toDest.destSeqNumber && !toDest.valid) {
         routingTableUpdateEntry(routingTable, newEntry);
       } else if (rrep->destSeqNumber == toDest.destSeqNumber && rrep->hopCount < toDest.hopCount) {
         /* (iv) the sequence numbers are the same, and the New Hop Count is smaller than the hop count
@@ -353,7 +357,7 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
   /* Update precursors */
   // TODO: check
   toDest = routingTableFindEntry(routingTable, rrep->destAddress);
-  if (toDest.flags.aodvValidRoute) {
+  if (toDest.valid) {
     toDest.precursors = precursorListAdd(toDest.precursors, toOrigin.nextHop);
     routingTableUpdateEntry(routingTable, toDest);
 
@@ -436,7 +440,7 @@ static void aodvProcessRREPACK(UWB_Packet_t *packet) {
   AODV_RREP_ACK_Message_t *rrepAck = (AODV_RREP_ACK_Message_t *) &packet->payload;
   Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, packet->header.srcAddress);
   if (toNeighbor.destAddress != UWB_DEST_EMPTY) {
-    toNeighbor.flags.aodvValidRoute = true;
+    toNeighbor.valid = true;
     routingTableUpdateEntry(routingTable, toNeighbor);
     DEBUG_PRINT("aodvProcessRREPACK: %u received RREP_ACK from neighbor %u, mark route as valid.\n",
                 uwbGetAddress(),
