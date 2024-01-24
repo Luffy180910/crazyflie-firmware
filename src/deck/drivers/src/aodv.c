@@ -78,7 +78,7 @@ static int aodvCompareSeqNumber(uint32_t first, uint32_t second) {
   }
   return -1;
 }
-
+// TODO: rate limiter
 static void sendRREP(AODV_RREQ_Message_t *rreq, Route_Entry_t toOrigin) {
   /*
    * Destination node MUST increment its own sequence number by one if the sequence number in the
@@ -104,7 +104,7 @@ static void sendRREP(AODV_RREQ_Message_t *rreq, Route_Entry_t toOrigin) {
   rrep->lifetime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
   uwbSendPacketBlock(&packet);
 }
-
+// TODO: rate limiter
 static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOrigin) {
   /* Have not implement gratuitous rrep here. */
 
@@ -139,6 +139,8 @@ static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOri
 
   uwbSendPacketBlock(&packet);
 }
+
+// TODO: sendRERR
 
 static void aodvProcessRREQ(UWB_Packet_t *packet) {
   AODV_RREQ_Message_t *rreq = (AODV_RREQ_Message_t *) &packet->payload;
@@ -450,7 +452,7 @@ static void aodvProcessRREPACK(UWB_Packet_t *packet) {
   }
 }
 
-// TODO: test
+// TODO: rate limiter
 void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   DEBUG_PRINT("aodvDiscoveryRoute: Try to discovery route to %u.\n", destAddress);
   UWB_Packet_t packet;
