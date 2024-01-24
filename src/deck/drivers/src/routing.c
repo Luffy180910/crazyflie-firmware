@@ -136,7 +136,7 @@ static void uwbRoutingTxTask(void *parameters) {
       routingTableUpdateExpirationTime(&routingTable, uwbTxDataPacketCache->header.srcAddress);
       routingTableUpdateExpirationTime(&routingTable, uwbTxPacketCache.header.srcAddress);
       if (uwbTxDataPacketCache->header.destAddress == uwbGetAddress()) {
-        DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
+//        DEBUG_PRINT("uwbRoutingTxTask: Send data packet dest to self.\n");
         xSemaphoreGive(txBufferMutex);
         xSemaphoreGive(routingTable.mu);
         xQueueSend(rxQueue, &uwbTxPacketCache, portMAX_DELAY);
@@ -250,19 +250,19 @@ static void uwbRoutingRxTask(void *parameters) {
     if (uwbReceivePacketBlock(UWB_DATA_MESSAGE, &uwbRxPacketCache)) {
       ASSERT(uwbRxDataPacketCache->header.type < UWB_DATA_MESSAGE_TYPE_COUNT);
       ASSERT(uwbRxDataPacketCache->header.length <= ROUTING_DATA_PACKET_SIZE_MAX);
-      DEBUG_PRINT(
-          "uwbRoutingRxTask: RX type = %u, len = %u, origin = %u, dest = %u, seq = %lu, ttl = %u.\n",
-          uwbRxDataPacketCache->header.type,
-          uwbRxDataPacketCache->header.length,
-          uwbRxDataPacketCache->header.srcAddress,
-          uwbRxDataPacketCache->header.destAddress,
-          uwbRxDataPacketCache->header.seqNumber,
-          uwbRxDataPacketCache->header.ttl
-      );
-      DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
-                  uwbRxDataPacketCache->header.srcAddress,
-                  uwbRxDataPacketCache->header.destAddress,
-                  uwbRxDataPacketCache->header.seqNumber);
+//      DEBUG_PRINT(
+//          "uwbRoutingRxTask: RX type = %u, len = %u, origin = %u, dest = %u, seq = %lu, ttl = %u.\n",
+//          uwbRxDataPacketCache->header.type,
+//          uwbRxDataPacketCache->header.length,
+//          uwbRxDataPacketCache->header.srcAddress,
+//          uwbRxDataPacketCache->header.destAddress,
+//          uwbRxDataPacketCache->header.seqNumber,
+//          uwbRxDataPacketCache->header.ttl
+//      );
+//      DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
+//                  uwbRxDataPacketCache->header.srcAddress,
+//                  uwbRxDataPacketCache->header.destAddress,
+//                  uwbRxDataPacketCache->header.seqNumber);
       if (uwbRxDataPacketCache->header.destAddress == UWB_DEST_ANY
           || uwbRxDataPacketCache->header.destAddress == uwbGetAddress()) {
         /* Dispatch Data Message */
@@ -466,8 +466,8 @@ static void routingTableRearrange(Routing_Table_t *table, routeEntryCompareFunc 
 void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
   int index = routingTableSearchEntry(table, entry.destAddress);
   if (index != -1) {
-    DEBUG_PRINT("routingTableAddEntry: Try to add an already added route entry for dest %u, update it instead.\n",
-                entry.destAddress);
+//    DEBUG_PRINT("routingTableAddEntry: Try to add an already added route entry for dest %u, update it instead.\n",
+//                entry.destAddress);
     table->entries[index] = entry;
   } else {
     ASSERT(ROUTING_TABLE_SIZE_MAX > 0);
@@ -479,8 +479,8 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
       /* Randomly drop a route entry */
       evictedIndex = rand() % table->size;
       #endif
-      DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is full, evict stalest route entry for dest %u.\n",
-                  table->entries[evictedIndex].destAddress);
+//      DEBUG_PRINT("routingTableEvictStalestEntry: Routing table is full, evict stalest route entry for dest %u.\n",
+//                  table->entries[evictedIndex].destAddress);
       /* Swap it to last */
       int lastEntryIndex = ROUTING_TABLE_SIZE_MAX - 1;
       routingTableSwapRouteEntry(table, evictedIndex, lastEntryIndex);
@@ -500,23 +500,23 @@ void routingTableAddEntry(Routing_Table_t *table, Route_Entry_t entry) {
 void routingTableUpdateEntry(Routing_Table_t *table, Route_Entry_t entry) {
   int index = routingTableSearchEntry(table, entry.destAddress);
   if (index == -1) {
-    DEBUG_PRINT("routingTableUpdateEntry: Cannot find correspond route entry for dest %u, add it instead.\n",
-                entry.destAddress);
+//    DEBUG_PRINT("routingTableUpdateEntry: Cannot find correspond route entry for dest %u, add it instead.\n",
+//                entry.destAddress);
     routingTableAddEntry(table, entry);
   } else {
     table->entries[index] = entry;
-    DEBUG_PRINT("routingTableUpdateEntry: Update route entry for dest %u.\n", entry.destAddress);
+//    DEBUG_PRINT("routingTableUpdateEntry: Update route entry for dest %u.\n", entry.destAddress);
   }
 }
 
 void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) {
   if (table->size == 0) {
-    DEBUG_PRINT("routingTableRemoveEntry: Routing table is empty, ignore.\n");
+//    DEBUG_PRINT("routingTableRemoveEntry: Routing table is empty, ignore.\n");
     return;
   }
   int index = routingTableSearchEntry(table, destAddress);
   if (index == -1) {
-    DEBUG_PRINT("routingTableRemoveEntry: Cannot find correspond route entry for dest %u, ignore.\n", destAddress);
+//    DEBUG_PRINT("routingTableRemoveEntry: Cannot find correspond route entry for dest %u, ignore.\n", destAddress);
     return;
   }
   routingTableSwapRouteEntry(table, index, table->size - 1);
@@ -529,7 +529,7 @@ Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAd
   int index = routingTableSearchEntry(table, destAddress);
   Route_Entry_t entry = EMPTY_ROUTE_ENTRY;
   if (index == -1) {
-    DEBUG_PRINT("routingTableFindEntry: Cannot find correspond route entry for dest %u.\n", destAddress);
+//    DEBUG_PRINT("routingTableFindEntry: Cannot find correspond route entry for dest %u.\n", destAddress);
   } else {
     entry = table->entries[index];
   }

@@ -136,7 +136,6 @@ static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOri
   toOrigin.precursors = precursorListAdd(toOrigin.precursors, toDest.nextHop);
   routingTableUpdateEntry(routingTable, toDest);
   routingTableUpdateEntry(routingTable, toOrigin);
-
   uwbSendPacketBlock(&packet);
 }
 
@@ -144,13 +143,14 @@ static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOri
 
 static void aodvProcessRREQ(UWB_Packet_t *packet) {
   AODV_RREQ_Message_t *rreq = (AODV_RREQ_Message_t *) &packet->payload;
-  DEBUG_PRINT("aodvProcessRREQ: %u received RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu.\n",
+  DEBUG_PRINT("aodvProcessRREQ: %u received RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu, hop = %u.\n",
               uwbGetAddress(),
               rreq->origAddress,
               rreq->requestId,
               packet->header.srcAddress,
               rreq->destAddress,
-              rreq->destSeqNumber
+              rreq->destSeqNumber,
+              rreq->hopCount
   );
   if (rreq->origAddress == uwbGetAddress() || rreqBufferIsDuplicate(&rreqBuffer, rreq->origAddress, rreq->requestId)) {
     DEBUG_PRINT("aodvProcessRREQ: %u discard duplicate rreq origin = %u, reqId = %lu, dest = %u.\n",
@@ -217,7 +217,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
   } else {
     toNeighbor.valid = true;
     toNeighbor.validDestSeqFlag = false;
-    toNeighbor.destAddress = rreq->origAddress;
+    toNeighbor.destAddress = packet->header.srcAddress;
     toNeighbor.destSeqNumber = rreq->origSeqNumber;
     toNeighbor.hopCount = 1;
     toNeighbor.nextHop = packet->header.srcAddress;
@@ -287,6 +287,7 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
 // TODO: test
 static void aodvProcessRREP(UWB_Packet_t *packet) {
   AODV_RREP_Message_t *rrep = (AODV_RREP_Message_t *) &packet->payload;
+  DEBUG_PRINT("aodvProcessRREP: %u Receive hello from %u.\n", uwbGetAddress(), rrep->origAddress);
   rrep->hopCount++;
   /* This RREP is a hello message */
   if (rrep->destAddress == rrep->origAddress) {
@@ -463,7 +464,7 @@ void aodvDiscoveryRoute(UWB_Address_t destAddress) {
 
   AODV_RREQ_Message_t *rreqMsg = (AODV_RREQ_Message_t *) &packet.payload;
   rreqMsg->type = AODV_RREQ;
-  rreqMsg->hopCount = 1;
+  rreqMsg->hopCount = 0;
   rreqMsg->requestId = aodvRequestId++;
   rreqMsg->origAddress = uwbGetAddress();
   rreqMsg->origSeqNumber = aodvSeqNumber++;
@@ -533,6 +534,7 @@ static void aodvRxTask(void *parameters) {
         toNeighbor.expirationTime = MAX(toNeighbor.expirationTime, xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME));
         routingTableUpdateEntry(routingTable, toNeighbor);
       } else {
+        toNeighbor.valid = true;
         toNeighbor.destAddress = rxPacketCache.header.srcAddress;
         toNeighbor.nextHop = rxPacketCache.header.srcAddress;
         toNeighbor.destSeqNumber = 0;

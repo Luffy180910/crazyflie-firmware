@@ -9,7 +9,9 @@
 #define APP_RX_QUEUE_SIZE 5
 #define APP_RX_QUEUE_ITEM_SIZE sizeof(UWB_Data_Packet_t)
 
-#define APP_TX_INTERVAL 1000
+#define ENABLE_TX
+#define APP_TX_DEST 3
+#define APP_TX_INTERVAL 2000
 
 static TaskHandle_t appTxTaskHandle;
 static TaskHandle_t appRxTaskHandle;
@@ -19,12 +21,13 @@ static void appTxTask() {
   UWB_Data_Packet_t dataTxPacket;
   dataTxPacket.header.type = UWB_DATA_MESSAGE_COMMAND;
   dataTxPacket.header.srcAddress = uwbGetAddress();
-  dataTxPacket.header.destAddress = 5;
-  dataTxPacket.header.ttl = 15;
+  dataTxPacket.header.destAddress = APP_TX_DEST;
+  dataTxPacket.header.ttl = 10;
   dataTxPacket.header.length = sizeof(UWB_Data_Packet_Header_t);
   while (1) {
-    vTaskDelay(M2T(APP_TX_INTERVAL));
     uwbSendDataPacketBlock(&dataTxPacket);
+    printRoutingTable(getGlobalRoutingTable());
+    vTaskDelay(M2T(APP_TX_INTERVAL));
   }
 }
 
@@ -44,12 +47,14 @@ static void appRxTask() {
 void appMain() {
   rxQueue = xQueueCreate(APP_RX_QUEUE_SIZE, APP_RX_QUEUE_ITEM_SIZE);
   UWB_Data_Packet_Listener_t listener = {
-    .type = UWB_DATA_MESSAGE_COMMAND,
-    .rxQueue = rxQueue
+      .type = UWB_DATA_MESSAGE_COMMAND,
+      .rxQueue = rxQueue
   };
   uwbRegisterDataPacketListener(&listener);
+  #ifdef ENABLE_TX
   xTaskCreate(appTxTask, "ADHOC_ROUTING_TEST_TX", UWB_TASK_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &appTxTaskHandle);
+  #endif
   xTaskCreate(appRxTask, "ADHOC_ROUTING_TEST_RX", UWB_TASK_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &appRxTaskHandle);
 }
