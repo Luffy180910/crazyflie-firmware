@@ -16,8 +16,6 @@ static TaskHandle_t appRxTaskHandle;
 static QueueHandle_t rxQueue;
 
 static void appTxTask() {
-  systemWaitStart();
-
   UWB_Data_Packet_t dataTxPacket;
   dataTxPacket.header.type = UWB_DATA_MESSAGE_COMMAND;
   dataTxPacket.header.srcAddress = uwbGetAddress();
@@ -31,8 +29,6 @@ static void appTxTask() {
 }
 
 static void appRxTask() {
-  systemWaitStart();
-
   UWB_Data_Packet_t dataRxPacket;
   while (1) {
     if (uwbReceiveDataPacketBlock(UWB_DATA_MESSAGE_COMMAND, &dataRxPacket)) {
