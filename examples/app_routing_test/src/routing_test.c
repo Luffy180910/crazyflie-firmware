@@ -10,8 +10,8 @@
 #define APP_RX_QUEUE_SIZE 5
 #define APP_RX_QUEUE_ITEM_SIZE sizeof(UWB_Data_Packet_t)
 #define APP_TX_DEST 3
-#define APP_TX_INTERVAL 2000
-#define PING_MSG_BUFFER_SIZE 20
+#define APP_TX_INTERVAL 100
+#define PING_MSG_BUFFER_SIZE 150
 
 typedef enum {
   PING,
