@@ -287,12 +287,12 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
 // TODO: test
 static void aodvProcessRREP(UWB_Packet_t *packet) {
   AODV_RREP_Message_t *rrep = (AODV_RREP_Message_t *) &packet->payload;
-  DEBUG_PRINT("aodvProcessRREP: %u Receive hello from %u.\n", uwbGetAddress(), rrep->origAddress);
+  DEBUG_PRINT("aodvProcessRREP: %u received RREP from %u.\n", uwbGetAddress(), rrep->origAddress);
   rrep->hopCount++;
   /* This RREP is a hello message */
   if (rrep->destAddress == rrep->origAddress) {
     // TODO: process hello
-    DEBUG_PRINT("aodvProcessRREP: %u Receive hello from %u.\n", uwbGetAddress(), rrep->origAddress);
+    DEBUG_PRINT("aodvProcessRREP: %u received hello from %u.\n", uwbGetAddress(), rrep->origAddress);
     return;
   }
   /*

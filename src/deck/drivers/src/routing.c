@@ -141,9 +141,9 @@ static void uwbRoutingTxTask(void *parameters) {
         xSemaphoreGive(routingTable.mu);
         xQueueSend(rxQueue, &uwbTxPacketCache, portMAX_DELAY);
       } else if (dataTxPacketBufferCache.packet.header.ttl > 0) {
-        DEBUG_PRINT("uwbRoutingTxTask: dataTxPacketBufferCache.packet.header.ttl > 0.\n");
+//        DEBUG_PRINT("uwbRoutingTxTask: dataTxPacketBufferCache.packet.header.ttl > 0.\n");
 //        printRouteEntry(&toDest);
-        printRoutingTable(&routingTable);
+//        printRoutingTable(&routingTable);
         /* Unknown dest, start route discovery procedure */
         if (nextHopToDest == UWB_DEST_EMPTY || toDest.expirationTime < curTime || !toDest.valid) {
           /* Buffer this data packet since there is no certain route to dest */
