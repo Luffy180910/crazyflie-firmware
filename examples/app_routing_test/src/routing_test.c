@@ -68,20 +68,26 @@ static void appRxTask() {
       Route_Ping_Message_t *msg = (Route_Ping_Message_t *) &dataRxPacket.payload;
       Time_t rxTime = xTaskGetTickCount();
       if (msg->type == PING_ACK) {
-        DEBUG_PRINT("appRxTask: %u received ping ack packet from %u, seq = %u.\n",
-                    uwbGetAddress(),
-                    dataRxPacket.header.srcAddress,
-                    msg->txSeqNumber
-        );
+        bool found = false;
         for (int i = 0; i < PING_MSG_BUFFER_SIZE; i++) {
           if (pingMsgBuffer.buffer[i].txSeqNumber == msg->txSeqNumber) {
+            found = true;
             DEBUG_PRINT("appRxTask: %u received ping ack packet from %u, seq = %lu, RTT = %ums.\n",
                         uwbGetAddress(),
                         dataRxPacket.header.srcAddress,
                         msg->txSeqNumber,
-                        T2M(rxTime - pingMsgBuffer.buffer[i].txTime));
+                        T2M(rxTime - pingMsgBuffer.buffer[i].txTime)
+            );
             break;
           }
+        }
+        if (!found) {
+          DEBUG_PRINT(
+              "appRxTask: %u received ping ack packet from %u, seq = %u, cannot found corresponding msg in buffer.\n",
+              uwbGetAddress(),
+              dataRxPacket.header.srcAddress,
+              msg->txSeqNumber
+          );
         }
       } else if (dataRxPacket.header.srcAddress != uwbGetAddress()) {
         UWB_Data_Packet_t dataTxPacket;
