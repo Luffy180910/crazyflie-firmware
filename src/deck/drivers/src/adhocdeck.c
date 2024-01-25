@@ -97,6 +97,30 @@ static void rxCallback() {
     return;
   }
 
+  if (uwbGetAddress() == 3 && (packet->header.srcAddress == 7 || packet->header.srcAddress == 8)) {
+    dwt_forcetrxoff();
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    return;
+  }
+
+  if (uwbGetAddress() == 5 && (packet->header.srcAddress == 8)) {
+    dwt_forcetrxoff();
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    return;
+  }
+
+  if (uwbGetAddress() == 7 && (packet->header.srcAddress == 3)) {
+    dwt_forcetrxoff();
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    return;
+  }
+
+  if (uwbGetAddress() == 8 && (packet->header.srcAddress == 3 || packet->header.srcAddress == 5)) {
+    dwt_forcetrxoff();
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+    return;
+  }
+
   if (listeners[msgType].rxCb) {
     listeners[msgType].rxCb(packet);
   }
