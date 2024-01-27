@@ -74,10 +74,18 @@ typedef struct {
   Route_Metric_t metrics;
 } Route_Entry_t;
 
+typedef void (*routeExpirationHook)(UWB_Address_t *, int);
+
+typedef struct Route_Expiration_Hook {
+  routeExpirationHook hook;
+  struct Route_Expiration_Hook_Node* next;
+} Route_Expiration_Hooks_t;
+
 typedef struct {
   uint8_t size;
   SemaphoreHandle_t mu; // mutex
   Route_Entry_t entries[ROUTING_TABLE_SIZE_MAX];
+  Route_Expiration_Hooks_t expirationHooks;
 } Routing_Table_t;
 
 void routingInit();
@@ -101,6 +109,8 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress);
 void routingTableSort(Routing_Table_t *table);
+void routingTableRegisterExpirationHook(Routing_Table_t *table, routeExpirationHook hook);
+void routeExpirationHooksInvoke(Route_Expiration_Hooks_t *hooks, UWB_Address_t *addresses, int count)
 
 /* Debug Operations */
 void printRouteEntry(Route_Entry_t *entry);

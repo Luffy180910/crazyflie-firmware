@@ -130,5 +130,6 @@ typedef struct {
 
 void aodvInit();
 void aodvDiscoveryRoute(UWB_Address_t destAddress);
+void aodvSendRERR(Unreachable_Dest_t *unreachableList, int count);
 
 #endif

@@ -206,8 +206,6 @@ static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOri
   uwbSendPacketBlock(&packet);
 }
 
-// TODO: sendRERR
-
 static void aodvProcessRREQ(UWB_Packet_t *packet) {
   AODV_RREQ_Message_t *rreq = (AODV_RREQ_Message_t *) &packet->payload;
   DEBUG_PRINT(
@@ -494,8 +492,8 @@ static void aodvProcessRERR(UWB_Packet_t *packet) {
               rerr->destCount
   );
 
-  /* We don't uni-cast or broadcast RERR to each corresponding precursors here, instead, we just broadcast it to all
-   * one-hop neighbors. Each neighbor checks if it is the effected node (mostly the precursor of the packet.srcAddress).
+  /* We don't uni-cast RERR to each corresponding precursors here, instead, we just broadcast it to all one-hop
+   * neighbors. Each neighbor checks if it is the effected node (mostly the precursor of the packet.srcAddress).
    * If it has the local route to the unreachable.destAddress, delete the effected route entries and lastly forward the
    * RERR, or not effected then just ignore this RERR to prevent broadcast storm. This approach differs from the RFC.
    */
@@ -504,7 +502,7 @@ static void aodvProcessRERR(UWB_Packet_t *packet) {
     /* Drop all route dest in unreachable list and route entries that next hop set to unreachable. */
     Unreachable_Dest_t unreachable = rerr->unreachableList[i];
     int index = routingTableSearchEntry(routingTable, unreachable.destAddress);
-    if (index != -1) {
+    if (index != -1 && aodvCompareSeqNumber(routingTable->entries[index].destSeqNumber, unreachable.destSeqNumber) <= 0) {
       routingTable->entries[index] = emptyRouteEntry();
       dropCount++;
       for (int j = 0; j < routingTable->size; j++) {
@@ -594,6 +592,32 @@ void aodvDiscoveryRoute(UWB_Address_t destAddress) {
   uwbSendPacketBlock(&packet);
 }
 
+void aodvSendRERR(Unreachable_Dest_t *unreachableList, int count) {
+  DEBUG_PRINT("aodvDiscoveryRoute: Send RERR about %d invalid routes.\n", count);
+  UWB_Packet_t packet;
+  packet.header.type = UWB_AODV_MESSAGE;
+  packet.header.srcAddress = uwbGetAddress();
+  packet.header.destAddress = UWB_DEST_ANY;
+  packet.header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RERR_Message_t);
+  AODV_RERR_Message_t *rerr = (AODV_RERR_Message_t *) &packet.payload;
+  rerr->type = AODV_RERR;
+  rerr->destCount = 0;
+  int next = 0;
+  int round = (count + AODV_RERR_UNREACHABLE_DEST_SIZE_MAX - 1) / AODV_RERR_UNREACHABLE_DEST_SIZE_MAX;
+  // (count + AODV_RERR_UNREACHABLE_DEST_SIZE_MAX - 1) / AODV_RERR_UNREACHABLE_DEST_SIZE_MAX = ceil(count / AODV_RERR_UNREACHABLE_DEST_SIZE_MAX)
+  for (int k = 0; k < round; k++) {
+    int size = MIN(count, AODV_RERR_UNREACHABLE_DEST_SIZE_MAX);
+    rerr->destCount = size;
+    for (int j = 0; j < size; j++) {
+      rerr->unreachableList[j] = unreachableList[next];
+      next++;
+      count--;
+    }
+    DEBUG_PRINT("aodvSendRERR: Send RERR msg contains %d unreachable dest.\n", size);
+    uwbSendPacketBlock(&packet);
+  }
+}
+
 void aodvRxCallback(void *parameters) {
   DEBUG_PRINT("aodvRxCallback\n");
 }
@@ -649,10 +673,21 @@ static void aodvRxTask(void *parameters) {
 
 }
 
+void aodvRouteExpirationHook(UWB_Address_t *addresses, int count) {
+  DEBUG_PRINT("aodvRouteExpirationHook\n");
+  Unreachable_Dest_t unreachableList[count];
+  for (int i = 0; i < count; i++) {
+    unreachableList[i].destAddress = addresses[i];
+    unreachableList[i].destSeqNumber = routingTableFindEntry(routingTable, addresses[i]).destSeqNumber;
+  }
+  aodvSendRERR(unreachableList, count);
+}
+
 void aodvInit() {
   rxQueue = xQueueCreate(AODV_RX_QUEUE_SIZE, AODV_RX_QUEUE_ITEM_SIZE);
   rreqBufferInit(&rreqBuffer);
   routingTable = getGlobalRoutingTable();
+  routingTableRegisterExpirationHook(routingTable, aodvRouteExpirationHook);
   #ifdef AODV_ENABLE_HELLO
   aodvHelloTimer = xTimerCreate("aodvHelloTimer",
                                 M2T(AODV_HELLO_INTERVAL),

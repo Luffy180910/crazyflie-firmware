@@ -92,15 +92,20 @@ static int routingTableClearExpire(Routing_Table_t *table) {
       DEBUG_PRINT("routingTableClearExpire: Clean route entry for neighbor %u that expire at %lu.\n",
                   table->entries[p1].destAddress,
                   table->entries[p1].expirationTime);
-      // TODO: trigger expiration hook
-
       routingTableSwapRouteEntry(table, p1, p2);
-      table->entries[p2] = EMPTY_ROUTE_ENTRY;
       p2--;
       evictionCount++;
     } else {
       p1++;
     }
+  }
+  if (evictionCount > 0) {
+    UWB_Address_t addresses[evictionCount];
+    for (int i = 0; i < evictionCount; i++) {
+      addresses[i] = table->entries[table->size - 1 - i].destAddress;
+      table->entries[table->size - 1 - i] = EMPTY_ROUTE_ENTRY;
+    }
+    routeExpirationHooksInvoke(&table->expirationHooks, addresses, evictionCount);
   }
   table->size -= evictionCount;
   /* Keeps routing table in order. */
@@ -423,6 +428,8 @@ void routingTableInit(Routing_Table_t *table) {
   for (int i = 0; i < ROUTING_TABLE_SIZE_MAX; i++) {
     table->entries[i] = EMPTY_ROUTE_ENTRY;
   }
+  table->expirationHooks.hook = NULL;
+  table->expirationHooks.next = NULL;
 }
 
 int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
@@ -583,6 +590,23 @@ Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAd
 
 void routingTableSort(Routing_Table_t *table) {
   routingTableRearrange(table, COMPARE_BY_DEST_ADDRESS);
+}
+
+void routingTableRegisterExpirationHook(Routing_Table_t *table, routeExpirationHook hook) {
+  Route_Expiration_Hooks_t cur = {
+      .hook = hook,
+      .next = (struct Route_Expiration_Hook_Node *) table->expirationHooks.hook
+  };
+  table->expirationHooks = cur;
+}
+
+void routeExpirationHooksInvoke(Route_Expiration_Hooks_t *hooks, UWB_Address_t *addresses, int count) {
+  routeExpirationHook cur = hooks->hook;
+  while (cur != NULL) {
+    DEBUG_PRINT("routeExpirationHooksInvoke: Invoke route expiration hook.\n");
+    cur(addresses, count);
+    cur = (routeExpirationHook) hooks->next;
+  }
 }
 
 void printRouteEntry(Route_Entry_t *entry) {
