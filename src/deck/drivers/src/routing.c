@@ -259,10 +259,6 @@ static void uwbRoutingRxTask(void *parameters) {
 //          uwbRxDataPacketCache->header.seqNumber,
 //          uwbRxDataPacketCache->header.ttl
 //      );
-//      DEBUG_PRINT("uwbRoutingRxTask: Receive from %u, destTo %u, seq = %lu.\n",
-//                  uwbRxDataPacketCache->header.srcAddress,
-//                  uwbRxDataPacketCache->header.destAddress,
-//                  uwbRxDataPacketCache->header.seqNumber);
       if (uwbRxDataPacketCache->header.destAddress == UWB_DEST_ANY
           || uwbRxDataPacketCache->header.destAddress == uwbGetAddress()) {
         /* Dispatch Data Message */

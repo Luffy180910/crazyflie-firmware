@@ -16,7 +16,6 @@
 #define RANGING_PERIOD 100 // in ms
 #define RANGING_PERIOD_MIN 20 // default 20ms
 #define RANGING_PERIOD_MAX 500 // default 500ms
-#define MAX_NEIGHBOR 10 // default up to 10 neighbors
 
 /* Queue Constants */
 #define RANGING_RX_QUEUE_SIZE 5
@@ -26,7 +25,7 @@
 #define MAX_Tr_UNIT 3
 #define MAX_BODY_UNIT 7
 //#define MAX_BODY_UNIT (UWB_FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
-#define RANGING_TABLE_SIZE_MAX MAX_NEIGHBOR
+#define RANGING_TABLE_SIZE_MAX 10 // default up to 10 neighbors
 #define RANGING_TABLE_HOLD_TIME 10000
 #define Tr_Rr_BUFFER_POOL_SIZE 3
 #define Tf_BUFFER_POOL_SIZE (2 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
