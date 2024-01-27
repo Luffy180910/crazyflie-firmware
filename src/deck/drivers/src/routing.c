@@ -20,6 +20,7 @@ static QueueHandle_t rxQueue;
 static QueueHandle_t txBufferQueue;
 static SemaphoreHandle_t txBufferMutex;
 static TimerHandle_t txBufferEvictionTimer;
+static TimerHandle_t routeEvictionTimer;
 static xQueueHandle queues[UWB_DATA_MESSAGE_TYPE_COUNT];
 static UWB_Data_Packet_Listener_t listeners[UWB_DATA_MESSAGE_TYPE_COUNT];
 static Routing_Table_t routingTable;
@@ -77,6 +78,42 @@ static void evictDataPacketTimerCallback(TimerHandle_t timer) {
   xSemaphoreGive(txBufferMutex);
 }
 
+static int routingTableClearExpire(Routing_Table_t *table) {
+  Time_t curTime = xTaskGetTickCount();
+  int evictionCount = 0;
+
+  for (int i = 0; i < table->size; i++) {
+    if (table->entries[i].expirationTime <= curTime) {
+      DEBUG_PRINT("routingTableClearExpire: Clean route entry for neighbor %u that expire at %lu.\n",
+                  table->entries[i].destAddress,
+                  table->entries[i].expirationTime);
+      table->entries[i] = EMPTY_ROUTE_ENTRY;
+      evictionCount++;
+    }
+  }
+  /* Keeps routing table in order. */
+  routingTableSort(table);
+  table->size -= evictionCount;
+
+  return evictionCount;
+}
+
+static void evictRouteTimerCallback(TimerHandle_t timer) {
+  xSemaphoreTake(routingTable.mu, portMAX_DELAY);
+
+  Time_t curTime = xTaskGetTickCount();
+  DEBUG_PRINT("evictRouteTimerCallback: Trigger expiration timer at %lu.\n", curTime);
+
+  int evictionCount = routingTableClearExpire(&routingTable);
+  if (evictionCount > 0) {
+    DEBUG_PRINT("evictRouteTimerCallback: Evict total %d routing table entries.\n", evictionCount);
+  } else {
+    DEBUG_PRINT("evictRouteTimerCallback: Evict none.\n");
+  }
+
+  xSemaphoreGive(routingTable.mu);
+}
+
 static void routingTableUpdateExpirationTime(Routing_Table_t *table, UWB_Address_t address) {
   int index = routingTableSearchEntry(table, address);
   if (index != -1) {
@@ -116,7 +153,6 @@ static void uwbRoutingTxTask(void *parameters) {
   uwbTxDataPacketCache->header.ttl = 1;
 
   UWB_Data_Packet_With_Timestamp_t dataTxPacketBufferCache;
-
   while (true) {
     /* Consume tx queue */
     if (xQueueReceive(txQueue, uwbTxDataPacketCache, M2T(ROUTING_TX_QUEUE_WAIT_TIME))) {
@@ -283,12 +319,18 @@ void routingInit() {
   rxQueue = xQueueCreate(ROUTING_RX_QUEUE_SIZE, ROUTING_RX_QUEUE_ITEM_SIZE);
   txBufferQueue = xQueueCreate(ROUTING_TX_BUFFER_QUEUE_SIZE, ROUTING_TX_BUFFER_QUEUE_ITEM_SIZE);
   txBufferMutex = xSemaphoreCreateMutex();
-  txBufferEvictionTimer = xTimerCreate("txBufferTimer",
+  txBufferEvictionTimer = xTimerCreate("txBufferEvictionTimer",
                                        M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME / 2),
                                        pdTRUE,
                                        (void *) 0,
                                        evictDataPacketTimerCallback);
   xTimerStart(txBufferEvictionTimer, M2T(0));
+  routeEvictionTimer = xTimerCreate("routeEvictionTimer",
+                                    M2T(ROUTING_TABLE_HOLD_TIME / 2),
+                                    pdTRUE,
+                                    (void *) 0,
+                                    evictRouteTimerCallback);
+  xTimerStart(routeEvictionTimer, M2T(0));
 
   routingTableInit(&routingTable);
 

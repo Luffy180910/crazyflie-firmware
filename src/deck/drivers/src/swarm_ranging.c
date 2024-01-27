@@ -243,6 +243,42 @@ static void rangingTableSetRearrange(Ranging_Table_Set_t *set, rangingTableCompa
   }
 }
 
+static int rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
+  Time_t curTime = xTaskGetTickCount();
+  int evictionCount = 0;
+
+  for (int i = 0; i < rangingTableSet.size; i++) {
+    if (rangingTableSet.tables[i].expirationTime <= curTime) {
+      DEBUG_PRINT("rangingTableSetClearExpire: Clean ranging table for neighbor %u that expire at %lu.\n",
+                  rangingTableSet.tables[i].neighborAddress,
+                  rangingTableSet.tables[i].expirationTime);
+      rangingTableSet.tables[i] = EMPTY_RANGING_TABLE;
+      evictionCount++;
+    }
+  }
+  /* Keeps ranging table set in order. */
+  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
+  rangingTableSet.size -= evictionCount;
+
+  return evictionCount;
+}
+
+static void rangingTableSetClearExpireTimerCallback(TimerHandle_t timer) {
+  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+
+  Time_t curTime = xTaskGetTickCount();
+  DEBUG_PRINT("rangingTableClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
+
+  int evictionCount = rangingTableSetClearExpire(&rangingTableSet);
+  if (evictionCount > 0) {
+    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict total %d ranging tables.\n", evictionCount);
+  } else {
+    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict none.\n");
+  }
+
+  xSemaphoreGive(rangingTableSet.mu);
+}
+
 bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
   int index = rangingTableSetSearchTable(set, table.neighborAddress);
   if (index != -1) {
@@ -305,42 +341,6 @@ Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t
     table = set->tables[index];
   }
   return table;
-}
-
-int rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
-  Time_t curTime = xTaskGetTickCount();
-  int evictionCount = 0;
-
-  for (int i = 0; i < rangingTableSet.size; i++) {
-    if (rangingTableSet.tables[i].expirationTime <= curTime) {
-      DEBUG_PRINT("rangingTableSetClearExpire: Clean ranging table for neighbor %u that expire at %lu.\n",
-                  rangingTableSet.tables[i].neighborAddress,
-                  rangingTableSet.tables[i].expirationTime);
-      rangingTableSet.tables[i] = EMPTY_RANGING_TABLE;
-      evictionCount++;
-    }
-  }
-  rangingTableSet.size -= evictionCount;
-  /* Keeps ranging table set in order. */
-  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
-
-  return evictionCount;
-}
-
-static void rangingTableSetClearExpireTimerCallback(TimerHandle_t timer) {
-  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-
-  Time_t curTime = xTaskGetTickCount();
-  DEBUG_PRINT("rangingTableClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
-
-  int evictionCount = rangingTableSetClearExpire(&rangingTableSet);
-  if (evictionCount > 0) {
-    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict total %d ranging tables.\n", evictionCount);
-  } else {
-    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict none.\n");
-  }
-
-  xSemaphoreGive(rangingTableSet.mu);
 }
 
 void printRangingTable(Ranging_Table_t *table) {

@@ -26,7 +26,7 @@
 #define MAX_BODY_UNIT 7
 //#define MAX_BODY_UNIT (UWB_FRAME_LEN_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t) // 1 ~ 83
 #define RANGING_TABLE_SIZE_MAX 10 // default up to 10 neighbors
-#define RANGING_TABLE_HOLD_TIME 10000
+#define RANGING_TABLE_HOLD_TIME (6 * RANGING_PERIOD_MAX)
 #define Tr_Rr_BUFFER_POOL_SIZE 3
 #define Tf_BUFFER_POOL_SIZE (2 * RANGING_PERIOD_MAX / RANGING_PERIOD_MIN)
 
@@ -158,7 +158,6 @@ bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table);
 void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table);
 void rangingTableSetRemoveTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress);
 Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress);
-int rangingTableSetClearExpire(Ranging_Table_Set_t *set);
 
 /* Debug Operations */
 void printRangingTable(Ranging_Table_t *rangingTable);
