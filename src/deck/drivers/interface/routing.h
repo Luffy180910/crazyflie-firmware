@@ -110,7 +110,7 @@ Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAd
 int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress);
 void routingTableSort(Routing_Table_t *table);
 void routingTableRegisterExpirationHook(Routing_Table_t *table, routeExpirationHook hook);
-void routeExpirationHooksInvoke(Route_Expiration_Hooks_t *hooks, UWB_Address_t *addresses, int count)
+void routeExpirationHooksInvoke(Route_Expiration_Hooks_t *hooks, UWB_Address_t *addresses, int count);
 
 /* Debug Operations */
 void printRouteEntry(Route_Entry_t *entry);
