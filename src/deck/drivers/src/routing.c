@@ -638,4 +638,3 @@ void printRoutingTable(Routing_Table_t *table) {
   }
   DEBUG_PRINT("---\n");
 }
-

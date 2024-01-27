@@ -486,7 +486,7 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
 // TODO: test
 static void aodvProcessRERR(UWB_Packet_t *packet) {
   AODV_RERR_Message_t *rerr = (AODV_RERR_Message_t *) &packet->payload;
-  DEBUG_PRINT("aodvProcessRERR: %u Received RERR from neighbor %u, errDestCount = %u.\n",
+  DEBUG_PRINT("aodvProcessRERR: %u Received RERR from neighbor %u, err dest count = %u.\n",
               uwbGetAddress(),
               packet->header.srcAddress,
               rerr->destCount
@@ -515,6 +515,11 @@ static void aodvProcessRERR(UWB_Packet_t *packet) {
     }
   }
   if (dropCount > 0) {
+    DEBUG_PRINT("aodvProcessRERR: %u Received RERR from neighbor %u, drop %d routes.\n",
+                uwbGetAddress(),
+                packet->header.srcAddress,
+                dropCount
+    );
     routingTableSort(routingTable);
     routingTable->size -= dropCount;
     packet->header.srcAddress = uwbGetAddress();
@@ -619,11 +624,11 @@ void aodvSendRERR(Unreachable_Dest_t *unreachableList, int count) {
 }
 
 void aodvRxCallback(void *parameters) {
-  DEBUG_PRINT("aodvRxCallback\n");
+//  DEBUG_PRINT("aodvRxCallback\n");
 }
 
 void aodvTxCallback(void *parameters) {
-  DEBUG_PRINT("aodvTxCallback\n");
+//  DEBUG_PRINT("aodvTxCallback\n");
 }
 
 static void aodvRxTask(void *parameters) {
