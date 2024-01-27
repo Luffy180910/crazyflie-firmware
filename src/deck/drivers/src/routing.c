@@ -37,6 +37,12 @@ static Route_Entry_t EMPTY_ROUTE_ENTRY = {
     // TODO: init metrics
 };
 
+static void routingTableSwapRouteEntry(Routing_Table_t *table, int first, int second) {
+  Route_Entry_t temp = table->entries[first];
+  table->entries[first] = table->entries[second];
+  table->entries[second] = temp;
+}
+
 static void bufferDataPacket(UWB_Data_Packet_t *packet) {
   Time_t evictTime = xTaskGetTickCount() + M2T(ROUTING_TX_BUFFER_QUEUE_ITEM_HOLD_TIME);
   UWB_Data_Packet_With_Timestamp_t bufferedPacket = {.packet = *packet, .evictTime = evictTime};
@@ -81,19 +87,24 @@ static void evictDataPacketTimerCallback(TimerHandle_t timer) {
 static int routingTableClearExpire(Routing_Table_t *table) {
   Time_t curTime = xTaskGetTickCount();
   int evictionCount = 0;
-
-  for (int i = 0; i < table->size; i++) {
-    if (table->entries[i].expirationTime <= curTime) {
+  for (int p1 = 0, p2 = table->size - 1; p1 <= p2;) {
+    if (table->entries[p1].expirationTime <= curTime) {
       DEBUG_PRINT("routingTableClearExpire: Clean route entry for neighbor %u that expire at %lu.\n",
-                  table->entries[i].destAddress,
-                  table->entries[i].expirationTime);
-      table->entries[i] = EMPTY_ROUTE_ENTRY;
+                  table->entries[p1].destAddress,
+                  table->entries[p1].expirationTime);
+      // TODO: trigger expiration hook
+
+      routingTableSwapRouteEntry(table, p1, p2);
+      table->entries[p2] = EMPTY_ROUTE_ENTRY;
+      p2--;
       evictionCount++;
+    } else {
+      p1++;
     }
   }
+  table->size -= evictionCount;
   /* Keeps routing table in order. */
   routingTableSort(table);
-  table->size -= evictionCount;
 
   return evictionCount;
 }
@@ -252,14 +263,15 @@ static void uwbRoutingTxTask(void *parameters) {
         uwbTxPacketCache.header.type = UWB_DATA_MESSAGE;
         uwbTxPacketCache.header.length = sizeof(UWB_Packet_Header_t) + dataTxPacketBufferCache.packet.header.length;
         memcpy(uwbTxPacketCache.payload, &dataTxPacketBufferCache.packet, dataTxPacketBufferCache.packet.header.length);
-        DEBUG_PRINT("uwbRoutingTxTask: %u consumes buffered data packet: type = %u, len = %d, origin = %u, seq = %lu, dest = %u, ttl = %u.\n",
-                    uwbGetAddress(),
-                    dataTxPacketBufferCache.packet.header.type,
-                    dataTxPacketBufferCache.packet.header.length,
-                    dataTxPacketBufferCache.packet.header.srcAddress,
-                    dataTxPacketBufferCache.packet.header.seqNumber,
-                    dataTxPacketBufferCache.packet.header.destAddress,
-                    dataTxPacketBufferCache.packet.header.ttl);
+        DEBUG_PRINT(
+            "uwbRoutingTxTask: %u consumes buffered data packet: type = %u, len = %d, origin = %u, seq = %lu, dest = %u, ttl = %u.\n",
+            uwbGetAddress(),
+            dataTxPacketBufferCache.packet.header.type,
+            dataTxPacketBufferCache.packet.header.length,
+            dataTxPacketBufferCache.packet.header.srcAddress,
+            dataTxPacketBufferCache.packet.header.seqNumber,
+            dataTxPacketBufferCache.packet.header.destAddress,
+            dataTxPacketBufferCache.packet.header.ttl);
         uwbSendPacketBlock(&uwbTxPacketCache);
       }
 
@@ -413,12 +425,6 @@ void routingTableInit(Routing_Table_t *table) {
   }
 }
 
-static void routingTableSwapRouteEntry(Routing_Table_t *table, int first, int second) {
-  Route_Entry_t temp = table->entries[first];
-  table->entries[first] = table->entries[second];
-  table->entries[second] = temp;
-}
-
 int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress) {
   /* Binary Search */
   int left = -1, right = table->size, res = -1;
@@ -557,6 +563,7 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress) 
 //    DEBUG_PRINT("routingTableRemoveEntry: Cannot find correspond route entry for dest %u, ignore.\n", destAddress);
     return;
   }
+  // TODO: ? trigger hook
   routingTableSwapRouteEntry(table, index, table->size - 1);
   table->entries[table->size - 1] = EMPTY_ROUTE_ENTRY;
   table->size--;

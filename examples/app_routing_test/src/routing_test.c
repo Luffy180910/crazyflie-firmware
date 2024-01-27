@@ -10,7 +10,7 @@
 #define APP_RX_QUEUE_SIZE 5
 #define APP_RX_QUEUE_ITEM_SIZE sizeof(UWB_Data_Packet_t)
 #define APP_TX_DEST 3
-#define APP_TX_INTERVAL 2000
+#define APP_TX_INTERVAL 1000
 #define PING_MSG_BUFFER_SIZE 20
 
 typedef enum {
@@ -56,7 +56,7 @@ static void appTxTask() {
     pingSeqNumber++;
     pingMsgBuffer.index = (pingMsgBuffer.index + 1) % PING_MSG_BUFFER_SIZE;
     uwbSendDataPacketBlock(&dataTxPacket);
-    // printRoutingTable(getGlobalRoutingTable());
+    printRoutingTable(getGlobalRoutingTable());
     vTaskDelay(M2T(APP_TX_INTERVAL));
   }
 }
