@@ -7,6 +7,7 @@
 #include "system.h"
 #include "routing.h"
 #include "aodv.h"
+#include "timers.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -27,6 +28,7 @@ static uint32_t aodvSeqNumber = 0;
 static uint32_t aodvRequestId = 0;
 static RREQ_Buffer_t rreqBuffer;
 static Routing_Table_t *routingTable;
+static TimerHandle_t aodvHelloTimer;
 
 static void rreqBufferInit(RREQ_Buffer_t *buffer) {
   for (int i = 0; i < AODV_RREQ_BUFFER_SIZE_MAX; i++) {
@@ -78,6 +80,74 @@ static int aodvCompareSeqNumber(uint32_t first, uint32_t second) {
   }
   return -1;
 }
+
+static void aodvSendHello() {
+//  printRoutingTable(routingTable);
+  UWB_Packet_t packet = {
+      .header.type = UWB_AODV_MESSAGE,
+      .header.srcAddress = uwbGetAddress(),
+      .header.destAddress = UWB_DEST_ANY,
+      .header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RREP_Message_t)
+  };
+  AODV_RREP_Message_t *rrepHello = (AODV_RREP_Message_t *) &packet.payload;
+  rrepHello->type = AODV_RREP;
+  rrepHello->hopCount = 0;
+  rrepHello->destAddress = uwbGetAddress();
+  rrepHello->origAddress = uwbGetAddress();
+  rrepHello->destSeqNumber = aodvSeqNumber;
+  rrepHello->lifetime = xTaskGetTickCount() + 2 * M2T(AODV_HELLO_INTERVAL);
+  uwbSendPacketBlock(&packet);
+}
+
+static void aodvProcessHello(AODV_RREP_Message_t *rrep) {
+  /*
+   * Whenever a node receives a Hello message from a neighbor, the node
+   * SHOULD make sure that it has an active route to the neighbor, and
+   * create one if necessary.
+   */
+  Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, rrep->origAddress);
+  if (toNeighbor.destAddress == UWB_DEST_EMPTY) {
+    toNeighbor.valid = true;
+    toNeighbor.destAddress = rrep->origAddress;
+    toNeighbor.nextHop = rrep->origAddress;
+    toNeighbor.hopCount = 1;
+    toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+    toNeighbor.destSeqNumber = rrep->destSeqNumber;
+    toNeighbor.validDestSeqFlag = true;
+    routingTableAddEntry(routingTable, toNeighbor);
+  } else {
+    toNeighbor.valid = true;
+    toNeighbor.nextHop = rrep->origAddress;
+    toNeighbor.hopCount = 1;
+    toNeighbor.expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME);
+    toNeighbor.destSeqNumber = rrep->destSeqNumber;
+    toNeighbor.validDestSeqFlag = true;
+    routingTableUpdateEntry(routingTable, toNeighbor);
+  }
+}
+
+static void aodvHelloTimerCallback(TimerHandle_t timer) {
+  Time_t curTime = xTaskGetTickCount();
+  DEBUG_PRINT("aodvHelloTimerCallback: send hello at %lu.\n", curTime);
+  aodvSendHello();
+}
+
+static void sendRREPACK(UWB_Address_t neighborAddress) {
+  UWB_Packet_t packet = {
+      .header.type = UWB_AODV_MESSAGE,
+      .header.srcAddress = uwbGetAddress(),
+      .header.destAddress = neighborAddress,
+      .header.length = sizeof(UWB_Packet_Header_t) + sizeof(AODV_RREP_ACK_Message_t)
+  };
+  AODV_RREP_ACK_Message_t *rrepAck = (AODV_RREP_ACK_Message_t *) &packet.payload;
+  rrepAck->type = AODV_RREP_ACK;
+  DEBUG_PRINT("sendRREPACK: %u send rrepAck to neighbor %u.\n",
+              uwbGetAddress(),
+              neighborAddress
+  );
+  uwbSendPacketBlock(&packet);
+}
+
 // TODO: rate limiter
 static void sendRREP(AODV_RREQ_Message_t *rreq, Route_Entry_t toOrigin) {
   /*
@@ -88,7 +158,6 @@ static void sendRREP(AODV_RREQ_Message_t *rreq, Route_Entry_t toOrigin) {
   if (!rreq->flags.U && rreq->destSeqNumber == aodvSeqNumber + 1) {
     aodvSeqNumber++;
   }
-  // TODO: check
   UWB_Packet_t packet = {
       .header.type = UWB_AODV_MESSAGE,
       .header.srcAddress = uwbGetAddress(),
@@ -107,8 +176,6 @@ static void sendRREP(AODV_RREQ_Message_t *rreq, Route_Entry_t toOrigin) {
 // TODO: rate limiter
 static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOrigin) {
   /* Have not implement gratuitous rrep here. */
-
-  // TODO: check
   UWB_Packet_t packet = {
       .header.type = UWB_AODV_MESSAGE,
       .header.srcAddress = uwbGetAddress(),
@@ -143,14 +210,15 @@ static void sendRREPByIntermediateNode(Route_Entry_t toDest, Route_Entry_t toOri
 
 static void aodvProcessRREQ(UWB_Packet_t *packet) {
   AODV_RREQ_Message_t *rreq = (AODV_RREQ_Message_t *) &packet->payload;
-  DEBUG_PRINT("aodvProcessRREQ: %u received RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu, hop = %u.\n",
-              uwbGetAddress(),
-              rreq->origAddress,
-              rreq->requestId,
-              packet->header.srcAddress,
-              rreq->destAddress,
-              rreq->destSeqNumber,
-              rreq->hopCount
+  DEBUG_PRINT(
+      "aodvProcessRREQ: %u received RREQ from origin = %u, reqId = %lu, src = %u, dest = %u, destSeq = %lu, hop = %u.\n",
+      uwbGetAddress(),
+      rreq->origAddress,
+      rreq->requestId,
+      packet->header.srcAddress,
+      rreq->destAddress,
+      rreq->destSeqNumber,
+      rreq->hopCount
   );
   if (rreq->origAddress == uwbGetAddress() || rreqBufferIsDuplicate(&rreqBuffer, rreq->origAddress, rreq->requestId)) {
     DEBUG_PRINT("aodvProcessRREQ: %u discard duplicate rreq origin = %u, reqId = %lu, dest = %u.\n",
@@ -284,17 +352,36 @@ static void aodvProcessRREQ(UWB_Packet_t *packet) {
     uwbSendPacketBlock(packet);
   }
 }
-// TODO: test
+
 static void aodvProcessRREP(UWB_Packet_t *packet) {
   AODV_RREP_Message_t *rrep = (AODV_RREP_Message_t *) &packet->payload;
-  DEBUG_PRINT("aodvProcessRREP: %u received RREP from %u.\n", uwbGetAddress(), rrep->origAddress);
+  DEBUG_PRINT("aodvProcessRREP: %u received RREP from %u, origin = %u, dest = %u, hop = %u, expire at %lu.\n",
+              uwbGetAddress(),
+              packet->header.srcAddress,
+              rrep->origAddress,
+              rrep->destAddress,
+              rrep->hopCount,
+              rrep->lifetime
+  );
   rrep->hopCount++;
   /* This RREP is a hello message */
-  if (rrep->destAddress == rrep->origAddress) {
-    // TODO: process hello
-    DEBUG_PRINT("aodvProcessRREP: %u received hello from %u.\n", uwbGetAddress(), rrep->origAddress);
+  if (rrep->origAddress == rrep->destAddress) {
+    DEBUG_PRINT("aodvProcessRREP: %u received hello from %u.\n", uwbGetAddress(), packet->header.srcAddress);
+    aodvProcessHello(rrep);
     return;
   }
+  /* Check whether this RREP is fresh, which needs ntp or other global timer, cannot implement here. */
+//  Time_t curTime = xTaskGetTickCount();
+//  if (rrep->lifetime < curTime) {
+//    DEBUG_PRINT("aodvProcessRREP: %u received stale RREP from %u, origin = %u, dest = %u, expire at %lu.\n",
+//                uwbGetAddress(),
+//                packet->header.srcAddress,
+//                rrep->origAddress,
+//                rrep->destAddress,
+//                rrep->lifetime
+//    );
+//    return;
+//  }
   /*
    * If the route table entry to the destination is created or updated, then the following actions
    * occur:
@@ -347,12 +434,11 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
   }
   /* Acknowledge receipt of the RREP by sending a RREP-ACK message back. */
   if (rrep->flags.A) {
-    // TODO: send reply ack
+    sendRREPACK(packet->header.srcAddress);
     rrep->flags.A = false;
   }
   Route_Entry_t toOrigin = routingTableFindEntry(routingTable, rrep->origAddress);
   if (toOrigin.destAddress == UWB_DEST_EMPTY) {
-    // TODO: check
     DEBUG_PRINT("aodvProcessRREP: Impossible, just drop the RREP.\n");
     return;
   }
@@ -360,7 +446,6 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
   routingTableUpdateEntry(routingTable, toOrigin);
 
   /* Update precursors */
-  // TODO: check
   toDest = routingTableFindEntry(routingTable, rrep->destAddress);
   if (toDest.valid) {
     toDest.precursors = precursorListAdd(toDest.precursors, toOrigin.nextHop);
@@ -440,7 +525,6 @@ static void aodvProcessRERR(UWB_Packet_t *packet) {
   }
 }
 
-// TODO: test
 static void aodvProcessRREPACK(UWB_Packet_t *packet) {
   AODV_RREP_ACK_Message_t *rrepAck = (AODV_RREP_ACK_Message_t *) &packet->payload;
   Route_Entry_t toNeighbor = routingTableFindEntry(routingTable, packet->header.srcAddress);
@@ -569,6 +653,14 @@ void aodvInit() {
   rxQueue = xQueueCreate(AODV_RX_QUEUE_SIZE, AODV_RX_QUEUE_ITEM_SIZE);
   rreqBufferInit(&rreqBuffer);
   routingTable = getGlobalRoutingTable();
+  #ifdef AODV_ENABLE_HELLO
+  aodvHelloTimer = xTimerCreate("aodvHelloTimer",
+                                M2T(AODV_HELLO_INTERVAL),
+                                pdTRUE,
+                                (void *) 0,
+                                aodvHelloTimerCallback);
+  xTimerStart(aodvHelloTimer, M2T(0));
+  #endif
 
   UWB_Message_Listener_t listener;
   listener.type = UWB_AODV_MESSAGE;
