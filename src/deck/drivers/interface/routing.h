@@ -5,6 +5,7 @@
 #include "adhocdeck.h"
 
 //#define ROUTING_DEBUG_ENABLE
+#define ROUTING_AODV_ENABLE
 
 /* Queue Constants */
 #define ROUTING_RX_QUEUE_SIZE 5

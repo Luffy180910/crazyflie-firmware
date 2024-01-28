@@ -206,10 +206,12 @@ static void uwbRoutingTxTask(void *parameters) {
           /* Buffer this data packet since there is no certain route to dest */
           bufferDataPacket(uwbTxDataPacketCache);
           /* Then trigger route discovery */
+          #ifdef ROUTING_AODV_ENABLE
           DEBUG_PRINT("uwbRoutingTxTask: %u Unknown dest %u, start route discovery.\n",
                       uwbGetAddress(),
                       uwbTxDataPacketCache->header.destAddress);
           aodvDiscoveryRoute(uwbTxDataPacketCache->header.destAddress); // TODO: rate limiter
+          #endif
         } else {
 //          printRouteEntry(&toDest);
           /* Update expiration time of next hop neighbor. */
@@ -375,7 +377,9 @@ void routingInit() {
               NULL,
               ADHOC_DECK_TASK_PRI,
               &uwbRoutingRxTaskHandle);
+  #ifdef ROUTING_AODV_ENABLE
   aodvInit();
+  #endif
 }
 
 /* Messaging Operations */

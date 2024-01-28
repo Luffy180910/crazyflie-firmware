@@ -379,10 +379,15 @@ static void uwbTaskInit() {
               ADHOC_DECK_TASK_PRI, &uwbTaskHandle);
   xTaskCreate(uwbTxTask, ADHOC_DECK_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbTxTaskHandle);
+#ifdef UWB_RANGING_ENABLE
   rangingInit();
+#endif
+#ifdef UWB_ROUTING_ENABLE
   routingInit();
-//  floodingInit();
-
+#endif
+#ifdef UWB_FLOODING_ENABLE
+  floodingInit();
+#endif
 }
 /*********** Deck driver initialization ***************/
 static void dwm3000Init(DeckInfo *info) {
