@@ -5,6 +5,8 @@
 #include "mac_802_15_4.h"
 #include "queue.h"
 
+#define UWB_DEBUG_ENABLE
+
 /* Function Switch */
 //#define UWB_ENABLE_PHR_EXT_MODE
 

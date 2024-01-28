@@ -12,6 +12,11 @@
 #include "swarm_ranging.h"
 #include "timers.h"
 
+#ifndef RANGING_DEBUG_ENABLE
+  #undef DEBUG_PRINT
+  #define DEBUG_PRINT
+#endif
+
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -877,7 +882,6 @@ void rangingTxCallback(void *parameters) {
 
 void rangingInit() {
   MY_UWB_ADDRESS = uwbGetAddress();
-  DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   rangingTableSetInit(&rangingTableSet);
   rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetCleanTimer",

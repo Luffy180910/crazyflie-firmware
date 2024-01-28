@@ -4,6 +4,8 @@
 #include "semphr.h"
 #include "adhocdeck.h"
 
+//#define ROUTING_DEBUG_ENABLE
+
 /* Queue Constants */
 #define ROUTING_RX_QUEUE_SIZE 5
 #define ROUTING_RX_QUEUE_ITEM_SIZE sizeof (UWB_Packet_t)

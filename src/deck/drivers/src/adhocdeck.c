@@ -26,6 +26,11 @@
 #include "flooding.h"
 #include "routing.h"
 
+#ifndef UWB_DEBUG_ENABLE
+  #undef DEBUG_PRINT
+  #define DEBUG_PRINT
+#endif
+
 #define CS_PIN DECK_GPIO_IO1
 
 // LOCO deck alternative IRQ and RESET pins(IO_2, IO_4) instead of default (RX1, TX1), leaving UART1 free for use
@@ -389,6 +394,7 @@ static void dwm3000Init(DeckInfo *info) {
   } else {
     isInit = false;
   }
+  DEBUG_PRINT("MY_UWB_ADDRESS = %d \n", MY_UWB_ADDRESS);
 }
 
 static bool dwm3000Test() {

@@ -13,6 +13,11 @@
 #include "routing.h"
 #include "aodv.h"
 
+#ifndef ROUTING_DEBUG_ENABLE
+  #undef DEBUG_PRINT
+  #define DEBUG_PRINT
+#endif
+
 static TaskHandle_t uwbRoutingTxTaskHandle = 0;
 static TaskHandle_t uwbRoutingRxTaskHandle = 0;
 static QueueHandle_t txQueue;

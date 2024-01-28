@@ -5,6 +5,8 @@
 #include "adhocdeck.h"
 #include "semphr.h"
 
+//#define RANGING_DEBUG_ENABLE
+
 /* Function Switch */
 //#define ENABLE_BUS_BOARDING_SCHEME
 //#define ENABLE_DYNAMIC_RANGING_PERIOD
