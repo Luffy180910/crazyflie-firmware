@@ -488,7 +488,6 @@ static void aodvProcessRREP(UWB_Packet_t *packet) {
   uwbSendPacketBlock(packet);
 }
 
-// TODO: test
 static void aodvProcessRERR(UWB_Packet_t *packet) {
   AODV_RERR_Message_t *rerr = (AODV_RERR_Message_t *) &packet->payload;
   DEBUG_PRINT("aodvProcessRERR: %u Received RERR from neighbor %u, err dest count = %u.\n",
