@@ -170,7 +170,7 @@ static void computeRoutingTable() {
   bool visited[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MAX] = false};
   #ifdef OLSR_ROUTING_COMPUTATION_USE_HOP
   uint8_t curHop[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MAX] = 255};
-  /* Init path weight for one-hop neighbors */
+  /* Init hop for one-hop neighbors */
   for (UWB_Address_t oneHopNeighbor = 0; oneHopNeighbor <= NEIGHBOR_ADDRESS_MAX; oneHopNeighbor++) {
     if (neighborSetHasOneHop(neighborSet, oneHopNeighbor)) {
       curHop[oneHopNeighbor] = 1;
@@ -191,7 +191,7 @@ static void computeRoutingTable() {
       }
     }
     visited[minNode] = true;
-    /* Update weight for each path with lastAddress (MPR) = maxNode */
+    /* Update hop for each path with lastAddress (MPR) = minNode */
     for (UWB_Address_t mprSelector = 0; mprSelector <= NEIGHBOR_ADDRESS_MAX; mprSelector++) {
       if (topologySetHas(&topologySet, mprSelector, minNode)) {
         if (curHop[minNode] + 1 < curHop[mprSelector]) {
