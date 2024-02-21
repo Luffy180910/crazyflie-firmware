@@ -600,7 +600,7 @@ int neighborSetClearExpire(Neighbor_Set_t *set) {
 }
 
 static void topologySensing(Ranging_Message_t *rangingMessage) {
-  DEBUG_PRINT("topologySensing: Received ranging message from neighbor %u.\n", rangingMessage->header.srcAddress);
+//  DEBUG_PRINT("topologySensing: Received ranging message from neighbor %u.\n", rangingMessage->header.srcAddress);
   UWB_Address_t neighborAddress = rangingMessage->header.srcAddress;
   if (!neighborSetHasOneHop(&neighborSet, neighborAddress)) {
     /* Add current neighbor to one-hop neighbor set. */
@@ -610,9 +610,7 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
 
   /* Infer one-hop and tow-hop neighbors from received ranging message. */
   uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-  DEBUG_PRINT("Body Uint with addr = ");
   for (int i = 0; i < bodyUnitCount; i++) {
-    DEBUG_PRINT("%u ", rangingMessage->bodyUnits[i].address);
     #ifdef ROUTING_OLSR_ENABLE
     if (rangingMessage->bodyUnits[i].address == uwbGetAddress()) {
       /* If been selected as MPR, add neighbor to mpr selector set. */
@@ -640,7 +638,6 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
       neighborSetUpdateExpirationTime(&neighborSet, twoHopNeighbor);
     }
   }
-  DEBUG_PRINT("\n");
 }
 
 static void neighborSetClearExpireTimerCallback(TimerHandle_t timer) {
@@ -669,7 +666,7 @@ void printRangingTable(Ranging_Table_t *table) {
               table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Rr.seqNumber,
               table->Tf.seqNumber,
               table->Re.seqNumber);
-  DEBUG_PRINT("====\n");
+  DEBUG_PRINT("\n");
 }
 
 void printRangingTableSet(Ranging_Table_Set_t *set) {
@@ -1206,7 +1203,10 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short) (velocity * 100);
-  DEBUG_PRINT("generateRangingMessage: ranging message size = %u with %u body units.\n", rangingMessage->header.msgLength, bodyUnitNumber);
+//  DEBUG_PRINT("generateRangingMessage: ranging message size = %u with %u body units.\n",
+//              rangingMessage->header.msgLength,
+//              bodyUnitNumber
+//  );
 
   /* Keeps ranging table in order to perform binary search */
   rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
@@ -1236,7 +1236,7 @@ static void uwbRangingTxTask(void *parameters) {
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
-    printRangingTableSet(&rangingTableSet);
+//    printRangingTableSet(&rangingTableSet);
 //    printNeighborSet(&neighborSet);
 
     xSemaphoreGive(neighborSet.mu);

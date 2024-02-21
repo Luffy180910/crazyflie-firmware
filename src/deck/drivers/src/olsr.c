@@ -458,11 +458,11 @@ static void olsrProcessTC(UWB_Address_t neighborAddress, OLSR_TC_Message_t *tcMs
 static void olsrTcTimerCallback(TimerHandle_t timer) {
   xSemaphoreTake(olsrSetsMutex, portMAX_DELAY);
   xSemaphoreTake(neighborSet->mu, portMAX_DELAY);
-  printNeighborSet(neighborSet);
-  printMPRSet(&mprSet);
-  printMPRSelectorSet(&mprSelectorSet);
-  printTopologySet(&topologySet);
-  printRoutingTable(routingTable);
+//  printNeighborSet(neighborSet);
+//  printMPRSet(&mprSet);
+//  printMPRSelectorSet(&mprSelectorSet);
+//  printTopologySet(&topologySet);
+//  printRoutingTable(routingTable);
   if (mprSelectorSet.mprSelectors.size > 0) {
     olsrSendTc();
   }

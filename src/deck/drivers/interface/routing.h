@@ -4,8 +4,8 @@
 #include "semphr.h"
 #include "adhocdeck.h"
 
-#define ROUTING_DEBUG_ENABLE
-//#define ROUTING_AODV_ENABLE // TODO: enable
+//#define ROUTING_DEBUG_ENABLE
+//#define ROUTING_AODV_ENABLE
 #define ROUTING_OLSR_ENABLE
 
 /* Queue Constants */
@@ -23,7 +23,7 @@
 #define ROUTING_DATA_PACKET_PAYLOAD_SIZE_MAX (ROUTING_DATA_PACKET_SIZE_MAX - sizeof(UWB_Data_Packet_Header_t))
 
 /* Routing Table */
-#define ROUTING_TABLE_SIZE_MAX 15
+#define ROUTING_TABLE_SIZE_MAX 32
 #define ROUTING_TABLE_HOLD_TIME 5000 // default 5 seconds
 #define ROUTING_TABLE_EVICT_POLICY_STALEST
 

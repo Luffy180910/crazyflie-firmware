@@ -8,7 +8,7 @@
 #define UWB_DEBUG_ENABLE
 #define UWB_RANGING_ENABLE
 #define UWB_ROUTING_ENABLE
-//#define UWB_RAFT_ENABLE // TODO: enable
+//#define UWB_RAFT_ENABLE
 //#define UWB_FLOODING_ENABLE
 
 /* Function Switch */
@@ -21,7 +21,7 @@
 
 #define UWB_FRAME_LEN_STD 127
 #define UWB_FRAME_LEN_EXT 1023
-#define UWB_TASK_STACK_SIZE (3 * configMINIMAL_STACK_SIZE)
+#define UWB_TASK_STACK_SIZE (1.8 * configMINIMAL_STACK_SIZE)
 
 #ifdef UWB_ENABLE_PHR_EXT_MODE
   #define UWB_FRAME_LEN_MAX UWB_FRAME_LEN_EXT
@@ -30,7 +30,7 @@
 #endif
 
 /* Queue Constants */
-#define UWB_TX_QUEUE_SIZE 10
+#define UWB_TX_QUEUE_SIZE 5
 #define UWB_TX_QUEUE_ITEM_SIZE sizeof(UWB_Packet_t)
 
 /* UWB Packet */
