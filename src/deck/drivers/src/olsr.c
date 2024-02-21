@@ -278,11 +278,12 @@ static void computeRoutingTable() {
       // TODO: add route entry
       if (prevHopOf[cur] != UWB_DEST_EMPTY) {
         Route_Entry_t route = {
+            .type = ROUTE_OLSR,
             .valid = true,
             .destAddress = node,
             .nextHop = cur,
             .hopCount = hopCount,
-            .expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME),
+            .expirationTime = 0,
             .destSeqNumber = 0,
             .validDestSeqFlag = false,
             .precursors = 0
@@ -457,6 +458,7 @@ static void olsrTcTimerCallback(TimerHandle_t timer) {
   printMPRSet(&mprSet);
   printMPRSelectorSet(&mprSelectorSet);
   printTopologySet(&topologySet);
+  printRoutingTable(routingTable);
   if (mprSelectorSet.mprSelectors.size > 0) {
     olsrSendTc();
   }

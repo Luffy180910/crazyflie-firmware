@@ -61,11 +61,14 @@ typedef struct {
   UWBCallback txCb;
 } UWB_Data_Packet_Listener_t;
 
-typedef struct {
-  // TODO add metrics
-} Route_Metric_t;
+typedef enum {
+  ROUTE_RESERVED,
+  ROUTE_AODV,
+  ROUTE_OLSR
+} ROUTE_TYPE;
 
 typedef struct {
+  ROUTE_TYPE type;
   bool valid;
   UWB_Address_t destAddress;
   UWB_Address_t nextHop;
@@ -75,7 +78,6 @@ typedef struct {
   uint32_t destSeqNumber;
   bool validDestSeqFlag;
   uint64_t precursors; // bit set
-  Route_Metric_t metrics;
 } Route_Entry_t;
 
 typedef void (*routeExpirationHook)(UWB_Address_t *, int);
@@ -113,6 +115,7 @@ void routingTableRemoveEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 Route_Entry_t routingTableFindEntry(Routing_Table_t *table, UWB_Address_t destAddress);
 int routingTableSearchEntry(Routing_Table_t *table, UWB_Address_t targetAddress);
 void routingTableSort(Routing_Table_t *table);
+int routingTableClearExpire(Routing_Table_t *table);
 void routingTableRegisterExpirationHook(Routing_Table_t *table, routeExpirationHook hook);
 void routeExpirationHooksInvoke(Route_Expiration_Hooks_t *hooks, UWB_Address_t *addresses, int count);
 
