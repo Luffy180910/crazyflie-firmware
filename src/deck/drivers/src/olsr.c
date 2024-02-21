@@ -166,6 +166,15 @@ static void computeRoutingTable() {
       }
     }
   }
+
+  DEBUG_PRINT("%u has %u known neighbors = ", uwbGetAddress(), allKnownNodes.size);
+  for (int neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++) {
+    if (neighborBitSetHas(&allKnownNodes, neighborAddress)) {
+      DEBUG_PRINT("%u ", neighborAddress);
+    }
+  }
+  DEBUG_PRINT("\n");
+
   UWB_Address_t prevHopOf[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MAX] = UWB_DEST_EMPTY};
   bool visited[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MAX] = false};
   #ifdef OLSR_ROUTING_COMPUTATION_USE_HOP
@@ -189,6 +198,9 @@ static void computeRoutingTable() {
           minHop = curHop[curNode];
         }
       }
+    }
+    if (minNode == UWB_DEST_EMPTY) {
+      break;
     }
     visited[minNode] = true;
     /* Update hop for each path with lastAddress (MPR) = minNode */
@@ -224,6 +236,9 @@ static void computeRoutingTable() {
         }
       }
     }
+    if (maxNode == UWB_DEST_EMPTY) {
+      break;
+    }
     visited[maxNode] = true;
     /* Update weight for each path with lastAddress (MPR) = maxNode */
     for (UWB_Address_t mprSelector = 0; mprSelector <= NEIGHBOR_ADDRESS_MAX; mprSelector++) {
@@ -237,18 +252,22 @@ static void computeRoutingTable() {
     }
   }
   #endif
-
+//  for (UWB_Address_t node = 0; node <= NEIGHBOR_ADDRESS_MAX; node++) {
+//    if (neighborBitSetHas(&allKnownNodes, node)) {
+//      UWB_Address_t cur = node;
+//      DEBUG_PRINT("%u", cur);
+//      // TODO: check
+//      while (prevHopOf[cur] != uwbGetAddress()) {
+//        DEBUG_PRINT("<-%u", prevHopOf[cur]);
+//        cur = prevHopOf[cur];
+//      }
+//      DEBUG_PRINT("<-%u \n", prevHopOf[cur]);
+//      // TODO: add route entry
+//    }
+//  }
   for (UWB_Address_t node = 0; node <= NEIGHBOR_ADDRESS_MAX; node++) {
     if (neighborBitSetHas(&allKnownNodes, node)) {
-      UWB_Address_t cur = node;
-      DEBUG_PRINT("%u", cur);
-      // TODO: check
-      while (prevHopOf[cur] != uwbGetAddress()) {
-        DEBUG_PRINT("<-%u", prevHopOf[cur]);
-        cur = prevHopOf[cur];
-      }
-      DEBUG_PRINT("<-%u \n", prevHopOf[cur]);
-      // TODO: add route entry
+      DEBUG_PRINT("prevHop of %u = %u.\n", node, prevHopOf[node]);
     }
   }
 }
@@ -379,8 +398,8 @@ static void olsrProcessTC(UWB_Address_t neighborAddress, OLSR_TC_Message_t *tcMs
 
   if (topologyChanged) {
     DEBUG_PRINT("olsrProcessTC: compute routing table.\n");
-    computeRoutingTable();
     printTopologySet(&topologySet);
+    computeRoutingTable();
     printRoutingTable(routingTable);
   }
 
@@ -428,6 +447,7 @@ void olsrNeighborTopologyChangeHook(UWB_Address_t neighborAddress) {
   xSemaphoreTake(olsrSetsMutex, portMAX_DELAY);
   xSemaphoreTake(routingTable->mu, portMAX_DELAY);
   computeMPR();
+  DEBUG_PRINT("olsrNeighborTopologyChangeHook: compute routing table.\n");
   computeRoutingTable();
   olsrTcANSN++;
   lastReceivedTcSeqNumbers[neighborAddress] = 0;
