@@ -1,11 +1,12 @@
 #ifndef __ROUTING_H__
 #define __ROUTING_H__
+
 #include "stdint.h"
 #include "semphr.h"
 #include "adhocdeck.h"
 
 //#define ROUTING_DEBUG_ENABLE
-#define ROUTING_AODV_ENABLE
+//#define ROUTING_AODV_ENABLE
 #define ROUTING_OLSR_ENABLE
 
 /* Queue Constants */
