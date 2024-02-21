@@ -469,7 +469,7 @@ void neighborSetAddTwoHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAdd
   if (neighborSetHasOneHop(set, neighborAddress)) {
     neighborSetRemoveNeighbor(set, neighborAddress);
   }
-  if (!neighborBitSetHas(&set->twoHop, neighborAddress)) {
+  if (!neighborSetHasTwoHop(set, neighborAddress)) {
     /* Add two-hop neighbor. */
     neighborBitSetAdd(&set->twoHop, neighborAddress);
     neighborSetUpdateExpirationTime(set, neighborAddress);
