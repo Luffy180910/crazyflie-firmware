@@ -142,6 +142,14 @@ static void computeMPR() {
   }
 }
 
+static void routingTableClear(Neighbor_Bit_Set_t *destAddresses) {
+  for (UWB_Address_t dest = 0; dest <= NEIGHBOR_ADDRESS_MAX; dest++) {
+    if (neighborBitSetHas(destAddresses, dest)) {
+      routingTableRemoveEntry(routingTable, dest);
+    }
+  }
+}
+
 static void computeRoutingTable() {
   /* Populate all known node currently in this network */
   Neighbor_Bit_Set_t allKnownNodes;
@@ -166,6 +174,9 @@ static void computeRoutingTable() {
       }
     }
   }
+
+  /* Remove all related route entries */
+  routingTableClear(&allKnownNodes);
 
   DEBUG_PRINT("%u has %u known neighbors = ", uwbGetAddress(), allKnownNodes.size);
   for (int neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++) {
@@ -252,24 +263,35 @@ static void computeRoutingTable() {
     }
   }
   #endif
-//  for (UWB_Address_t node = 0; node <= NEIGHBOR_ADDRESS_MAX; node++) {
-//    if (neighborBitSetHas(&allKnownNodes, node)) {
-//      UWB_Address_t cur = node;
-//      DEBUG_PRINT("%u", cur);
-//      // TODO: check
-//      while (prevHopOf[cur] != uwbGetAddress()) {
-//        DEBUG_PRINT("<-%u", prevHopOf[cur]);
-//        cur = prevHopOf[cur];
-//      }
-//      DEBUG_PRINT("<-%u \n", prevHopOf[cur]);
-//      // TODO: add route entry
-//    }
-//  }
   for (UWB_Address_t node = 0; node <= NEIGHBOR_ADDRESS_MAX; node++) {
     if (neighborBitSetHas(&allKnownNodes, node)) {
-      DEBUG_PRINT("prevHop of %u = %u.\n", node, prevHopOf[node]);
+      uint8_t hopCount = 1;
+      UWB_Address_t cur = node;
+      DEBUG_PRINT("%u", cur);
+      // TODO: check
+      while (cur != UWB_DEST_EMPTY && prevHopOf[cur] != UWB_DEST_EMPTY && prevHopOf[cur] != uwbGetAddress()) {
+        DEBUG_PRINT("<-%u", prevHopOf[cur]);
+        cur = prevHopOf[cur];
+        hopCount++;
+      }
+      DEBUG_PRINT("<-%u \n", prevHopOf[cur]);
+      // TODO: add route entry
+      if (prevHopOf[cur] != UWB_DEST_EMPTY) {
+        Route_Entry_t route = {
+            .valid = true,
+            .destAddress = node,
+            .nextHop = cur,
+            .hopCount = hopCount,
+            .expirationTime = xTaskGetTickCount() + M2T(ROUTING_TABLE_HOLD_TIME),
+            .destSeqNumber = 0,
+            .validDestSeqFlag = false,
+            .precursors = 0
+        };
+        routingTableAddEntry(routingTable, route);
+      }
     }
   }
+  printRoutingTable(routingTable);
 }
 
 static void olsrSendTc() {
@@ -400,7 +422,6 @@ static void olsrProcessTC(UWB_Address_t neighborAddress, OLSR_TC_Message_t *tcMs
     DEBUG_PRINT("olsrProcessTC: compute routing table.\n");
     printTopologySet(&topologySet);
     computeRoutingTable();
-    printRoutingTable(routingTable);
   }
 
   tcMsg->header.hopCount++;

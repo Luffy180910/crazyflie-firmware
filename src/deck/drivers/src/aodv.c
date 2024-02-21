@@ -686,8 +686,12 @@ void aodvRouteExpirationHook(UWB_Address_t *addresses, int count) {
   DEBUG_PRINT("aodvRouteExpirationHook\n");
   Unreachable_Dest_t unreachableList[count];
   for (int i = 0; i < count; i++) {
+    Route_Entry_t expired = routingTableFindEntry(routingTable, addresses[i]);
+    if (expired.destSeqNumber == 0 || !expired.validDestSeqFlag) {
+      continue;
+    }
     unreachableList[i].destAddress = addresses[i];
-    unreachableList[i].destSeqNumber = routingTableFindEntry(routingTable, addresses[i]).destSeqNumber;
+    unreachableList[i].destSeqNumber = expired.destSeqNumber;
   }
   aodvSendRERR(unreachableList, count);
 }
