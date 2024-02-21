@@ -698,18 +698,15 @@ void printRangingMessage(Ranging_Message_t *rangingMessage) {
   if (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t) == 0) {
     return;
   }
-  int body_unit_number = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
+  uint16_t body_unit_number = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
   if (body_unit_number >= RANGING_MAX_BODY_UNIT) {
-    DEBUG_PRINT("===printRangingMessage: wrong body unit number occurs===\n");
+    DEBUG_PRINT("printRangingMessage: malformed body unit number.\n");
     return;
   }
   for (int i = 0; i < body_unit_number; i++) {
-    DEBUG_PRINT("body_unit_address=%u, body_unit_seq=%u\n",
+    DEBUG_PRINT("unitAddress=%u, Seq=%u\n",
                 rangingMessage->bodyUnits[i].address,
                 rangingMessage->bodyUnits[i].timestamp.seqNumber);
-    DEBUG_PRINT("body_unit_timestamp=%2x%8lx\n",
-                rangingMessage->bodyUnits[i].timestamp.timestamp.high8,
-                rangingMessage->bodyUnits[i].timestamp.timestamp.low32);
   }
 }
 
@@ -1159,23 +1156,22 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
 
   /* Generate message body */
   for (int index = 0; index < rangingTableSet.size; index++) {
-    Ranging_Table_t *table = &rangingTableSet.tables[index];
     if (bodyUnitNumber >= RANGING_MAX_BODY_UNIT) {
       break;
     }
+    Ranging_Table_t *table = &rangingTableSet.tables[index];
     if (table->latestReceived.timestamp.full) {
       /* Only include timestamps with expected delivery time less or equal than current time. */
       if (table->nextExpectedDeliveryTime > curTime) {
         continue;
       }
-      table->nextExpectedDeliveryTime = curTime + table->period;
+      table->nextExpectedDeliveryTime = curTime + M2T(table->period);
       table->lastSendTime = curTime;
       rangingMessage->bodyUnits[bodyUnitNumber].address = table->neighborAddress;
       /* It is possible that latestReceived is not the newest timestamp, because the newest may be in rxQueue
        * waiting to be handled.
        */
       rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->latestReceived;
-      bodyUnitNumber++;
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16);
       rangingTableOnEvent(table, RANGING_EVENT_TX_Tf);
 
@@ -1195,6 +1191,8 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
         rangingMessage->bodyUnits[bodyUnitNumber].flags.MPR = false;
       }
       #endif
+
+      bodyUnitNumber++;
     }
   }
   /* Generate message header */
@@ -1208,7 +1206,11 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short) (velocity * 100);
-  printRangingMessage(rangingMessage);
+  DEBUG_PRINT("generateRangingMessage: ranging message size = %u with %u body units.\n", rangingMessage->header.msgLength, bodyUnitNumber);
+
+  /* Keeps ranging table in order to perform binary search */
+  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
+
   return taskDelay;
 }
 
@@ -1234,7 +1236,7 @@ static void uwbRangingTxTask(void *parameters) {
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
-//    printRangingTableSet(&rangingTableSet);
+    printRangingTableSet(&rangingTableSet);
 //    printNeighborSet(&neighborSet);
 
     xSemaphoreGive(neighborSet.mu);
