@@ -13,6 +13,7 @@
 #include "routing.h"
 #include "olsr.h"
 #include "timers.h"
+#include "static_mem.h"
 
 #ifndef RANGING_DEBUG_ENABLE
 #undef DEBUG_PRINT
@@ -27,7 +28,7 @@ static uint16_t MY_UWB_ADDRESS;
 static QueueHandle_t rxQueue;
 static Neighbor_Set_t neighborSet;
 static TimerHandle_t neighborSetEvictionTimer;
-static Ranging_Table_Set_t rangingTableSet;
+NO_DMA_CCM_SAFE_ZERO_INIT Ranging_Table_Set_t rangingTableSet;
 static TimerHandle_t rangingTableSetEvictionTimer;
 static UWB_Message_Listener_t listener;
 static TaskHandle_t uwbRangingTxTaskHandle = 0;
