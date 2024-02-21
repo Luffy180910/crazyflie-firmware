@@ -143,11 +143,15 @@ static void computeMPR() {
 }
 
 static void routingTableClear(Neighbor_Bit_Set_t *destAddresses) {
-  for (UWB_Address_t dest = 0; dest <= NEIGHBOR_ADDRESS_MAX; dest++) {
-    if (neighborBitSetHas(destAddresses, dest)) {
-      routingTableRemoveEntry(routingTable, dest);
+  int count = 0;
+  for (int i = 0; i < routingTable->size; i++) {
+    if (routingTable->entries[i].type == ROUTE_OLSR) {
+      routingTable->entries[i] = emptyRouteEntry();
+      count++;
     }
   }
+  routingTableSort(routingTable);
+  routingTable->size -= count;
 }
 
 static void computeRoutingTable() {
@@ -634,6 +638,7 @@ int topologySetClearExpire(Topology_Set_t *set) {
 
 static void topologySetClearExpireTimerCallback(TimerHandle_t timer) {
   xSemaphoreTake(olsrSetsMutex, portMAX_DELAY);
+  xSemaphoreTake(routingTable->mu, portMAX_DELAY);
 
   Time_t curTime = xTaskGetTickCount();
   DEBUG_PRINT("topologySetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
@@ -641,10 +646,12 @@ static void topologySetClearExpireTimerCallback(TimerHandle_t timer) {
   int evictionCount = topologySetClearExpire(&topologySet);
   if (evictionCount > 0) {
     DEBUG_PRINT("topologySetClearExpireTimerCallback: Evict total %d topology tuples.\n", evictionCount);
+    computeRoutingTable();
   } else {
     DEBUG_PRINT("topologySetClearExpireTimerCallback: Evict none.\n");
   }
 
+  xSemaphoreGive(routingTable->mu);
   xSemaphoreGive(olsrSetsMutex);
 }
 
