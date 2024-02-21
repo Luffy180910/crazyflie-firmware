@@ -169,8 +169,9 @@ void rangingTableInit(Ranging_Table_t *table, UWB_Address_t neighborAddress) {
   table->state = RANGING_STATE_S1;
   table->neighborAddress = neighborAddress;
   table->period = RANGING_PERIOD;
-  table->nextExpectedDeliveryTime = xTaskGetTickCount() + table->period;
-  table->expirationTime = xTaskGetTickCount() + M2T(RANGING_TABLE_HOLD_TIME);
+  table->nextExpectedDeliveryTime = 0;
+  table->expirationTime = 0;
+  table->lastSendTime = 0;
   rangingTableBufferInit(&table->TrRrBuffer); // Can be safely removed this line since memset() is called
 }
 
@@ -233,6 +234,16 @@ static int COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME(Ranging_Table_t *first, Rangin
     return 0;
   }
   if (first->nextExpectedDeliveryTime > second->nextExpectedDeliveryTime) {
+    return 1;
+  }
+  return -1;
+}
+
+static int COMPARE_BY_LAST_SEND_TIME(Ranging_Table_t *first, Ranging_Table_t *second) {
+  if (first->lastSendTime == second->lastSendTime) {
+    return 0;
+  }
+  if (first->lastSendTime > second->lastSendTime) {
     return 1;
   }
   return -1;
@@ -1091,6 +1102,46 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
   #endif
 }
 
+/* By default, we include each neighbor's latest rx timestamp to body unit in index order of ranging table, which
+ * may cause ranging starvation, i.e. node 1 has many one-hop neighbors [2, 3, 4, 5, 6, 7, 8, 9, ..., 30], since
+ * RANGING_MAX_BODY_UNIT < rangingTable.size, so each ranging message can only include a subset of it's one-hop
+ * neighbor.
+ * Say ranging table of node 1:
+ *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
+ *  id    2   7   5   3   8   11  15  6   16  17  23  24  25  26  4   18  ...
+ * Then it is possible that ranging message N send by this node behaves like below (RANGING_MAX_BODY_UNIT = 4):
+ *            ranging message 1: [2, 7, 5, 3]
+ *            ranging message 2: [2, 7, 5, 3]
+ *            ranging message 3: [2, 7, 5, 3]
+ *            ranging message 4: [2, 7, 5, 3]
+ *            ...
+ * While the expected behavior is:
+ *            ranging message 1: [2, 7, 5, 3]
+ *            ranging message 2: [8, 11, 15, 6]
+ *            ranging message 3: [16, 17, 23, 24]
+ *            ranging message 4: [25, 26, 4, 18]
+ *            ...
+ * This behavior is lead by the fact that everytime we want to populate a new ranging message, the ranging tables
+ * is traversed by index. If ENABLE_BUS_BOARDING_SCHEME, then the (table index, id) relationship is dynamically
+ * changed according to the nextExpectedDeliveryTime of each table entry, which bypasses this issue implicitly.
+ * Therefore, to solve this issue when BUS_BOARDING_SCHEME is not enabled, we should change the (table index, id)
+ * relationship after populating new ranging message in the approach below:
+ * Say the ranging tables of node 1:
+ *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
+ *  id    2   7   5   3   8   11  15  6   16  17  23  24  25  26  4   18  ...
+ *            ranging message 1: [2, 7, 5, 3]
+ * Then change the (index, id) relationship by moving the ranging table of included timestamp to last.
+ *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
+ *  id    11  15  6   16  17  23  24  25  26  4   18  2   7   5   3   8   ...
+ *            ranging message 2: [11, 15, 6, 16]
+ * Again:
+ *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
+ *  id    17  23  24  25  26  4   18  2   7   5   3   8   11  15  6   16  ...
+ *            ranging message 3: [17, 23, 24, 25]
+ * This makes the ranging table behaves like a cyclic array, the actual implementation have also considered the
+ * nextExpectedDeliveryTime (only include timestamp with expected next delivery time less or equal than current
+ * time) by sort the ranging table set by each timestamp's last send time.
+ */
 static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   int8_t bodyUnitNumber = 0;
   rangingSeqNumber++;
@@ -1101,58 +1152,23 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   Time_t taskDelay = M2T(RANGING_PERIOD);
   #ifdef ENABLE_BUS_BOARDING_SCHEME
   rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME);
+  #else
+  rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_LAST_SEND_TIME);
   #endif
+
   /* Generate message body */
   for (int index = 0; index < rangingTableSet.size; index++) {
-    /* By default, we include each neighbor's latest rx timestamp to body unit in index order of ranging table, which
-     * may cause ranging starvation, i.e. node 1 has many one-hop neighbors [2, 3, 4, 5, 6, 7, 8, 9, ..., 30], since
-     * RANGING_MAX_BODY_UNIT < rangingTable.size, so each ranging message can only include a subset of it's one-hop
-     * neighbor.
-     * Say ranging table of node 1:
-     *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
-     *  id    2   7   5   3   8   11  15  6   16  17  23  24  25  26  4   18  ...
-     * Then it is possible that ranging message N send by this node behaves like below (RANGING_MAX_BODY_UNIT = 4):
-     *            ranging message 1: [2, 7, 5, 3]
-     *            ranging message 2: [2, 7, 5, 3]
-     *            ranging message 3: [2, 7, 5, 3]
-     *            ranging message 4: [2, 7, 5, 3]
-     *            ...
-     * While the expected behavior is:
-     *            ranging message 1: [2, 7, 5, 3]
-     *            ranging message 2: [8, 11, 15, 6]
-     *            ranging message 3: [16, 17, 23, 24]
-     *            ranging message 4: [25, 26, 4, 18]
-     *            ...
-     * This behavior is lead by the fact that everytime we want to populate a new ranging message, the ranging table
-     * is traversed by index. If ENABLE_BUS_BOARDING_SCHEME, then the (index, id) pair is dynamically changed according
-     * to nextExpectedDeliveryTime of each table entry, which bypasses this issue implicitly.
-     * Therefore, to solve this issue when BUS_BOARDING_SCHEME is not enabled, we should change the (index, id)
-     * relationship after populating a new ranging message in the approach below:
-     * Say ranging table of node 1:
-     *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
-     *  id    2   7   5   3   8   11  15  6   16  17  23  24  25  26  4   18  ...
-     *            ranging message 1: [2, 7, 5, 3]
-     * Then change the (index, id) relation by moving the included timestamp to last.
-     *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
-     *  id    11  15  6   16  17  23  24  25  26  4   18  2   7   5   3   8   ...
-     *            ranging message 2: [11, 15, 6, 16]
-     * Again:
-     *  index 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  ...
-     *  id    17  23  24  25  26  4   18  2   7   5   3   8   11  15  6   16  ...
-     *            ranging message 3: [17, 23, 24, 25]
-     * This makes the ranging table behaves like a cyclic array, the actual implementation also have considered the
-     * nextExpectedDeliveryTime which makes the code a little bit complex to read.
-     */
     Ranging_Table_t *table = &rangingTableSet.tables[index];
     if (bodyUnitNumber >= RANGING_MAX_BODY_UNIT) {
       break;
     }
     if (table->latestReceived.timestamp.full) {
       /* Only include timestamps with expected delivery time less or equal than current time. */
-      if (curTime < table->nextExpectedDeliveryTime) {
+      if (table->nextExpectedDeliveryTime > curTime) {
         continue;
       }
       table->nextExpectedDeliveryTime = curTime + table->period;
+      table->lastSendTime = curTime;
       rangingMessage->bodyUnits[bodyUnitNumber].address = table->neighborAddress;
       /* It is possible that latestReceived is not the newest timestamp, because the newest may be in rxQueue
        * waiting to be handled.
