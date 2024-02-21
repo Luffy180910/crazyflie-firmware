@@ -58,6 +58,7 @@ static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .period = RANGING_PERIOD,
     .nextExpectedDeliveryTime = M2T(RANGING_PERIOD),
     .expirationTime = M2T(RANGING_TABLE_HOLD_TIME),
+    .lastSendTime = 0,
     .distance = -1
 };
 
@@ -609,9 +610,9 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
 
   /* Infer one-hop and tow-hop neighbors from received ranging message. */
   uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-//  DEBUG_PRINT("Body Uint with addr = ");
+  DEBUG_PRINT("Body Uint with addr = ");
   for (int i = 0; i < bodyUnitCount; i++) {
-//    DEBUG_PRINT("%u ", rangingMessage->bodyUnits[i].address);
+    DEBUG_PRINT("%u ", rangingMessage->bodyUnits[i].address);
     #ifdef ROUTING_OLSR_ENABLE
     if (rangingMessage->bodyUnits[i].address == uwbGetAddress()) {
       /* If been selected as MPR, add neighbor to mpr selector set. */
@@ -639,7 +640,7 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
       neighborSetUpdateExpirationTime(&neighborSet, twoHopNeighbor);
     }
   }
-//  DEBUG_PRINT("\n");
+  DEBUG_PRINT("\n");
 }
 
 static void neighborSetClearExpireTimerCallback(TimerHandle_t timer) {
@@ -1207,7 +1208,7 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
   rangingMessage->header.velocity = (short) (velocity * 100);
-  //  printRangingMessage(rangingMessage);
+  printRangingMessage(rangingMessage);
   return taskDelay;
 }
 
