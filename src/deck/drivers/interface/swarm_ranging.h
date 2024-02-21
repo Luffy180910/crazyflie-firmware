@@ -8,7 +8,7 @@
 #define RANGING_DEBUG_ENABLE
 
 /* Function Switch */
-//#define ENABLE_BUS_BOARDING_SCHEME
+#define ENABLE_BUS_BOARDING_SCHEME
 //#define ENABLE_DYNAMIC_RANGING_PERIOD
 #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
   #define DYNAMIC_RANGING_COEFFICIENT 1
@@ -27,7 +27,7 @@
 #define RANGING_MESSAGE_SIZE_MAX UWB_PAYLOAD_SIZE_MAX
 #define RANGING_MESSAGE_PAYLOAD_SIZE_MAX (RANGING_MESSAGE_SIZE_MAX - sizeof(Ranging_Message_Header_t))
 #define RANGING_MAX_Tr_UNIT 3
-#define RANGING_MAX_BODY_UNIT ((RANGING_MESSAGE_PAYLOAD_SIZE_MAX - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t))
+#define RANGING_MAX_BODY_UNIT (RANGING_MESSAGE_PAYLOAD_SIZE_MAX / sizeof(Body_Unit_t))
 #define RANGING_TABLE_SIZE_MAX 10 // default up to 10 one-hop neighbors
 #define RANGING_TABLE_HOLD_TIME (6 * RANGING_PERIOD_MAX)
 #define Tr_Rr_BUFFER_POOL_SIZE 3
@@ -63,7 +63,7 @@ typedef struct {
   short velocity; // 2 byte cm/s
   uint16_t msgLength; // 2 byte
   uint16_t filter; // 16 bits bloom filter
-} __attribute__((packed)) Ranging_Message_Header_t; // 20 byte
+} __attribute__((packed)) Ranging_Message_Header_t; // 10 byte + 10 byte * MAX_Tr_UNIT
 
 /* Ranging Message */
 typedef struct {

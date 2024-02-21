@@ -443,14 +443,14 @@ void neighborSetAddOneHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAdd
   if (!neighborSetHas(set, neighborAddress)) {
     isNewNeighbor = true;
   }
-  if (!neighborBitSetHas(&set->oneHop, neighborAddress)) {
-    /* Add one-hop neighbor. */
+  /* If neighbor is previous two-hop neighbor, remove it from two-hop neighbor set. */
+  if (neighborSetHasTwoHop(set, neighborAddress)) {
+    neighborSetRemoveNeighbor(set, neighborAddress);
+  }
+  /* Add one-hop neighbor. */
+  if (!neighborSetHasOneHop(set, neighborAddress)) {
     neighborBitSetAdd(&set->oneHop, neighborAddress);
     neighborSetUpdateExpirationTime(set, neighborAddress);
-    /* If neighbor is previous two-hop neighbor, remove it from two-hop neighbor set. */
-    if (neighborBitSetHas(&set->twoHop, neighborAddress)) {
-      neighborBitSetRemove(&set->twoHop, neighborAddress);
-    }
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, neighborAddress);
   }
   set->size = set->oneHop.size + set->twoHop.size;
@@ -465,14 +465,14 @@ void neighborSetAddTwoHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAdd
   if (!neighborSetHas(set, neighborAddress)) {
     isNewNeighbor = true;
   }
+  /* If neighbor is previous one-hop neighbor, remove it from one-hop neighbor set. */
+  if (neighborSetHasOneHop(set, neighborAddress)) {
+    neighborSetRemoveNeighbor(set, neighborAddress);
+  }
   if (!neighborBitSetHas(&set->twoHop, neighborAddress)) {
     /* Add two-hop neighbor. */
     neighborBitSetAdd(&set->twoHop, neighborAddress);
     neighborSetUpdateExpirationTime(set, neighborAddress);
-    /* If neighbor is previous one-hop neighbor, remove it from one-hop neighbor set. */
-    if (neighborBitSetHas(&set->oneHop, neighborAddress)) {
-      neighborBitSetRemove(&set->oneHop, neighborAddress);
-    }
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, neighborAddress);
   }
   set->size = set->oneHop.size + set->twoHop.size;
@@ -484,11 +484,11 @@ void neighborSetAddTwoHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAdd
 void neighborSetRemoveNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   if (neighborSetHas(set, neighborAddress)) {
-    if (neighborBitSetHas(&set->oneHop, neighborAddress) && neighborBitSetHas(&set->twoHop, neighborAddress)) {
+    if (neighborSetHasOneHop(set, neighborAddress) && neighborSetHasTwoHop(set, neighborAddress)) {
       ASSERT(0); // impossible
     }
     set->expirationTime[neighborAddress] = 0;
-    if (neighborBitSetHas(&set->oneHop, neighborAddress)) {
+    if (neighborSetHasOneHop(set, neighborAddress)) {
       neighborBitSetRemove(&set->oneHop, neighborAddress);
       /* Remove related path to two-hop neighbor */
       for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++) {
@@ -496,7 +496,7 @@ void neighborSetRemoveNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddres
           neighborSetRemoveRelation(set, neighborAddress, twoHopNeighbor);
         }
       }
-    } else if (neighborBitSetHas(&set->twoHop, neighborAddress)) {
+    } else if (neighborSetHasTwoHop(set, neighborAddress)) {
       neighborBitSetRemove(&set->twoHop, neighborAddress);
       /* Clear related two-hop reach set */
       neighborBitSetClear(&set->twoHopReachSets[neighborAddress]);
@@ -588,6 +588,7 @@ int neighborSetClearExpire(Neighbor_Set_t *set) {
 }
 
 static void topologySensing(Ranging_Message_t *rangingMessage) {
+  DEBUG_PRINT("topologySensing: Received ranging message from neighbor %u.\n", rangingMessage->header.srcAddress);
   UWB_Address_t neighborAddress = rangingMessage->header.srcAddress;
   if (!neighborSetHasOneHop(&neighborSet, neighborAddress)) {
     /* Add current neighbor to one-hop neighbor set. */
@@ -597,7 +598,9 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
 
   /* Infer one-hop and tow-hop neighbors from received ranging message. */
   uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
+//  DEBUG_PRINT("Body Uint with addr = ");
   for (int i = 0; i < bodyUnitCount; i++) {
+//    DEBUG_PRINT("%u ", rangingMessage->bodyUnits[i].address);
     #ifdef ROUTING_OLSR_ENABLE
     if (rangingMessage->bodyUnits[i].address == uwbGetAddress()) {
       /* If been selected as MPR, add neighbor to mpr selector set. */
@@ -618,7 +621,6 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
       /* If it is not one-hop neighbor then it is now my two-hop neighbor, if new add it to neighbor set. */
       if (!neighborSetHasTwoHop(&neighborSet, twoHopNeighbor)) {
         neighborSetAddTwoHopNeighbor(&neighborSet, twoHopNeighbor);
-        neighborSetAddRelation(&neighborSet, neighborAddress, twoHopNeighbor);
       }
       if (!neighborSetHasRelation(&neighborSet, neighborAddress, twoHopNeighbor)) {
         neighborSetAddRelation(&neighborSet, neighborAddress, twoHopNeighbor);
@@ -626,6 +628,7 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
       neighborSetUpdateExpirationTime(&neighborSet, twoHopNeighbor);
     }
   }
+//  DEBUG_PRINT("\n");
 }
 
 static void neighborSetClearExpireTimerCallback(TimerHandle_t timer) {
