@@ -60,12 +60,11 @@ static Ranging_Table_t EMPTY_RANGING_TABLE = {
     .nextExpectedDeliveryTime = M2T(RANGING_PERIOD),
     .expirationTime = M2T(RANGING_TABLE_HOLD_TIME),
     .lastSendTime = 0,
-    .distance = -1
-};
+    .distance = -1};
 
 int16_t distanceTowards[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MAX] = -1};
 
-#ifdef ENABLE_RANGING_STAT
+// #ifdef ENABLE_RANGING_STAT
 float statLossRateF = 0.0f;
 uint32_t statTotalSendCount = 0;
 uint32_t statTotalRecvCount = 0;
@@ -81,9 +80,13 @@ uint16_t statLastRecvSeq[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MA
 double statLossRate[NEIGHBOR_ADDRESS_MAX + 1] = {[0 ... NEIGHBOR_ADDRESS_MAX] = 0.0};
 uint32_t statTotalLossCount = 0;
 double statTotalLossRate = 0.0;
-#endif
+// #endif
 
-static void printRangingStat() {
+uint16_t slotTime = 5;
+uint16_t slotSupportNum = 10;
+
+static void printRangingStat()
+{
   DEBUG_PRINT("totalSend\t totalRecv\t totalLossRate\t RangingCount\t RangingSuccess\t\n");
   DEBUG_PRINT("%lu\t %lu\t %f\t %lu\t %lu\t\n",
               statTotalSendCount,
@@ -93,7 +96,8 @@ static void printRangingStat() {
               statTotalRangingSuccessCount);
 }
 
-static void printNeighborStat(UWB_Address_t neighborAddress) {
+static void printNeighborStat(UWB_Address_t neighborAddress)
+{
   DEBUG_PRINT("send\t recv\t lossRate\t RC\t RS\t of neighbor %u\n", neighborAddress);
   DEBUG_PRINT("%lu\t %lu\t %f\t %lu\t %lu\t\n",
               statSendCount[neighborAddress],
@@ -103,20 +107,24 @@ static void printNeighborStat(UWB_Address_t neighborAddress) {
               statRangingSuccessCount[neighborAddress]);
 }
 
-static void statUpdateTX(Ranging_Message_t *rangingMessage) {
+static void statUpdateTX(Ranging_Message_t *rangingMessage)
+{
   statTotalSendCount++;
   uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-  for (int i = 0; i < bodyUnitCount; i++) {
+  for (int i = 0; i < bodyUnitCount; i++)
+  {
     UWB_Address_t neighborAddress = rangingMessage->bodyUnits[i].address;
     statSendCount[neighborAddress]++;
   }
-//  printRangingStat();
+  //  printRangingStat();
 }
 
-static void statUpdateRX(Ranging_Message_t *rangingMessage) {
+static void statUpdateRX(Ranging_Message_t *rangingMessage)
+{
   statTotalRecvCount++;
   UWB_Address_t neighborAddress = rangingMessage->header.srcAddress;
-  if (statLastRecvSeq[neighborAddress] >= rangingMessage->header.msgSequence || statFirstRecvSeq[neighborAddress] == 0) {
+  if (statLastRecvSeq[neighborAddress] >= rangingMessage->header.msgSequence || statFirstRecvSeq[neighborAddress] == 0)
+  {
     /* Sequence number wrap-around or this neighbor just have restarted, reset corresponding stat */
     statRecvCount[neighborAddress] = 1;
     statSendCount[neighborAddress] = 0;
@@ -136,25 +144,29 @@ static void statUpdateRX(Ranging_Message_t *rangingMessage) {
   statLossRate[neighborAddress] =
       statLossCount[neighborAddress] * 1.0 / (statLastRecvSeq[neighborAddress] - statFirstRecvSeq[neighborAddress] + 1);
   statTotalLossRate = statTotalLossCount * 1.0 / statTotalRecvCount;
-  statLossRateF = (float) statTotalLossRate;
+  statLossRateF = (float)statTotalLossRate;
   printNeighborStat(rangingMessage->header.srcAddress);
 }
 
-int16_t getDistance(UWB_Address_t neighborAddress) {
+int16_t getDistance(UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   return distanceTowards[neighborAddress];
 }
 
-void setDistance(UWB_Address_t neighborAddress, int16_t distance) {
+void setDistance(UWB_Address_t neighborAddress, int16_t distance)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   distanceTowards[neighborAddress] = distance;
 }
 
-void rangingTableBufferInit(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer) {
+void rangingTableBufferInit(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer)
+{
   rangingTableBuffer->cur = 0;
   rangingTableBuffer->latest = 0;
   Timestamp_Tuple_t empty = {.seqNumber = 0, .timestamp.full = 0};
-  for (set_index_t i = 0; i < Tr_Rr_BUFFER_POOL_SIZE; i++) {
+  for (set_index_t i = 0; i < Tr_Rr_BUFFER_POOL_SIZE; i++)
+  {
     rangingTableBuffer->candidates[i].Tr = empty;
     rangingTableBuffer->candidates[i].Rr = empty;
   }
@@ -162,7 +174,8 @@ void rangingTableBufferInit(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer) {
 
 void rangingTableBufferUpdate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
                               Timestamp_Tuple_t Tr,
-                              Timestamp_Tuple_t Rr) {
+                              Timestamp_Tuple_t Rr)
+{
   rangingTableBuffer->candidates[rangingTableBuffer->cur].Tr = Tr;
   rangingTableBuffer->candidates[rangingTableBuffer->cur].Rr = Rr;
   // shift
@@ -171,14 +184,17 @@ void rangingTableBufferUpdate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
 }
 
 Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_Rr_Buffer_t *rangingTableBuffer,
-                                                               Timestamp_Tuple_t Tf) {
+                                                               Timestamp_Tuple_t Tf)
+{
   set_index_t index = rangingTableBuffer->latest;
   uint64_t rightBound = Tf.timestamp.full % UWB_MAX_TIMESTAMP;
   Ranging_Table_Tr_Rr_Candidate_t candidate = {.Rr.timestamp.full = 0, .Tr.timestamp.full = 0};
 
-  for (int count = 0; count < Tr_Rr_BUFFER_POOL_SIZE; count++) {
+  for (int count = 0; count < Tr_Rr_BUFFER_POOL_SIZE; count++)
+  {
     if (rangingTableBuffer->candidates[index].Rr.timestamp.full &&
-        rangingTableBuffer->candidates[index].Rr.timestamp.full % UWB_MAX_TIMESTAMP < rightBound) {
+        rangingTableBuffer->candidates[index].Rr.timestamp.full % UWB_MAX_TIMESTAMP < rightBound)
+    {
       candidate.Tr = rangingTableBuffer->candidates[index].Tr;
       candidate.Rr = rangingTableBuffer->candidates[index].Rr;
       break;
@@ -189,30 +205,37 @@ Ranging_Table_Tr_Rr_Candidate_t rangingTableBufferGetCandidate(Ranging_Table_Tr_
   return candidate;
 }
 
-void updateTfBuffer(Timestamp_Tuple_t timestamp) {
+void updateTfBuffer(Timestamp_Tuple_t timestamp)
+{
   xSemaphoreTake(TfBufferMutex, portMAX_DELAY);
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex] = timestamp;
-//  DEBUG_PRINT("updateTfBuffer: time = %llu, seq = %d\n", TfBuffer[TfBufferIndex].timestamp.full, TfBuffer[TfBufferIndex].seqNumber);
+  //  DEBUG_PRINT("updateTfBuffer: time = %llu, seq = %d\n", TfBuffer[TfBufferIndex].timestamp.full, TfBuffer[TfBufferIndex].seqNumber);
   xSemaphoreGive(TfBufferMutex);
 }
 
-Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
+Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber)
+{
   xSemaphoreTake(TfBufferMutex, portMAX_DELAY);
   Timestamp_Tuple_t Tf = {.timestamp.full = 0, .seqNumber = 0};
   int startIndex = TfBufferIndex;
   /* Backward search */
-  for (int i = startIndex; i >= 0; i--) {
-    if (TfBuffer[i].seqNumber == seqNumber) {
+  for (int i = startIndex; i >= 0; i--)
+  {
+    if (TfBuffer[i].seqNumber == seqNumber)
+    {
       Tf = TfBuffer[i];
       break;
     }
   }
-  if (!Tf.timestamp.full) {
+  if (!Tf.timestamp.full)
+  {
     /* Forward search */
-    for (int i = startIndex + 1; i < Tf_BUFFER_POOL_SIZE; i++) {
-      if (TfBuffer[i].seqNumber == seqNumber) {
+    for (int i = startIndex + 1; i < Tf_BUFFER_POOL_SIZE; i++)
+    {
+      if (TfBuffer[i].seqNumber == seqNumber)
+      {
         Tf = TfBuffer[i];
         break;
       }
@@ -222,26 +245,31 @@ Timestamp_Tuple_t findTfBySeqNumber(uint16_t seqNumber) {
   return Tf;
 }
 
-Timestamp_Tuple_t getLatestTxTimestamp() {
+Timestamp_Tuple_t getLatestTxTimestamp()
+{
   return TfBuffer[TfBufferIndex];
 }
 
-void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n) {
+void getLatestNTxTimestamps(Timestamp_Tuple_t *timestamps, int n)
+{
   ASSERT(n <= Tf_BUFFER_POOL_SIZE);
   xSemaphoreTake(TfBufferMutex, portMAX_DELAY);
   int startIndex = (TfBufferIndex + 1 - n + Tf_BUFFER_POOL_SIZE) % Tf_BUFFER_POOL_SIZE;
-  for (int i = n - 1; i >= 0; i--) {
+  for (int i = n - 1; i >= 0; i--)
+  {
     timestamps[i] = TfBuffer[startIndex];
     startIndex = (startIndex + 1) % Tf_BUFFER_POOL_SIZE;
   }
   xSemaphoreGive(TfBufferMutex);
 }
 
-Ranging_Table_Set_t *getGlobalRangingTableSet() {
+Ranging_Table_Set_t *getGlobalRangingTableSet()
+{
   return &rangingTableSet;
 }
 
-void rangingTableInit(Ranging_Table_t *table, UWB_Address_t neighborAddress) {
+void rangingTableInit(Ranging_Table_t *table, UWB_Address_t neighborAddress)
+{
   memset(table, 0, sizeof(Ranging_Table_t));
   table->state = RANGING_STATE_S1;
   table->neighborAddress = neighborAddress;
@@ -253,31 +281,41 @@ void rangingTableInit(Ranging_Table_t *table, UWB_Address_t neighborAddress) {
 }
 
 /* Ranging Table Set Operations */
-void rangingTableSetInit(Ranging_Table_Set_t *set) {
+void rangingTableSetInit(Ranging_Table_Set_t *set)
+{
   set->mu = xSemaphoreCreateMutex();
   set->size = 0;
-  for (int i = 0; i < RANGING_TABLE_SIZE_MAX; i++) {
+  for (int i = 0; i < RANGING_TABLE_SIZE_MAX; i++)
+  {
     set->tables[i] = EMPTY_RANGING_TABLE;
   }
 }
 
-static void rangingTableSetSwapTable(Ranging_Table_Set_t *set, int first, int second) {
+static void rangingTableSetSwapTable(Ranging_Table_Set_t *set, int first, int second)
+{
   Ranging_Table_t temp = set->tables[first];
   set->tables[first] = set->tables[second];
   set->tables[second] = temp;
 }
 
-static int rangingTableSetSearchTable(Ranging_Table_Set_t *set, UWB_Address_t targetAddress) {
+static int rangingTableSetSearchTable(Ranging_Table_Set_t *set, UWB_Address_t targetAddress)
+{
   /* Binary Search */
   int left = -1, right = set->size, res = -1;
-  while (left + 1 != right) {
+  while (left + 1 != right)
+  {
     int mid = left + (right - left) / 2;
-    if (set->tables[mid].neighborAddress == targetAddress) {
+    if (set->tables[mid].neighborAddress == targetAddress)
+    {
       res = mid;
       break;
-    } else if (set->tables[mid].neighborAddress > targetAddress) {
+    }
+    else if (set->tables[mid].neighborAddress > targetAddress)
+    {
       right = mid;
-    } else {
+    }
+    else
+    {
       left = mid;
     }
   }
@@ -286,81 +324,103 @@ static int rangingTableSetSearchTable(Ranging_Table_Set_t *set, UWB_Address_t ta
 
 typedef int (*rangingTableCompareFunc)(Ranging_Table_t *, Ranging_Table_t *);
 
-static int COMPARE_BY_ADDRESS(Ranging_Table_t *first, Ranging_Table_t *second) {
-  if (first->neighborAddress == second->neighborAddress) {
+static int COMPARE_BY_ADDRESS(Ranging_Table_t *first, Ranging_Table_t *second)
+{
+  if (first->neighborAddress == second->neighborAddress)
+  {
     return 0;
   }
-  if (first->neighborAddress > second->neighborAddress) {
+  if (first->neighborAddress > second->neighborAddress)
+  {
     return 1;
   }
   return -1;
 }
 
-static int COMPARE_BY_EXPIRATION_TIME(Ranging_Table_t *first, Ranging_Table_t *second) {
-  if (first->expirationTime == second->expirationTime) {
+static int COMPARE_BY_EXPIRATION_TIME(Ranging_Table_t *first, Ranging_Table_t *second)
+{
+  if (first->expirationTime == second->expirationTime)
+  {
     return 0;
   }
-  if (first->expirationTime > second->expirationTime) {
+  if (first->expirationTime > second->expirationTime)
+  {
     return -1;
   }
   return 1;
 }
 
-static int COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME(Ranging_Table_t *first, Ranging_Table_t *second) {
-  if (first->nextExpectedDeliveryTime == second->nextExpectedDeliveryTime) {
+static int COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME(Ranging_Table_t *first, Ranging_Table_t *second)
+{
+  if (first->nextExpectedDeliveryTime == second->nextExpectedDeliveryTime)
+  {
     return 0;
   }
-  if (first->nextExpectedDeliveryTime > second->nextExpectedDeliveryTime) {
+  if (first->nextExpectedDeliveryTime > second->nextExpectedDeliveryTime)
+  {
     return 1;
   }
   return -1;
 }
 
-static int COMPARE_BY_LAST_SEND_TIME(Ranging_Table_t *first, Ranging_Table_t *second) {
-  if (first->lastSendTime == second->lastSendTime) {
+static int COMPARE_BY_LAST_SEND_TIME(Ranging_Table_t *first, Ranging_Table_t *second)
+{
+  if (first->lastSendTime == second->lastSendTime)
+  {
     return 0;
   }
-  if (first->lastSendTime > second->lastSendTime) {
+  if (first->lastSendTime > second->lastSendTime)
+  {
     return 1;
   }
   return -1;
 }
 
 /* Build the heap */
-static void rangingTableSetArrange(Ranging_Table_Set_t *set, int index, int len, rangingTableCompareFunc compare) {
+static void rangingTableSetArrange(Ranging_Table_Set_t *set, int index, int len, rangingTableCompareFunc compare)
+{
   int leftChild = 2 * index + 1;
   int rightChild = 2 * index + 2;
   int maxIndex = index;
-  if (leftChild < len && compare(&set->tables[maxIndex], &set->tables[leftChild]) < 0) {
+  if (leftChild < len && compare(&set->tables[maxIndex], &set->tables[leftChild]) < 0)
+  {
     maxIndex = leftChild;
   }
-  if (rightChild < len && compare(&set->tables[maxIndex], &set->tables[rightChild]) < 0) {
+  if (rightChild < len && compare(&set->tables[maxIndex], &set->tables[rightChild]) < 0)
+  {
     maxIndex = rightChild;
   }
-  if (maxIndex != index) {
+  if (maxIndex != index)
+  {
     rangingTableSetSwapTable(set, index, maxIndex);
     rangingTableSetArrange(set, maxIndex, len, compare);
   }
 }
 
 /* Sort the ranging table */
-static void rangingTableSetRearrange(Ranging_Table_Set_t *set, rangingTableCompareFunc compare) {
+static void rangingTableSetRearrange(Ranging_Table_Set_t *set, rangingTableCompareFunc compare)
+{
   /* Build max heap */
-  for (int i = set->size / 2 - 1; i >= 0; i--) {
+  for (int i = set->size / 2 - 1; i >= 0; i--)
+  {
     rangingTableSetArrange(set, i, set->size, compare);
   }
-  for (int i = set->size - 1; i >= 0; i--) {
+  for (int i = set->size - 1; i >= 0; i--)
+  {
     rangingTableSetSwapTable(set, 0, i);
     rangingTableSetArrange(set, 0, i, compare);
   }
 }
 
-static int rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
+static int rangingTableSetClearExpire(Ranging_Table_Set_t *set)
+{
   Time_t curTime = xTaskGetTickCount();
   int evictionCount = 0;
 
-  for (int i = 0; i < rangingTableSet.size; i++) {
-    if (rangingTableSet.tables[i].expirationTime <= curTime) {
+  for (int i = 0; i < rangingTableSet.size; i++)
+  {
+    if (rangingTableSet.tables[i].expirationTime <= curTime)
+    {
       DEBUG_PRINT("rangingTableSetClearExpire: Clean ranging table for neighbor %u that expire at %lu.\n",
                   rangingTableSet.tables[i].neighborAddress,
                   rangingTableSet.tables[i].expirationTime);
@@ -376,25 +436,31 @@ static int rangingTableSetClearExpire(Ranging_Table_Set_t *set) {
   return evictionCount;
 }
 
-static void rangingTableSetClearExpireTimerCallback(TimerHandle_t timer) {
+static void rangingTableSetClearExpireTimerCallback(TimerHandle_t timer)
+{
   xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
 
   Time_t curTime = xTaskGetTickCount();
   DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
 
   int evictionCount = rangingTableSetClearExpire(&rangingTableSet);
-  if (evictionCount > 0) {
+  if (evictionCount > 0)
+  {
     DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict total %d ranging tables.\n", evictionCount);
-  } else {
+  }
+  else
+  {
     DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict none.\n");
   }
 
   xSemaphoreGive(rangingTableSet.mu);
 }
 
-bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
+bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table)
+{
   int index = rangingTableSetSearchTable(set, table.neighborAddress);
-  if (index != -1) {
+  if (index != -1)
+  {
     DEBUG_PRINT(
         "rangingTableSetAddTable: Try to add an already added ranging table for neighbor %u, update it instead.\n",
         table.neighborAddress);
@@ -402,7 +468,8 @@ bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
     return true;
   }
   /* If ranging table is full now and there is no expired ranging table, then ignore. */
-  if (set->size == RANGING_TABLE_SIZE_MAX && rangingTableSetClearExpire(&rangingTableSet) == 0) {
+  if (set->size == RANGING_TABLE_SIZE_MAX && rangingTableSetClearExpire(&rangingTableSet) == 0)
+  {
     DEBUG_PRINT("rangingTableSetAddTable: Ranging table if full, ignore new neighbor %u.\n",
                 table.neighborAddress);
     return false;
@@ -417,25 +484,32 @@ bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
   return true;
 }
 
-void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table) {
+void rangingTableSetUpdateTable(Ranging_Table_Set_t *set, Ranging_Table_t table)
+{
   int index = rangingTableSetSearchTable(set, table.neighborAddress);
-  if (index == -1) {
+  if (index == -1)
+  {
     DEBUG_PRINT("rangingTableSetUpdateTable: Cannot find correspond table for neighbor %u, add it instead.\n",
                 table.neighborAddress);
     rangingTableSetAddTable(set, table);
-  } else {
+  }
+  else
+  {
     set->tables[index] = table;
     DEBUG_PRINT("rangingTableSetUpdateTable: Update table for neighbor %u.\n", table.neighborAddress);
   }
 }
 
-void rangingTableSetRemoveTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress) {
-  if (set->size == 0) {
+void rangingTableSetRemoveTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress)
+{
+  if (set->size == 0)
+  {
     DEBUG_PRINT("rangingTableSetRemoveTable: Ranging table is empty, ignore.\n");
     return;
   }
   int index = rangingTableSetSearchTable(set, neighborAddress);
-  if (index == -1) {
+  if (index == -1)
+  {
     DEBUG_PRINT("rangingTableSetRemoveTable: Cannot find correspond table for neighbor %u, ignore.\n", neighborAddress);
     return;
   }
@@ -445,55 +519,68 @@ void rangingTableSetRemoveTable(Ranging_Table_Set_t *set, UWB_Address_t neighbor
   rangingTableSetRearrange(set, COMPARE_BY_ADDRESS);
 }
 
-Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress) {
+Ranging_Table_t rangingTableSetFindTable(Ranging_Table_Set_t *set, UWB_Address_t neighborAddress)
+{
   int index = rangingTableSetSearchTable(set, neighborAddress);
   Ranging_Table_t table = EMPTY_RANGING_TABLE;
-  if (index == -1) {
+  if (index == -1)
+  {
     DEBUG_PRINT("rangingTableSetFindTable: Cannot find correspond table for neighbor %u.\n", neighborAddress);
-  } else {
+  }
+  else
+  {
     table = set->tables[index];
   }
   return table;
 }
 
-void neighborBitSetInit(Neighbor_Bit_Set_t *bitSet) {
+void neighborBitSetInit(Neighbor_Bit_Set_t *bitSet)
+{
   bitSet->bits = 0;
   bitSet->size = 0;
 }
 
-void neighborBitSetAdd(Neighbor_Bit_Set_t *bitSet, UWB_Address_t neighborAddress) {
+void neighborBitSetAdd(Neighbor_Bit_Set_t *bitSet, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   uint64_t prevBits = bitSet->bits;
   bitSet->bits |= (1ULL << neighborAddress);
-  if (prevBits != bitSet->bits) {
+  if (prevBits != bitSet->bits)
+  {
     bitSet->size++;
   }
 }
 
-void neighborBitSetRemove(Neighbor_Bit_Set_t *bitSet, UWB_Address_t neighborAddress) {
+void neighborBitSetRemove(Neighbor_Bit_Set_t *bitSet, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   uint64_t prevBits = bitSet->bits;
   bitSet->bits &= ~(1ULL << neighborAddress);
-  if (prevBits != bitSet->bits) {
+  if (prevBits != bitSet->bits)
+  {
     bitSet->size--;
   }
 }
 
-void neighborBitSetClear(Neighbor_Bit_Set_t *bitSet) {
+void neighborBitSetClear(Neighbor_Bit_Set_t *bitSet)
+{
   bitSet->bits = 0;
   bitSet->size = 0;
 }
 
-bool neighborBitSetHas(Neighbor_Bit_Set_t *bitSet, UWB_Address_t neighborAddress) {
+bool neighborBitSetHas(Neighbor_Bit_Set_t *bitSet, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   return (bitSet->bits & (1ULL << neighborAddress)) != 0;
 }
 
-Neighbor_Set_t *getGlobalNeighborSet() {
+Neighbor_Set_t *getGlobalNeighborSet()
+{
   return &neighborSet;
 }
 
-void neighborSetInit(Neighbor_Set_t *set) {
+void neighborSetInit(Neighbor_Set_t *set)
+{
   set->size = 0;
   set->mu = xSemaphoreCreateMutex();
   neighborBitSetInit(&set->oneHop);
@@ -504,91 +591,115 @@ void neighborSetInit(Neighbor_Set_t *set) {
   set->neighborExpirationHooks.next = NULL;
   set->neighborTopologyChangeHooks.hook = NULL;
   set->neighborTopologyChangeHooks.next = NULL;
-  for (UWB_Address_t neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++) {
+  for (UWB_Address_t neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++)
+  {
     set->expirationTime[neighborAddress] = 0;
     neighborBitSetInit(&set->twoHopReachSets[neighborAddress]);
   }
 }
 
-bool neighborSetHas(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+bool neighborSetHas(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   return neighborBitSetHas(&set->oneHop, neighborAddress) || neighborBitSetHas(&set->twoHop, neighborAddress);
 }
 
-bool neighborSetHasOneHop(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+bool neighborSetHasOneHop(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   return neighborBitSetHas(&set->oneHop, neighborAddress);
 }
 
-bool neighborSetHasTwoHop(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+bool neighborSetHasTwoHop(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   return neighborBitSetHas(&set->twoHop, neighborAddress);
 }
 
-void neighborSetAddOneHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+void neighborSetAddOneHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   bool isNewNeighbor = false;
-  if (!neighborSetHas(set, neighborAddress)) {
+  if (!neighborSetHas(set, neighborAddress))
+  {
     isNewNeighbor = true;
   }
   /* If neighbor is previous two-hop neighbor, remove it from two-hop neighbor set. */
-  if (neighborSetHasTwoHop(set, neighborAddress)) {
+  if (neighborSetHasTwoHop(set, neighborAddress))
+  {
     neighborSetRemoveNeighbor(set, neighborAddress);
   }
   /* Add one-hop neighbor. */
-  if (!neighborSetHasOneHop(set, neighborAddress)) {
+  if (!neighborSetHasOneHop(set, neighborAddress))
+  {
     neighborBitSetAdd(&set->oneHop, neighborAddress);
     neighborSetUpdateExpirationTime(set, neighborAddress);
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, neighborAddress);
   }
   set->size = set->oneHop.size + set->twoHop.size;
-  if (isNewNeighbor) {
+  if (isNewNeighbor)
+  {
     neighborSetHooksInvoke(&set->neighborNewHooks, neighborAddress);
   }
 }
 
-void neighborSetAddTwoHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+void neighborSetAddTwoHopNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   bool isNewNeighbor = false;
-  if (!neighborSetHas(set, neighborAddress)) {
+  if (!neighborSetHas(set, neighborAddress))
+  {
     isNewNeighbor = true;
   }
   /* If neighbor is previous one-hop neighbor, remove it from one-hop neighbor set. */
-  if (neighborSetHasOneHop(set, neighborAddress)) {
+  if (neighborSetHasOneHop(set, neighborAddress))
+  {
     neighborSetRemoveNeighbor(set, neighborAddress);
   }
-  if (!neighborSetHasTwoHop(set, neighborAddress)) {
+  if (!neighborSetHasTwoHop(set, neighborAddress))
+  {
     /* Add two-hop neighbor. */
     neighborBitSetAdd(&set->twoHop, neighborAddress);
     neighborSetUpdateExpirationTime(set, neighborAddress);
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, neighborAddress);
   }
   set->size = set->oneHop.size + set->twoHop.size;
-  if (isNewNeighbor) {
+  if (isNewNeighbor)
+  {
     neighborSetHooksInvoke(&set->neighborNewHooks, neighborAddress);
   }
 }
 
-void neighborSetRemoveNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+void neighborSetRemoveNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
-  if (neighborSetHas(set, neighborAddress)) {
-    if (neighborSetHasOneHop(set, neighborAddress) && neighborSetHasTwoHop(set, neighborAddress)) {
+  if (neighborSetHas(set, neighborAddress))
+  {
+    if (neighborSetHasOneHop(set, neighborAddress) && neighborSetHasTwoHop(set, neighborAddress))
+    {
       ASSERT(0); // impossible
     }
     set->expirationTime[neighborAddress] = 0;
-    if (neighborSetHasOneHop(set, neighborAddress)) {
+    if (neighborSetHasOneHop(set, neighborAddress))
+    {
       neighborBitSetRemove(&set->oneHop, neighborAddress);
       /* Remove related path to two-hop neighbor */
-      for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++) {
-        if (neighborSetHasRelation(set, neighborAddress, twoHopNeighbor)) {
+      for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++)
+      {
+        if (neighborSetHasRelation(set, neighborAddress, twoHopNeighbor))
+        {
           neighborSetRemoveRelation(set, neighborAddress, twoHopNeighbor);
         }
       }
-    } else if (neighborSetHasTwoHop(set, neighborAddress)) {
+    }
+    else if (neighborSetHasTwoHop(set, neighborAddress))
+    {
       neighborBitSetRemove(&set->twoHop, neighborAddress);
       /* Clear related two-hop reach set */
       neighborBitSetClear(&set->twoHopReachSets[neighborAddress]);
-    } else {
+    }
+    else
+    {
       ASSERT(0); // impossible
     }
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, neighborAddress);
@@ -596,76 +707,87 @@ void neighborSetRemoveNeighbor(Neighbor_Set_t *set, UWB_Address_t neighborAddres
   set->size = set->oneHop.size + set->twoHop.size;
 }
 
-bool neighborSetHasRelation(Neighbor_Set_t *set, UWB_Address_t from, UWB_Address_t to) {
+bool neighborSetHasRelation(Neighbor_Set_t *set, UWB_Address_t from, UWB_Address_t to)
+{
   ASSERT(from <= NEIGHBOR_ADDRESS_MAX);
   ASSERT(to <= NEIGHBOR_ADDRESS_MAX);
   return neighborBitSetHas(&set->twoHopReachSets[to], from);
 }
 
-void neighborSetAddRelation(Neighbor_Set_t *set, UWB_Address_t from, UWB_Address_t to) {
+void neighborSetAddRelation(Neighbor_Set_t *set, UWB_Address_t from, UWB_Address_t to)
+{
   ASSERT(from <= NEIGHBOR_ADDRESS_MAX);
   ASSERT(to <= NEIGHBOR_ADDRESS_MAX);
-  if (!neighborBitSetHas(&set->twoHopReachSets[to], from)) {
+  if (!neighborBitSetHas(&set->twoHopReachSets[to], from))
+  {
     neighborBitSetAdd(&set->twoHopReachSets[to], from);
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, from);
   }
 }
 
-void neighborSetRemoveRelation(Neighbor_Set_t *set, UWB_Address_t from, UWB_Address_t to) {
+void neighborSetRemoveRelation(Neighbor_Set_t *set, UWB_Address_t from, UWB_Address_t to)
+{
   ASSERT(from <= NEIGHBOR_ADDRESS_MAX);
   ASSERT(to <= NEIGHBOR_ADDRESS_MAX);
-  if (neighborBitSetHas(&set->twoHopReachSets[to], from)) {
+  if (neighborBitSetHas(&set->twoHopReachSets[to], from))
+  {
     neighborBitSetRemove(&set->twoHopReachSets[to], from);
     neighborSetHooksInvoke(&set->neighborTopologyChangeHooks, from);
   }
 }
 
-void neighborSetRegisterNewNeighborHook(Neighbor_Set_t *set, neighborSetHook hook) {
+void neighborSetRegisterNewNeighborHook(Neighbor_Set_t *set, neighborSetHook hook)
+{
   ASSERT(hook);
   Neighbor_Set_Hooks_t cur = {
       .hook = hook,
-      .next = (struct Neighbor_Set_Hook_Node *) set->neighborNewHooks.hook
-  };
+      .next = (struct Neighbor_Set_Hook_Node *)set->neighborNewHooks.hook};
   set->neighborNewHooks = cur;
 }
 
-void neighborSetRegisterExpirationHook(Neighbor_Set_t *set, neighborSetHook hook) {
+void neighborSetRegisterExpirationHook(Neighbor_Set_t *set, neighborSetHook hook)
+{
   ASSERT(hook);
   Neighbor_Set_Hooks_t cur = {
       .hook = hook,
-      .next = (struct Neighbor_Set_Hook_Node *) set->neighborExpirationHooks.hook
-  };
+      .next = (struct Neighbor_Set_Hook_Node *)set->neighborExpirationHooks.hook};
   set->neighborExpirationHooks = cur;
 }
 
-void neighborSetRegisterTopologyChangeHook(Neighbor_Set_t *set, neighborSetHook hook) {
+void neighborSetRegisterTopologyChangeHook(Neighbor_Set_t *set, neighborSetHook hook)
+{
   ASSERT(hook);
   Neighbor_Set_Hooks_t cur = {
       .hook = hook,
-      .next = (struct Neighbor_Set_Hook_Node *) set->neighborTopologyChangeHooks.hook
-  };
+      .next = (struct Neighbor_Set_Hook_Node *)set->neighborTopologyChangeHooks.hook};
   set->neighborTopologyChangeHooks = cur;
 }
 
-void neighborSetHooksInvoke(Neighbor_Set_Hooks_t *hooks, UWB_Address_t neighborAddress) {
+void neighborSetHooksInvoke(Neighbor_Set_Hooks_t *hooks, UWB_Address_t neighborAddress)
+{
   neighborSetHook cur = hooks->hook;
-  while (cur != NULL) {
+  while (cur != NULL)
+  {
     DEBUG_PRINT("neighborSetHooksInvoke: Invoke neighbor set hook.\n");
     cur(neighborAddress);
-    cur = (neighborSetHook) hooks->next;
+    cur = (neighborSetHook)hooks->next;
   }
 }
 
-void neighborSetUpdateExpirationTime(Neighbor_Set_t *set, UWB_Address_t neighborAddress) {
+void neighborSetUpdateExpirationTime(Neighbor_Set_t *set, UWB_Address_t neighborAddress)
+{
   ASSERT(neighborAddress <= NEIGHBOR_ADDRESS_MAX);
   set->expirationTime[neighborAddress] = xTaskGetTickCount() + M2T(NEIGHBOR_SET_HOLD_TIME);
 }
 
-int neighborSetClearExpire(Neighbor_Set_t *set) {
+int neighborSetClearExpire(Neighbor_Set_t *set)
+{
   Time_t curTime = xTaskGetTickCount();
   int evictionCount = 0;
-  for (UWB_Address_t neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++) {
-    if (neighborSetHas(set, neighborAddress) && set->expirationTime[neighborAddress] <= curTime) {
+  for (UWB_Address_t neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++)
+  {
+    if (neighborSetHas(set, neighborAddress) && set->expirationTime[neighborAddress] <= curTime)
+    {
       evictionCount++;
       neighborSetRemoveNeighbor(set, neighborAddress);
       DEBUG_PRINT("neighborSetClearExpire: neighbor %u expire at %lu.\n", neighborAddress, curTime);
@@ -675,10 +797,12 @@ int neighborSetClearExpire(Neighbor_Set_t *set) {
   return evictionCount;
 }
 
-static void topologySensing(Ranging_Message_t *rangingMessage) {
-//  DEBUG_PRINT("topologySensing: Received ranging message from neighbor %u.\n", rangingMessage->header.srcAddress);
+static void topologySensing(Ranging_Message_t *rangingMessage)
+{
+  //  DEBUG_PRINT("topologySensing: Received ranging message from neighbor %u.\n", rangingMessage->header.srcAddress);
   UWB_Address_t neighborAddress = rangingMessage->header.srcAddress;
-  if (!neighborSetHasOneHop(&neighborSet, neighborAddress)) {
+  if (!neighborSetHasOneHop(&neighborSet, neighborAddress))
+  {
     /* Add current neighbor to one-hop neighbor set. */
     neighborSetAddOneHopNeighbor(&neighborSet, neighborAddress);
   }
@@ -686,29 +810,39 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
 
   /* Infer one-hop and tow-hop neighbors from received ranging message. */
   uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-  for (int i = 0; i < bodyUnitCount; i++) {
-    #ifdef ROUTING_OLSR_ENABLE
-    if (rangingMessage->bodyUnits[i].address == uwbGetAddress()) {
+  for (int i = 0; i < bodyUnitCount; i++)
+  {
+#ifdef ROUTING_OLSR_ENABLE
+    if (rangingMessage->bodyUnits[i].address == uwbGetAddress())
+    {
       /* If been selected as MPR, add neighbor to mpr selector set. */
-      if (rangingMessage->bodyUnits[i].flags.MPR) {
-        if (!mprSelectorSetHas(getGlobalMPRSelectorSet(), neighborAddress)) {
+      if (rangingMessage->bodyUnits[i].flags.MPR)
+      {
+        if (!mprSelectorSetHas(getGlobalMPRSelectorSet(), neighborAddress))
+        {
           mprSelectorSetAdd(getGlobalMPRSelectorSet(), neighborAddress);
         }
         mprSelectorSetUpdateExpirationTime(getGlobalMPRSelectorSet(), neighborAddress);
-      } else {
-        if (mprSelectorSetHas(getGlobalMPRSelectorSet(), neighborAddress)) {
+      }
+      else
+      {
+        if (mprSelectorSetHas(getGlobalMPRSelectorSet(), neighborAddress))
+        {
           mprSelectorSetRemove(getGlobalMPRSelectorSet(), neighborAddress);
         }
       }
     }
-    #endif
+#endif
     UWB_Address_t twoHopNeighbor = rangingMessage->bodyUnits[i].address;
-    if (twoHopNeighbor != uwbGetAddress() && !neighborSetHasOneHop(&neighborSet, twoHopNeighbor)) {
+    if (twoHopNeighbor != uwbGetAddress() && !neighborSetHasOneHop(&neighborSet, twoHopNeighbor))
+    {
       /* If it is not one-hop neighbor then it is now my two-hop neighbor, if new add it to neighbor set. */
-      if (!neighborSetHasTwoHop(&neighborSet, twoHopNeighbor)) {
+      if (!neighborSetHasTwoHop(&neighborSet, twoHopNeighbor))
+      {
         neighborSetAddTwoHopNeighbor(&neighborSet, twoHopNeighbor);
       }
-      if (!neighborSetHasRelation(&neighborSet, neighborAddress, twoHopNeighbor)) {
+      if (!neighborSetHasRelation(&neighborSet, neighborAddress, twoHopNeighbor))
+      {
         neighborSetAddRelation(&neighborSet, neighborAddress, twoHopNeighbor);
       }
       neighborSetUpdateExpirationTime(&neighborSet, twoHopNeighbor);
@@ -716,23 +850,28 @@ static void topologySensing(Ranging_Message_t *rangingMessage) {
   }
 }
 
-static void neighborSetClearExpireTimerCallback(TimerHandle_t timer) {
+static void neighborSetClearExpireTimerCallback(TimerHandle_t timer)
+{
   xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
   Time_t curTime = xTaskGetTickCount();
   DEBUG_PRINT("neighborSetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
 
   int evictionCount = neighborSetClearExpire(&neighborSet);
-  if (evictionCount > 0) {
+  if (evictionCount > 0)
+  {
     DEBUG_PRINT("neighborSetClearExpireTimerCallback: Evict total %d neighbors.\n", evictionCount);
-  } else {
+  }
+  else
+  {
     DEBUG_PRINT("neighborSetClearExpireTimerCallback: Evict none.\n");
   }
 
   xSemaphoreGive(neighborSet.mu);
 }
 
-void printRangingTable(Ranging_Table_t *table) {
+void printRangingTable(Ranging_Table_t *table)
+{
   DEBUG_PRINT("Rp = %u, Tr = %u, Rf = %u, \n",
               table->Rp.seqNumber,
               table->TrRrBuffer.candidates[table->TrRrBuffer.latest].Tr.seqNumber,
@@ -745,10 +884,13 @@ void printRangingTable(Ranging_Table_t *table) {
   DEBUG_PRINT("\n");
 }
 
-void printRangingTableSet(Ranging_Table_Set_t *set) {
+void printRangingTableSet(Ranging_Table_Set_t *set)
+{
   DEBUG_PRINT("neighbor\t distance\t period\t expire\t \n");
-  for (int i = 0; i < set->size; i++) {
-    if (set->tables[i].neighborAddress == UWB_DEST_EMPTY) {
+  for (int i = 0; i < set->size; i++)
+  {
+    if (set->tables[i].neighborAddress == UWB_DEST_EMPTY)
+    {
       continue;
     }
     DEBUG_PRINT("%u\t %d\t %lu\t %lu\t \n",
@@ -760,67 +902,83 @@ void printRangingTableSet(Ranging_Table_Set_t *set) {
   DEBUG_PRINT("---\n");
 }
 
-void printRangingMessage(Ranging_Message_t *rangingMessage) {
-  for (int i = 0; i < RANGING_MAX_Tr_UNIT; i++) {
+void printRangingMessage(Ranging_Message_t *rangingMessage)
+{
+  for (int i = 0; i < RANGING_MAX_Tr_UNIT; i++)
+  {
     DEBUG_PRINT("lastTxTimestamp %d seq=%u, lastTxTimestamp=%2x%8lx\n",
                 i,
                 rangingMessage->header.lastTxTimestamps[i].seqNumber,
                 rangingMessage->header.lastTxTimestamps[i].timestamp.high8,
                 rangingMessage->header.lastTxTimestamps[i].timestamp.low32);
   }
-  if (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t) == 0) {
+  if (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t) == 0)
+  {
     return;
   }
   uint16_t body_unit_number = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-  if (body_unit_number >= RANGING_MAX_BODY_UNIT) {
+  if (body_unit_number >= RANGING_MAX_BODY_UNIT)
+  {
     DEBUG_PRINT("printRangingMessage: malformed body unit number.\n");
     return;
   }
-  for (int i = 0; i < body_unit_number; i++) {
+  for (int i = 0; i < body_unit_number; i++)
+  {
     DEBUG_PRINT("unitAddress=%u, Seq=%u\n",
                 rangingMessage->bodyUnits[i].address,
                 rangingMessage->bodyUnits[i].timestamp.seqNumber);
   }
 }
 
-void printNeighborBitSet(Neighbor_Bit_Set_t *bitSet) {
+void printNeighborBitSet(Neighbor_Bit_Set_t *bitSet)
+{
   DEBUG_PRINT("%u has %u neighbors = ", uwbGetAddress(), bitSet->size);
-  for (int neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++) {
-    if (neighborBitSetHas(bitSet, neighborAddress)) {
+  for (int neighborAddress = 0; neighborAddress <= NEIGHBOR_ADDRESS_MAX; neighborAddress++)
+  {
+    if (neighborBitSetHas(bitSet, neighborAddress))
+    {
       DEBUG_PRINT("%u ", neighborAddress);
     }
   }
   DEBUG_PRINT("\n");
 }
 
-void printNeighborSet(Neighbor_Set_t *set) {
+void printNeighborSet(Neighbor_Set_t *set)
+{
   DEBUG_PRINT("%u has %u one hop neighbors, %u two hop neighbors, %u neighbors in total.\n",
               uwbGetAddress(),
               set->oneHop.size,
               set->twoHop.size,
-              set->size
-  );
+              set->size);
   DEBUG_PRINT("one-hop neighbors = ");
-  for (UWB_Address_t oneHopNeighbor = 0; oneHopNeighbor <= NEIGHBOR_ADDRESS_MAX; oneHopNeighbor++) {
-    if (neighborBitSetHas(&set->oneHop, oneHopNeighbor)) {
+  for (UWB_Address_t oneHopNeighbor = 0; oneHopNeighbor <= NEIGHBOR_ADDRESS_MAX; oneHopNeighbor++)
+  {
+    if (neighborBitSetHas(&set->oneHop, oneHopNeighbor))
+    {
       DEBUG_PRINT("%u ", oneHopNeighbor);
     }
   }
   DEBUG_PRINT("\n");
   DEBUG_PRINT("two-hop neighbors = ");
-  for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++) {
-    if (neighborBitSetHas(&set->twoHop, twoHopNeighbor)) {
+  for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++)
+  {
+    if (neighborBitSetHas(&set->twoHop, twoHopNeighbor))
+    {
       DEBUG_PRINT("%u ", twoHopNeighbor);
     }
   }
   DEBUG_PRINT("\n");
-  for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++) {
-    if (!neighborBitSetHas(&set->twoHop, twoHopNeighbor)) {
+  for (UWB_Address_t twoHopNeighbor = 0; twoHopNeighbor <= NEIGHBOR_ADDRESS_MAX; twoHopNeighbor++)
+  {
+    if (!neighborBitSetHas(&set->twoHop, twoHopNeighbor))
+    {
       continue;
     }
     DEBUG_PRINT("to two-hop neighbor %u: ", twoHopNeighbor);
-    for (UWB_Address_t oneHopNeighbor = 0; oneHopNeighbor <= NEIGHBOR_ADDRESS_MAX; oneHopNeighbor++) {
-      if (neighborSetHasRelation(set, oneHopNeighbor, twoHopNeighbor)) {
+    for (UWB_Address_t oneHopNeighbor = 0; oneHopNeighbor <= NEIGHBOR_ADDRESS_MAX; oneHopNeighbor++)
+    {
+      if (neighborSetHasRelation(set, oneHopNeighbor, twoHopNeighbor))
+      {
         DEBUG_PRINT("%u ", oneHopNeighbor);
       }
     }
@@ -830,16 +988,19 @@ void printNeighborSet(Neighbor_Set_t *set) {
 
 static int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
                                Timestamp_Tuple_t Tr, Timestamp_Tuple_t Rr,
-                               Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf) {
+                               Timestamp_Tuple_t Tf, Timestamp_Tuple_t Rf)
+{
 
   bool isErrorOccurred = false;
 
-  if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber) {
+  if (Tp.seqNumber != Rp.seqNumber || Tr.seqNumber != Rr.seqNumber || Tf.seqNumber != Rf.seqNumber)
+  {
     DEBUG_PRINT("Ranging Error: sequence number mismatch\n");
     isErrorOccurred = true;
   }
 
-  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber) {
+  if (Tp.seqNumber >= Tf.seqNumber || Rp.seqNumber >= Rf.seqNumber)
+  {
     DEBUG_PRINT("Ranging Error: sequence number out of order\n");
     isErrorOccurred = true;
   }
@@ -852,81 +1013,91 @@ static int16_t computeDistance(Timestamp_Tuple_t Tp, Timestamp_Tuple_t Rp,
   diff1 = tRound1 - tReply1;
   diff2 = tRound2 - tReply2;
   t = (diff1 * tReply2 + diff2 * tReply1 + diff2 * diff1) / (tRound1 + tRound2 + tReply1 + tReply2);
-  int16_t distance = (int16_t) t * 0.4691763978616;
+  int16_t distance = (int16_t)t * 0.4691763978616;
 
-  if (distance < 0) {
+  if (distance < 0)
+  {
     DEBUG_PRINT("Ranging Error: distance < 0\n");
     isErrorOccurred = true;
   }
 
-  if (distance > 1000) {
+  if (distance > 1000)
+  {
     DEBUG_PRINT("Ranging Error: distance > 1000\n");
     isErrorOccurred = true;
   }
 
-  if (isErrorOccurred) {
+  if (isErrorOccurred)
+  {
     return -1;
   }
 
   return distance;
 }
 
-static void S1_Tf(Ranging_Table_t *rangingTable) {
+static void S1_Tf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
   rangingTable->state = RANGING_STATE_S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S1_Tf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S1_Tf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable) {
+static void S1_RX_NO_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   rangingTable->state = RANGING_STATE_S1;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
-//  DEBUG_PRINT("S1_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
+  //  DEBUG_PRINT("S1_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S1_RX_Rf(Ranging_Table_t *rangingTable) {
+static void S1_RX_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   rangingTable->state = RANGING_STATE_S1;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
-//  DEBUG_PRINT("S1_RX_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
+  //  DEBUG_PRINT("S1_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S2_Tf(Ranging_Table_t *rangingTable) {
+static void S2_Tf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
   rangingTable->state = RANGING_STATE_S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S2_Tf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S2_Tf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable) {
+static void S2_RX_NO_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   rangingTable->state = RANGING_STATE_S2;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
-//  DEBUG_PRINT("S2_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("Invalid state transition occurs, just ignore\n");
+  //  DEBUG_PRINT("S2_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
+static void S2_RX_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Find corresponding Tf in TfBuffer, it is possible that can not find corresponding Tf. */
   rangingTable->Tf = findTfBySeqNumber(rangingTable->Rf.seqNumber);
-  if (!rangingTable->Tf.timestamp.full) {
+  if (!rangingTable->Tf.timestamp.full)
+  {
     DEBUG_PRINT("Cannot found corresponding Tf in Tf buffer, the ranging frequency may be too high or Tf buffer is in a small size.");
   }
 
@@ -946,20 +1117,22 @@ static void S2_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S2_RX_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S2_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S3_Tf(Ranging_Table_t *rangingTable) {
+static void S3_Tf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
   rangingTable->state = RANGING_STATE_S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S3_Tf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S3_Tf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
+static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Shift ranging table
@@ -972,10 +1145,11 @@ static void S3_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S3_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S3_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
+static void S3_RX_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Shift ranging table
@@ -988,20 +1162,22 @@ static void S3_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = RANGING_STATE_S3;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S3_RX_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S3_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S4_Tf(Ranging_Table_t *rangingTable) {
+static void S4_Tf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Don't update Tf here since sending message is an async action, we put all Tf in TfBuffer. */
   rangingTable->state = RANGING_STATE_S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S4_Tf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S4_Tf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable) {
+static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Shift ranging table
@@ -1014,10 +1190,11 @@ static void S4_RX_NO_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->state = RANGING_STATE_S4;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S4_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S4_RX_NO_Rf: S%d -> S%d\n", prevState, curState);
 }
 
-static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
+static void S4_RX_Rf(Ranging_Table_t *rangingTable)
+{
   RANGING_TABLE_STATE prevState = rangingTable->state;
 
   /* Find corresponding Tf in TfBuffer, it is possible that can not find corresponding Tf. */
@@ -1026,25 +1203,29 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   Ranging_Table_Tr_Rr_Candidate_t Tr_Rr_Candidate = rangingTableBufferGetCandidate(&rangingTable->TrRrBuffer,
                                                                                    rangingTable->Tf);
 
-//  printRangingTable(rangingTable);
+  //  printRangingTable(rangingTable);
 
   /* try to compute distance */
   int16_t distance = computeDistance(rangingTable->Tp, rangingTable->Rp,
                                      Tr_Rr_Candidate.Tr, Tr_Rr_Candidate.Rr,
                                      rangingTable->Tf, rangingTable->Rf);
-  #ifdef ENABLE_RANGING_STAT
+#ifdef ENABLE_RANGING_STAT
   statTotalRangingCount++;
   statRangingCount[rangingTable->neighborAddress]++;
-  if (distance > 0) {
+  if (distance > 0)
+  {
     statTotalRangingSuccessCount++;
     statRangingSuccessCount[rangingTable->neighborAddress]++;
   }
-  #endif
-  if (distance > 0) {
+#endif
+  if (distance > 0)
+  {
     rangingTable->distance = distance;
     setDistance(rangingTable->neighborAddress, distance);
-  } else {
-//    DEBUG_PRINT("distance is not updated since some error occurs\n");
+  }
+  else
+  {
+    //    DEBUG_PRINT("distance is not updated since some error occurs\n");
   }
 
   /* Shift ranging table
@@ -1061,30 +1242,38 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
   rangingTable->Re = empty;
 
   // TODO: check if valid
-  rangingTable->state = RANGING_STATE_S3;
+  rangingTable->state = RANGING_STATE_S3; 
+  // rangingTable->state = RANGING_STATE_S1;
+  uint16_t neighborAddress = rangingTable->neighborAddress;
+  *rangingTable = EMPTY_RANGING_TABLE;
+  rangingTable->neighborAddress = neighborAddress;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
-//  DEBUG_PRINT("S4_RX_Rf: S%d -> S%d\n", prevState, curState);
+  //  DEBUG_PRINT("S4_RX_Rf: S%d -> S%d\n", prevState, curState);
 }
 
 /* Don't call this handler function. */
-static void S5_Tf(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("S5_Tf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
+static void S5_Tf(Ranging_Table_t *rangingTable)
+{
+  //  DEBUG_PRINT("S5_Tf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
 }
 
 /* Don't call this handler function. */
-static void S5_RX_NO_Rf(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("S5_RX_NO_Rf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
+static void S5_RX_NO_Rf(Ranging_Table_t *rangingTable)
+{
+  //  DEBUG_PRINT("S5_RX_NO_Rf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
 }
 
 /* Don't call this handler function. */
-static void S5_RX_Rf(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("S5_RX_Rf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
+static void S5_RX_Rf(Ranging_Table_t *rangingTable)
+{
+  //  DEBUG_PRINT("S5_RX_Rf: invalid handler invocation of temporary state RANGING_STATE_S5\n");
 }
 
 /* Don't call this handler function. */
-static void RESERVED_STUB(Ranging_Table_t *rangingTable) {
-//  DEBUG_PRINT("RESERVED_STUB: Error, been invoked unexpectedly\n");
+static void RESERVED_STUB(Ranging_Table_t *rangingTable)
+{
+  //  DEBUG_PRINT("RESERVED_STUB: Error, been invoked unexpectedly\n");
 }
 
 static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING_TABLE_EVENT_COUNT] = {
@@ -1094,32 +1283,37 @@ static RangingTableEventHandler EVENT_HANDLER[RANGING_TABLE_STATE_COUNT][RANGING
     {S3_Tf, S3_RX_NO_Rf, S3_RX_Rf},
     {S4_Tf, S4_RX_NO_Rf, S4_RX_Rf},
     /* RANGING_STATE_S5 is effectively a temporary state for distance calculation, never been invoked */
-    {S5_Tf, S5_RX_NO_Rf, S5_RX_Rf}
-};
+    {S5_Tf, S5_RX_NO_Rf, S5_RX_Rf}};
 
-void rangingTableOnEvent(Ranging_Table_t *table, RANGING_TABLE_EVENT event) {
+void rangingTableOnEvent(Ranging_Table_t *table, RANGING_TABLE_EVENT event)
+{
   ASSERT(table->state < RANGING_TABLE_STATE_COUNT);
   ASSERT(event < RANGING_TABLE_EVENT_COUNT);
   EVENT_HANDLER[table->state][event](table);
 }
 
 /* Swarm Ranging */
-static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithTimestamp) {
+static int processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithTimestamp)
+{
   Ranging_Message_t *rangingMessage = &rangingMessageWithTimestamp->rangingMessage;
   uint16_t neighborAddress = rangingMessage->header.srcAddress;
   int neighborIndex = rangingTableSetSearchTable(&rangingTableSet, neighborAddress);
 
   /* Handle new neighbor */
-  if (neighborIndex == -1) {
+  if (neighborIndex == -1)
+  {
     Ranging_Table_t table;
     rangingTableInit(&table, neighborAddress);
     /* Ranging table set is full, ignore this ranging message. */
-    if (!rangingTableSetAddTable(&rangingTableSet, table)) {
+    if (!rangingTableSetAddTable(&rangingTableSet, table))
+    {
       DEBUG_PRINT("processRangingMessage: Ranging table is full = %d, cannot handle new neighbor %d.\n",
                   rangingTableSet.size,
                   neighborAddress);
-      return;
-    } else {
+      return 0;
+    }
+    else
+    {
       neighborIndex = rangingTableSetSearchTable(&rangingTableSet, neighborAddress);
     }
   }
@@ -1138,47 +1332,62 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
    * help when experiencing continuous packet loss.
    */
   Ranging_Table_Tr_Rr_Buffer_t *neighborTrRrBuffer = &neighborRangingTable->TrRrBuffer;
-  for (int i = 0; i < RANGING_MAX_Tr_UNIT; i++) {
-    if (rangingMessage->header.lastTxTimestamps[i].timestamp.full
-        && neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.timestamp.full
-        && rangingMessage->header.lastTxTimestamps[i].seqNumber
-            == neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.seqNumber) {
+  for (int i = 0; i < RANGING_MAX_Tr_UNIT; i++)
+  {
+    if (rangingMessage->header.lastTxTimestamps[i].timestamp.full && neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.timestamp.full && rangingMessage->header.lastTxTimestamps[i].seqNumber == neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr.seqNumber)
+    {
       rangingTableBufferUpdate(&neighborRangingTable->TrRrBuffer,
                                rangingMessage->header.lastTxTimestamps[i],
                                neighborTrRrBuffer->candidates[neighborTrRrBuffer->cur].Rr);
       break;
     }
   }
-//  printRangingMessage(rangingMessage);
+  //  printRangingMessage(rangingMessage);
 
   /* Try to find corresponding Rf for MY_UWB_ADDRESS. */
   Timestamp_Tuple_t neighborRf = {.timestamp.full = 0, .seqNumber = 0};
-  if (rangingMessage->header.filter & (1 << (uwbGetAddress() % 16))) {
+  int flag = MY_UWB_ADDRESS*slotTime+1;
+  if (rangingMessage->header.filter & (1 << (uwbGetAddress() % 16)))
+  {
+    DEBUG_PRINT("have\n");
     /* Retrieve body unit from received ranging message. */
     uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
-    for (int i = 0; i < bodyUnitCount; i++) {
-      if (rangingMessage->bodyUnits[i].address == uwbGetAddress()) {
+    for (int i = 0; i < bodyUnitCount; i++)
+    {
+      if (rangingMessage->bodyUnits[i].address == uwbGetAddress())
+      {
         neighborRf = rangingMessage->bodyUnits[i].timestamp;
+        flag = rangingMessage->bodyUnits[i].delayTime;
         break;
       }
     }
   }
 
   /* Trigger event handler according to Rf */
-  if (neighborRf.timestamp.full) {
+  if (neighborRf.timestamp.full)
+  {
     neighborRangingTable->Rf = neighborRf;
     rangingTableOnEvent(neighborRangingTable, RANGING_EVENT_RX_Rf);
-  } else {
+  }
+  else
+  {
     rangingTableOnEvent(neighborRangingTable, RANGING_EVENT_RX_NO_Rf);
   }
 
-  #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
+#ifdef ENABLE_DYNAMIC_RANGING_PERIOD
   /* update period according to distance and velocity */
   neighborRangingTable->period = M2T(DYNAMIC_RANGING_COEFFICIENT * (neighborRangingTable->distance / rangingMessage->header.velocity));
   /* bound ranging period between RANGING_PERIOD_MIN and RANGING_PERIOD_MAX */
   neighborRangingTable->period = MAX(neighborRangingTable->period, M2T(RANGING_PERIOD_MIN));
   neighborRangingTable->period = MIN(neighborRangingTable->period, M2T(RANGING_PERIOD_MAX));
-  #endif
+#endif
+  if (neighborAddress == 0)
+  {
+    // DEBUG_PRINT("recv 0,delaytime:%d\n",flag);
+    return flag;
+  }else{
+    return 0;
+  }
 }
 
 /* By default, we include each neighbor's latest rx timestamp to body unit in index order of ranging table, which
@@ -1221,7 +1430,8 @@ static void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessa
  * nextExpectedDeliveryTime (only include timestamp with expected next delivery time less or equal than current
  * time) by sort the ranging table set by each timestamp's last send time.
  */
-static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
+static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage)
+{
   int8_t bodyUnitNumber = 0;
   int curSeqNumber = rangingSeqNumber;
   rangingSeqNumber++;
@@ -1229,23 +1439,30 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   Time_t curTime = xTaskGetTickCount();
   /* Using the default RANGING_PERIOD when DYNAMIC_RANGING_PERIOD is not enabled. */
   Time_t taskDelay = M2T(RANGING_PERIOD);
-  #ifdef ENABLE_BUS_BOARDING_SCHEME
+#ifdef ENABLE_BUS_BOARDING_SCHEME
   rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_NEXT_EXPECTED_DELIVERY_TIME);
-  #else
+#else
   rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_LAST_SEND_TIME);
-  #endif
+#endif
 
   /* Generate message body */
-  for (int index = 0; index < rangingTableSet.size; index++) {
-    if (bodyUnitNumber >= RANGING_MAX_BODY_UNIT) {
+  for (int index = 0; index < rangingTableSet.size; index++)
+  {
+    if (bodyUnitNumber >= RANGING_MAX_BODY_UNIT)
+    {
       break;
     }
     Ranging_Table_t *table = &rangingTableSet.tables[index];
-    if (table->latestReceived.timestamp.full) {
+    // DEBUG_PRINT("start generate\n");
+    // if (table->latestReceived.timestamp.full)
+    {
+      // DEBUG_PRINT("table->neighborAddress:%d\n",table->neighborAddress);
       /* Only include timestamps with expected delivery time less or equal than current time. */
-      if (table->nextExpectedDeliveryTime > curTime) {
-        continue;
-      }
+      // if (table->nextExpectedDeliveryTime > curTime)
+      // {
+      //   continue;
+      // }
+      // DEBUG_PRINT("end generate\n");
       table->nextExpectedDeliveryTime = curTime + M2T(table->period);
       table->lastSendTime = curTime;
       rangingMessage->bodyUnits[bodyUnitNumber].address = table->neighborAddress;
@@ -1253,25 +1470,29 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
        * waiting to be handled.
        */
       rangingMessage->bodyUnits[bodyUnitNumber].timestamp = table->latestReceived;
+      rangingMessage->bodyUnits[bodyUnitNumber].delayTime = (index + 1) * slotTime;
       rangingMessage->header.filter |= 1 << (table->neighborAddress % 16);
       rangingTableOnEvent(table, RANGING_EVENT_TX_Tf);
 
-      #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
+#ifdef ENABLE_DYNAMIC_RANGING_PERIOD
       /* Change task delay dynamically, may increase packet loss rate since ranging period now is determined
        * by the minimum expected delivery time.
        */
       taskDelay = MIN(taskDelay, table->nextExpectedDeliveryTime - curTime);
       /* Bound the dynamic task delay between RANGING_PERIOD_MIN and RANGING_PERIOD */
       taskDelay = MAX(RANGING_PERIOD_MIN, taskDelay);
-      #endif
+#endif
 
-      #ifdef ROUTING_OLSR_ENABLE
-      if (mprSetHas(getGlobalMPRSet(), table->neighborAddress)) {
+#ifdef ROUTING_OLSR_ENABLE
+      if (mprSetHas(getGlobalMPRSet(), table->neighborAddress))
+      {
         rangingMessage->bodyUnits[bodyUnitNumber].flags.MPR = true;
-      } else {
+      }
+      else
+      {
         rangingMessage->bodyUnits[bodyUnitNumber].flags.MPR = false;
       }
-      #endif
+#endif
 
       bodyUnitNumber++;
     }
@@ -1286,11 +1507,11 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   float velocityZ = logGetFloat(idVelocityZ);
   velocity = sqrt(pow(velocityX, 2) + pow(velocityY, 2) + pow(velocityZ, 2));
   /* velocity in cm/s */
-  rangingMessage->header.velocity = (short) (velocity * 100);
-//  DEBUG_PRINT("generateRangingMessage: ranging message size = %u with %u body units.\n",
-//              rangingMessage->header.msgLength,
-//              bodyUnitNumber
-//  );
+  rangingMessage->header.velocity = (short)(velocity * 100);
+  //  DEBUG_PRINT("generateRangingMessage: ranging message size = %u with %u body units.\n",
+  //              rangingMessage->header.msgLength,
+  //              bodyUnitNumber
+  //  );
 
   /* Keeps ranging table in order to perform binary search */
   rangingTableSetRearrange(&rangingTableSet, COMPARE_BY_ADDRESS);
@@ -1298,7 +1519,8 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage) {
   return taskDelay;
 }
 
-static void uwbRangingTxTask(void *parameters) {
+static void uwbRangingTxTask(void *parameters)
+{
   systemWaitStart();
 
   /* velocity log variable id */
@@ -1311,94 +1533,142 @@ static void uwbRangingTxTask(void *parameters) {
   txPacketCache.header.destAddress = UWB_DEST_ANY;
   txPacketCache.header.type = UWB_RANGING_MESSAGE;
   txPacketCache.header.length = 0;
-  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)&txPacketCache.payload;
 
-  while (true) {
+  while (true)
+  {
     xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
     xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
     Time_t taskDelay = generateRangingMessage(rangingMessage);
     txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
     uwbSendPacketBlock(&txPacketCache);
-//    printRangingTableSet(&rangingTableSet);
-//    printNeighborSet(&neighborSet);
+    //    printRangingTableSet(&rangingTableSet);
+    //    printNeighborSet(&neighborSet);
 
-    #ifdef ENABLE_RANGING_STAT
+#ifdef ENABLE_RANGING_STAT
     statUpdateTX(rangingMessage);
-    #endif
+#endif
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
-    vTaskDelay(taskDelay);
+    vTaskDelay(slotTime * slotSupportNum);
   }
 }
 
-static void uwbRangingRxTask(void *parameters) {
+static void uwbRangingTxPassive(int shouldDelayTime)
+{
+  systemWaitStart();
+  vTaskDelay(shouldDelayTime);
+  // DEBUG_PRINT("tx\n");
+  /* velocity log variable id */
+  idVelocityX = logGetVarId("stateEstimate", "vx");
+  idVelocityY = logGetVarId("stateEstimate", "vy");
+  idVelocityZ = logGetVarId("stateEstimate", "vz");
+
+  UWB_Packet_t txPacketCache;
+  txPacketCache.header.srcAddress = uwbGetAddress();
+  txPacketCache.header.destAddress = UWB_DEST_ANY;
+  txPacketCache.header.type = UWB_RANGING_MESSAGE;
+  txPacketCache.header.length = 0;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)&txPacketCache.payload;
+
+  // while (true)
+  {
+    xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+    xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
+
+    Time_t taskDelay = generateRangingMessage(rangingMessage);
+    txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
+    uwbSendPacketBlock(&txPacketCache);
+    //    printRangingTableSet(&rangingTableSet);
+    //    printNeighborSet(&neighborSet);
+
+#ifdef ENABLE_RANGING_STAT
+    statUpdateTX(rangingMessage);
+#endif
+    xSemaphoreGive(neighborSet.mu);
+    xSemaphoreGive(rangingTableSet.mu);
+    // vTaskDelay(slotTime*slotSupportNum);
+  }
+}
+
+static void uwbRangingRxTask(void *parameters)
+{
   systemWaitStart();
 
   Ranging_Message_With_Timestamp_t rxPacketCache;
 
-  while (true) {
-    if (xQueueReceive(rxQueue, &rxPacketCache, portMAX_DELAY)) {
+  while (true)
+  {
+    if (xQueueReceive(rxQueue, &rxPacketCache, portMAX_DELAY))
+    {
       xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
       xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
-      processRangingMessage(&rxPacketCache);
+      int result_delaytime = processRangingMessage(&rxPacketCache);
       topologySensing(&rxPacketCache.rangingMessage);
 
-      #ifdef ENABLE_RANGING_STAT
+#ifdef ENABLE_RANGING_STAT
       statUpdateRX(&rxPacketCache.rangingMessage);
-      #endif
+#endif
 
       xSemaphoreGive(neighborSet.mu);
       xSemaphoreGive(rangingTableSet.mu);
+      if (MY_UWB_ADDRESS!=0 && result_delaytime > 0)
+      {
+        uwbRangingTxPassive(result_delaytime);
+      }
     }
     vTaskDelay(M2T(1));
   }
 }
 
-void rangingRxCallback(void *parameters) {
+void rangingRxCallback(void *parameters)
+{
   // DEBUG_PRINT("rangingRxCallback \n");
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-  UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
 
   dwTime_t rxTime;
-  dwt_readrxtimestamp((uint8_t *) &rxTime.raw);
+  dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
   rxMessageWithTimestamp.rxTime = rxTime;
-  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
   rxMessageWithTimestamp.rangingMessage = *rangingMessage;
 
   xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
 }
 
-void rangingTxCallback(void *parameters) {
-  UWB_Packet_t *packet = (UWB_Packet_t *) parameters;
-  Ranging_Message_t *rangingMessage = (Ranging_Message_t *) packet->payload;
+void rangingTxCallback(void *parameters)
+{
+  UWB_Packet_t *packet = (UWB_Packet_t *)parameters;
+  Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
 
   dwTime_t txTime;
-  dwt_readtxtimestamp((uint8_t *) &txTime.raw);
+  dwt_readtxtimestamp((uint8_t *)&txTime.raw);
 
   Timestamp_Tuple_t timestamp = {.timestamp = txTime, .seqNumber = rangingMessage->header.msgSequence};
   updateTfBuffer(timestamp);
 }
 
-void rangingInit() {
+void rangingInit()
+{
   MY_UWB_ADDRESS = uwbGetAddress();
   rxQueue = xQueueCreate(RANGING_RX_QUEUE_SIZE, RANGING_RX_QUEUE_ITEM_SIZE);
   neighborSetInit(&neighborSet);
   neighborSetEvictionTimer = xTimerCreate("neighborSetEvictionTimer",
                                           M2T(NEIGHBOR_SET_HOLD_TIME / 2),
                                           pdTRUE,
-                                          (void *) 0,
+                                          (void *)0,
                                           neighborSetClearExpireTimerCallback);
   xTimerStart(neighborSetEvictionTimer, M2T(0));
   rangingTableSetInit(&rangingTableSet);
   rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetEvictionTimer",
                                               M2T(RANGING_TABLE_HOLD_TIME / 2),
                                               pdTRUE,
-                                              (void *) 0,
+                                              (void *)0,
                                               rangingTableSetClearExpireTimerCallback);
   xTimerStart(rangingTableSetEvictionTimer, M2T(0));
   TfBufferMutex = xSemaphoreCreateMutex();
@@ -1412,9 +1682,16 @@ void rangingInit() {
   idVelocityX = logGetVarId("stateEstimate", "vx");
   idVelocityY = logGetVarId("stateEstimate", "vy");
   idVelocityZ = logGetVarId("stateEstimate", "vz");
-
-  xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
-              ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
+  if (MY_UWB_ADDRESS == 0)
+  {
+    xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
+                ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
+  }
+  // for (size_t i = 0; i < 3; i++)
+  // {
+  //   uwbRangingTxPassive(1000);
+  // }
+  
   xTaskCreate(uwbRangingRxTask, ADHOC_DECK_RANGING_RX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbRangingRxTaskHandle);
 }
@@ -1430,5 +1707,5 @@ LOG_GROUP_START(Ranging)
 //        LOG_ADD(LOG_INT16, distTo8, distanceTowards + 8)
 //        LOG_ADD(LOG_INT16, distTo9, distanceTowards + 9)
 //        LOG_ADD(LOG_INT16, distTo10, distanceTowards + 10)
-        LOG_ADD(LOG_FLOAT, lossRate, &statLossRateF)
+LOG_ADD(LOG_FLOAT, lossRate, &statLossRateF)
 LOG_GROUP_STOP(Ranging)

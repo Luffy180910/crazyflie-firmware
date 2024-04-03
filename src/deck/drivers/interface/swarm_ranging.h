@@ -53,6 +53,7 @@ typedef struct {
     uint8_t RESERVED: 7;
   } flags; // 1 byte
   uint16_t address; // 2 byte
+  uint16_t delayTime; // 2 byte
   Timestamp_Tuple_t timestamp; // 10 byte
 } __attribute__((packed)) Body_Unit_t; // 13 byte
 

@@ -220,7 +220,7 @@ static int uwbInit() {
 
 static void uwbTxTask(void *parameters) {
   systemWaitStart();
-
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
   UWB_Packet_t packetCache;
   while (true) {
     if (xQueueReceive(txQueue, &packetCache, portMAX_DELAY)) {
@@ -244,7 +244,7 @@ static void uwbTxTask(void *parameters) {
             listeners[packetCache.header.type].txCb(&packetCache);
           }
         }
-      }
+    }
       vTaskDelay(M2T(1));
     }
   }
