@@ -1061,6 +1061,7 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable) {
     //    DEBUG_PRINT("distance is not updated since some error occurs\n");
   }
 
+
   /* Shift ranging table
    * Rp <- Rf
    * Tp <- Tf  Rr <- Re
@@ -1349,21 +1350,24 @@ static void uwbRangingTxTask(void *parameters) {
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;
 
   while (true) {
-    xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-    xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
+    for (int i = 0; i < 2; i++) {
+      xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+      xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
-    Time_t taskDelay = generateRangingMessage(rangingMessage);
-    txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
-    uwbSendPacketBlock(&txPacketCache);
-    //    printRangingTableSet(&rangingTableSet);
-    //    printNeighborSet(&neighborSet);
+      Time_t taskDelay = generateRangingMessage(rangingMessage);
+      txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
+      uwbSendPacketBlock(&txPacketCache);
+      //    printRangingTableSet(&rangingTableSet);
+      //    printNeighborSet(&neighborSet);
 
 #ifdef ENABLE_RANGING_STAT
-    statUpdateTX(rangingMessage);
+      statUpdateTX(rangingMessage);
 #endif
-    xSemaphoreGive(neighborSet.mu);
-    xSemaphoreGive(rangingTableSet.mu);
-    vTaskDelay(slotTime * (rangingTableSet.size + 1));
+      xSemaphoreGive(neighborSet.mu);
+      xSemaphoreGive(rangingTableSet.mu);
+      vTaskDelay(slotTime * (rangingTableSet.size + 1));
+    }
+    vTaskDelay(M2T(RANGING_PERIOD));
   }
 }
 
