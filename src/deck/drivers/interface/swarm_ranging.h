@@ -16,12 +16,12 @@
 #define ENABLE_RANGING_STAT
 
 /* Ranging Constants */
-#define RANGING_PERIOD 200 // default in 200ms
+#define RANGING_PERIOD 100 // default in 200ms
 #define RANGING_PERIOD_MIN 50 // default 50ms
 #define RANGING_PERIOD_MAX 500 // default 500ms
 
 /* Queue Constants */
-#define RANGING_RX_QUEUE_SIZE 5
+#define RANGING_RX_QUEUE_SIZE 15
 #define RANGING_RX_QUEUE_ITEM_SIZE sizeof(Ranging_Message_With_Timestamp_t)
 
 /* Ranging Struct Constants */

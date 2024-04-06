@@ -83,7 +83,7 @@ double statTotalLossRate = 0.0;
 // #endif
 
 uint16_t slotTime = 5;
-uint16_t slotSupportNum = 10;
+uint16_t slotSupportNum = 15;
 
 static void printRangingStat()
 {
@@ -438,22 +438,26 @@ static int rangingTableSetClearExpire(Ranging_Table_Set_t *set)
 
 static void rangingTableSetClearExpireTimerCallback(TimerHandle_t timer)
 {
-  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-
-  Time_t curTime = xTaskGetTickCount();
-  DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
-
-  int evictionCount = rangingTableSetClearExpire(&rangingTableSet);
-  if (evictionCount > 0)
-  {
-    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict total %d ranging tables.\n", evictionCount);
-  }
-  else
-  {
-    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict none.\n");
+  if (uwbGetAddress() == 0) {
+    printRangingStat();
   }
 
-  xSemaphoreGive(rangingTableSet.mu);
+//  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+//
+//  Time_t curTime = xTaskGetTickCount();
+//  DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
+//
+//  int evictionCount = rangingTableSetClearExpire(&rangingTableSet);
+//  if (evictionCount > 0)
+//  {
+//    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict total %d ranging tables.\n", evictionCount);
+//  }
+//  else
+//  {
+//    DEBUG_PRINT("rangingTableSetClearExpireTimerCallback: Evict none.\n");
+//  }
+//
+//  xSemaphoreGive(rangingTableSet.mu);
 }
 
 bool rangingTableSetAddTable(Ranging_Table_Set_t *set, Ranging_Table_t table)
@@ -868,7 +872,6 @@ static void neighborSetClearExpireTimerCallback(TimerHandle_t timer)
   // }
 
   // xSemaphoreGive(neighborSet.mu);
-  printRangingStat();
   if(MY_UWB_ADDRESS!=0){
     dwt_rxenable(DWT_START_RX_IMMEDIATE);
   }
@@ -1592,7 +1595,7 @@ static void uwbRangingTxPassive(int shouldDelayTime)
 #endif
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
-    // vTaskDelay(slotTime*slotSupportNum);
+    vTaskDelay(slotTime*(rangingTableSet.size + 1));
   }
 }
 
@@ -1670,11 +1673,11 @@ void rangingInit()
   xTimerStart(neighborSetEvictionTimer, M2T(0));
   rangingTableSetInit(&rangingTableSet);
   rangingTableSetEvictionTimer = xTimerCreate("rangingTableSetEvictionTimer",
-                                              M2T(RANGING_TABLE_HOLD_TIME / 2),
+                                              M2T(10 * 1000),
                                               pdTRUE,
                                               (void *)0,
                                               rangingTableSetClearExpireTimerCallback);
-  // xTimerStart(rangingTableSetEvictionTimer, M2T(0));
+  xTimerStart(rangingTableSetEvictionTimer, M2T(0));
   TfBufferMutex = xSemaphoreCreateMutex();
 
   listener.type = UWB_RANGING_MESSAGE;
@@ -1708,4 +1711,8 @@ LOG_GROUP_START(Ranging)
 //        LOG_ADD(LOG_INT16, distTo9, distanceTowards + 9)
 //        LOG_ADD(LOG_INT16, distTo10, distanceTowards + 10)
 LOG_ADD(LOG_FLOAT, lossRate, &statLossRateF)
+LOG_ADD(LOG_UINT32, sendCount, &statTotalSendCount)
+LOG_ADD(LOG_UINT32, recvCount, &statTotalRecvCount)
+LOG_ADD(LOG_UINT32, rc, &statTotalRangingCount)
+LOG_ADD(LOG_UINT32, rsc, &statTotalRangingSuccessCount)
 LOG_GROUP_STOP(Ranging)
