@@ -1363,7 +1363,7 @@ static void uwbRangingTxTask(void *parameters) {
 #endif
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
-    vTaskDelay(slotTime * slotSupportNum);
+    vTaskDelay(slotTime * (rangingTableSet.size + 1));
   }
 }
 
@@ -1399,7 +1399,7 @@ static void uwbRangingTxPassive(int shouldDelayTime) {
 #endif
     xSemaphoreGive(neighborSet.mu);
     xSemaphoreGive(rangingTableSet.mu);
-    vTaskDelay(slotTime * (rangingTableSet.size + 1));
+//    vTaskDelay(slotTime * slotSupportNum);
   }
 }
 
