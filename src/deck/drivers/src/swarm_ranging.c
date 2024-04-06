@@ -145,7 +145,7 @@ static void statUpdateRX(Ranging_Message_t *rangingMessage)
       statLossCount[neighborAddress] * 1.0 / (statLastRecvSeq[neighborAddress] - statFirstRecvSeq[neighborAddress] + 1);
   statTotalLossRate = statTotalLossCount * 1.0 / statTotalRecvCount;
   statLossRateF = (float)statTotalLossRate;
-  printNeighborStat(rangingMessage->header.srcAddress);
+  // printNeighborStat(rangingMessage->header.srcAddress);
 }
 
 int16_t getDistance(UWB_Address_t neighborAddress)
@@ -852,22 +852,26 @@ static void topologySensing(Ranging_Message_t *rangingMessage)
 
 static void neighborSetClearExpireTimerCallback(TimerHandle_t timer)
 {
-  xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
+  // xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
-  Time_t curTime = xTaskGetTickCount();
-  DEBUG_PRINT("neighborSetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
+  // Time_t curTime = xTaskGetTickCount();
+  // DEBUG_PRINT("neighborSetClearExpireTimerCallback: Trigger expiration timer at %lu.\n", curTime);
 
-  int evictionCount = neighborSetClearExpire(&neighborSet);
-  if (evictionCount > 0)
-  {
-    DEBUG_PRINT("neighborSetClearExpireTimerCallback: Evict total %d neighbors.\n", evictionCount);
+  // int evictionCount = neighborSetClearExpire(&neighborSet);
+  // if (evictionCount > 0)
+  // {
+  //   DEBUG_PRINT("neighborSetClearExpireTimerCallback: Evict total %d neighbors.\n", evictionCount);
+  // }
+  // else
+  // {
+  //   DEBUG_PRINT("neighborSetClearExpireTimerCallback: Evict none.\n");
+  // }
+
+  // xSemaphoreGive(neighborSet.mu);
+  printRangingStat();
+  if(MY_UWB_ADDRESS!=0){
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
   }
-  else
-  {
-    DEBUG_PRINT("neighborSetClearExpireTimerCallback: Evict none.\n");
-  }
-
-  xSemaphoreGive(neighborSet.mu);
 }
 
 void printRangingTable(Ranging_Table_t *table)
@@ -1245,8 +1249,10 @@ static void S4_RX_Rf(Ranging_Table_t *rangingTable)
   rangingTable->state = RANGING_STATE_S3; 
   // rangingTable->state = RANGING_STATE_S1;
   uint16_t neighborAddress = rangingTable->neighborAddress;
+  Timestamp_Tuple_t latestReceived = rangingTable->latestReceived;
   *rangingTable = EMPTY_RANGING_TABLE;
   rangingTable->neighborAddress = neighborAddress;
+  rangingTable->latestReceived = latestReceived;
 
   RANGING_TABLE_STATE curState = rangingTable->state;
   //  DEBUG_PRINT("S4_RX_Rf: S%d -> S%d\n", prevState, curState);
@@ -1349,7 +1355,6 @@ static int processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessag
   int flag = MY_UWB_ADDRESS*slotTime+1;
   if (rangingMessage->header.filter & (1 << (uwbGetAddress() % 16)))
   {
-    DEBUG_PRINT("have\n");
     /* Retrieve body unit from received ranging message. */
     uint8_t bodyUnitCount = (rangingMessage->header.msgLength - sizeof(Ranging_Message_Header_t)) / sizeof(Body_Unit_t);
     for (int i = 0; i < bodyUnitCount; i++)
@@ -1363,6 +1368,7 @@ static int processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessag
     }
   }
 
+  // DEBUG_PRINT("1:%d\n",neighborRangingTable->state);
   /* Trigger event handler according to Rf */
   if (neighborRf.timestamp.full)
   {
@@ -1373,6 +1379,7 @@ static int processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessag
   {
     rangingTableOnEvent(neighborRangingTable, RANGING_EVENT_RX_NO_Rf);
   }
+  // DEBUG_PRINT("2:%d\n",neighborRangingTable->state);
 
 #ifdef ENABLE_DYNAMIC_RANGING_PERIOD
   /* update period according to distance and velocity */
@@ -1453,16 +1460,13 @@ static Time_t generateRangingMessage(Ranging_Message_t *rangingMessage)
       break;
     }
     Ranging_Table_t *table = &rangingTableSet.tables[index];
-    // DEBUG_PRINT("start generate\n");
     // if (table->latestReceived.timestamp.full)
     {
-      // DEBUG_PRINT("table->neighborAddress:%d\n",table->neighborAddress);
       /* Only include timestamps with expected delivery time less or equal than current time. */
       // if (table->nextExpectedDeliveryTime > curTime)
       // {
       //   continue;
       // }
-      // DEBUG_PRINT("end generate\n");
       table->nextExpectedDeliveryTime = curTime + M2T(table->period);
       table->lastSendTime = curTime;
       rangingMessage->bodyUnits[bodyUnitNumber].address = table->neighborAddress;
@@ -1557,7 +1561,7 @@ static void uwbRangingTxTask(void *parameters)
 
 static void uwbRangingTxPassive(int shouldDelayTime)
 {
-  systemWaitStart();
+  // systemWaitStart();
   vTaskDelay(shouldDelayTime);
   // DEBUG_PRINT("tx\n");
   /* velocity log variable id */
@@ -1670,7 +1674,7 @@ void rangingInit()
                                               pdTRUE,
                                               (void *)0,
                                               rangingTableSetClearExpireTimerCallback);
-  xTimerStart(rangingTableSetEvictionTimer, M2T(0));
+  // xTimerStart(rangingTableSetEvictionTimer, M2T(0));
   TfBufferMutex = xSemaphoreCreateMutex();
 
   listener.type = UWB_RANGING_MESSAGE;
@@ -1687,10 +1691,6 @@ void rangingInit()
     xTaskCreate(uwbRangingTxTask, ADHOC_DECK_RANGING_TX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
                 ADHOC_DECK_TASK_PRI, &uwbRangingTxTaskHandle);
   }
-  // for (size_t i = 0; i < 3; i++)
-  // {
-  //   uwbRangingTxPassive(1000);
-  // }
   
   xTaskCreate(uwbRangingRxTask, ADHOC_DECK_RANGING_RX_TASK_NAME, UWB_TASK_STACK_SIZE, NULL,
               ADHOC_DECK_TASK_PRI, &uwbRangingRxTaskHandle);
