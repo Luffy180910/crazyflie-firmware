@@ -1350,24 +1350,21 @@ static void uwbRangingTxTask(void *parameters) {
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *) &txPacketCache.payload;
 
   while (true) {
-    for (int i = 0; i < 2; i++) {
-      xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-      xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
+    xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
+    xSemaphoreTake(neighborSet.mu, portMAX_DELAY);
 
-      Time_t taskDelay = generateRangingMessage(rangingMessage);
-      txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
-      uwbSendPacketBlock(&txPacketCache);
-      //    printRangingTableSet(&rangingTableSet);
-      //    printNeighborSet(&neighborSet);
+    Time_t taskDelay = generateRangingMessage(rangingMessage);
+    txPacketCache.header.length = sizeof(UWB_Packet_Header_t) + rangingMessage->header.msgLength;
+    uwbSendPacketBlock(&txPacketCache);
+    //    printRangingTableSet(&rangingTableSet);
+    //    printNeighborSet(&neighborSet);
 
 #ifdef ENABLE_RANGING_STAT
-      statUpdateTX(rangingMessage);
+    statUpdateTX(rangingMessage);
 #endif
-      xSemaphoreGive(neighborSet.mu);
-      xSemaphoreGive(rangingTableSet.mu);
-      vTaskDelay(slotTime * (rangingTableSet.size + 1));
-    }
-    vTaskDelay(M2T(RANGING_PERIOD));
+    xSemaphoreGive(neighborSet.mu);
+    xSemaphoreGive(rangingTableSet.mu);
+    vTaskDelay(slotTime * (rangingTableSet.size + 1));
   }
 }
 
