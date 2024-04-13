@@ -14,6 +14,7 @@
 #include "olsr.h"
 #include "timers.h"
 #include "static_mem.h"
+#include "crtp_commander_high_level.h"
 
 #ifndef RANGING_DEBUG_ENABLE
 #undef DEBUG_PRINT
@@ -144,17 +145,38 @@ static void statUpdateRX(Ranging_Message_t *rangingMessage) {
 //  printNeighborStat(rangingMessage->header.srcAddress);
 }
 
-static void statTimerCallback(TimerHandle_t timer) {
-//  printRangingStat();
-  xSemaphoreTake(rangingTableSet.mu, portMAX_DELAY);
-  for (int i = 0; i < rangingTableSet.size; i++) {
-    UWB_Address_t neighborAddress = rangingTableSet.tables[i].neighborAddress;
-    DEBUG_PRINT("neighbor: %u, distance = %d, lighthouse = %f\n",
-                neighborAddress,
-                distanceTowards[neighborAddress],
-                (double) distanceLighthouse[neighborAddress]);
+bool alreadyUp = false;
+bool hasTakeOff = false;
+
+static void collisionAvoidance() {
+  state_t curState;
+  crtpCommanderHighLevelTellState(&curState);
+  DEBUG_PRINT("curState.position.z = %f\n", (double) curState.position.z);
+  if (curState.position.z > 0.15f) {
+    hasTakeOff = true;
+  } else {
+    hasTakeOff = false;
   }
-  xSemaphoreGive(rangingTableSet.mu);
+
+  if (!hasTakeOff) {
+    DEBUG_PRINT("!hasTakeOff\n");
+    return;
+  }
+
+  if (alreadyUp) {
+    DEBUG_PRINT("alreadyUp\n");
+    crtpCommanderHighLevelGoTo(0, 0, -0.5f, 0, 1, true);
+    alreadyUp = false;
+  } else {
+    DEBUG_PRINT("!alreadyUp\n");
+    crtpCommanderHighLevelGoTo(0, 0, 0.5f, 0, 1, true);
+    alreadyUp = true;
+  }
+
+}
+
+static void statTimerCallback(TimerHandle_t timer) {
+  collisionAvoidance();
 }
 
 int16_t getDistance(UWB_Address_t neighborAddress) {
@@ -1443,8 +1465,8 @@ void rangingInit() {
                                               rangingTableSetClearExpireTimerCallback);
 //  xTimerStart(rangingTableSetEvictionTimer, M2T(0));
 #ifdef ENABLE_RANGING_STAT
-  statTimer = xTimerCreate("neighborSetEvictionTimer",
-                           M2T(100),
+  statTimer = xTimerCreate("statTimer",
+                           M2T(5000),
                            pdTRUE,
                            (void *) 0,
                            statTimerCallback);
