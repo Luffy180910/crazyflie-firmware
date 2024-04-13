@@ -173,7 +173,7 @@ static void collisionAvoidance() {
     DEBUG_PRINT("up\n");
     crtpCommanderHighLevelGoTo(0, 0, 0.5f, 0, 1, true);
     alreadyUp = true;
-  } else if (distanceTowards[target] >= 25 && alreadyUp) {
+  } else if (distanceTowards[target] >= 30 && alreadyUp) {
     DEBUG_PRINT("down\n");
     crtpCommanderHighLevelGoTo(0, 0, -0.5f, 0, 1, true);
     alreadyUp = false;
