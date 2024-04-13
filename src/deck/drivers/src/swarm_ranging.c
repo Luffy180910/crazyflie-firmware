@@ -15,6 +15,7 @@
 #include "timers.h"
 #include "static_mem.h"
 #include "crtp_commander_high_level.h"
+#include "supervisor_state_machine.h"
 
 #ifndef RANGING_DEBUG_ENABLE
 #undef DEBUG_PRINT
@@ -146,31 +147,36 @@ static void statUpdateRX(Ranging_Message_t *rangingMessage) {
 }
 
 bool alreadyUp = false;
-bool hasTakeOff = false;
+logVarId_t logIsFlying;
+UWB_Address_t target = 13;
 
 static void collisionAvoidance() {
-  state_t curState;
-  crtpCommanderHighLevelTellState(&curState);
-  DEBUG_PRINT("curState.position.z = %f\n", (double) curState.position.z);
-  if (curState.position.z > 0.15f) {
-    hasTakeOff = true;
-  } else {
-    hasTakeOff = false;
+  if (uwbGetAddress() == target) {
+    return;
   }
-
-  if (!hasTakeOff) {
-    DEBUG_PRINT("!hasTakeOff\n");
+  uint8_t isFlying = logGetUint(logIsFlying);
+  DEBUG_PRINT("isFlying = %u\n", isFlying);
+  if (!isFlying) {
     return;
   }
 
-  if (alreadyUp) {
-    DEBUG_PRINT("alreadyUp\n");
-    crtpCommanderHighLevelGoTo(0, 0, -0.5f, 0, 1, true);
-    alreadyUp = false;
-  } else {
-    DEBUG_PRINT("!alreadyUp\n");
+//  float positionX = logGetFloat(idPositionX);
+//  float positionY = logGetFloat(idPositionY);
+//  float positionZ = logGetFloat(idPositionZ);
+
+//  if (positionZ <= 0.05f) {
+//    crtpCommanderHighLevelLand(positionZ, 0.5f);
+//    return;
+//  }
+
+  if (distanceTowards[target] != -1 && distanceTowards[target] <= 25 && !alreadyUp) {
+    DEBUG_PRINT("up\n");
     crtpCommanderHighLevelGoTo(0, 0, 0.5f, 0, 1, true);
     alreadyUp = true;
+  } else if (distanceTowards[target] >= 25 && alreadyUp) {
+    DEBUG_PRINT("down\n");
+    crtpCommanderHighLevelGoTo(0, 0, -0.5f, 0, 1, true);
+    alreadyUp = false;
   }
 
 }
@@ -1466,11 +1472,12 @@ void rangingInit() {
 //  xTimerStart(rangingTableSetEvictionTimer, M2T(0));
 #ifdef ENABLE_RANGING_STAT
   statTimer = xTimerCreate("statTimer",
-                           M2T(5000),
+                           M2T(500),
                            pdTRUE,
                            (void *) 0,
                            statTimerCallback);
   xTimerStart(statTimer, M2T(0));
+  logIsFlying = logGetVarId("sys", "isFlying");
 #endif
   TfBufferMutex = xSemaphoreCreateMutex();
 
