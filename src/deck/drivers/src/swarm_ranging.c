@@ -25,11 +25,117 @@ static TaskHandle_t uwbRangingRxTaskHandle = 0;
 static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int TfBufferIndex = 0;
 static int rangingSeqNumber = 1;
-
+#define RX_BUFFER_SIZE 20
+static Timestamp_Tuple_t rx_buffer[RX_BUFFER_SIZE]={0};
+static int rx_buffer_index = 0;
+static int sustained_delay = TX_PERIOD_IN_MS;
+static int temp_delay = 0;
+static int keeping_times=6;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
+
+void predict_period_in_rx(int rx_buffer_index){
+  
+  if(keeping_times!=0)
+  {
+    keeping_times--;
+    return;
+  }
+
+  for(int i=0;i<Tf_BUFFER_POOL_SIZE;i++)
+  {      
+    if(TfBuffer[i].timestamp.full && rx_buffer[rx_buffer_index].timestamp.full)
+    {   
+      /*
+      +-------+------+-------+-------+-------+------+
+      |  RX3  |  TX  |  RX1  |  RX2  |  RX3  |  TX  |
+      +-------+------+-------+-------+-------+------+
+                  ^              ^ 
+                 Tf             now
+      */
+        /*上一次TX时间 到 本次RX时间 太近*/
+        if(((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+          &&(TfBuffer[i].timestamp.full%MAX_TIMESTAMP)<(rx_buffer[rx_buffer_index].timestamp.full%MAX_TIMESTAMP))
+        { 
+          
+          if((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
+             < (uint64_t)(2/(DWT_TIME_UNITS*1000)))
+          {
+            temp_delay = -1;
+            keeping_times = 1;
+            break;
+          }
+        }
+        
+        /*本次RX时间 到 预测的下一次TX 太近*/
+        if(((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+          &&(TfBuffer[i].timestamp.full%MAX_TIMESTAMP)<(rx_buffer[rx_buffer_index].timestamp.full%MAX_TIMESTAMP))
+        { 
+          
+          if((TfBuffer[i].timestamp.full+(uint64_t)(sustained_delay/(DWT_TIME_UNITS*1000))-rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
+             < (uint64_t)(2/(DWT_TIME_UNITS*1000)))
+          {
+            temp_delay = +1;
+            keeping_times = 1;
+            break;
+          }
+        }
+    }    
+  }
+}
+
+void predict_period_in_tx(int TfBufferIndex){
+  if(keeping_times!=0)
+  {
+  keeping_times--;
+  return;
+  }
+
+  for(int i=0;i<RX_BUFFER_SIZE;i++)
+  {      
+    if(TfBuffer[TfBufferIndex].timestamp.full && rx_buffer[i].timestamp.full)
+    {   
+      /*
+      +-------+------+-------+-------+-------+------+
+      |  RX3  |  TX  |  RX1  |  RX2  |  RX3  |  TX  |
+      +-------+------+-------+-------+-------+------+
+                                                ^ 
+                                                now          
+      */
+        /*上一次TX时间 到 本次RX时间 太远*/
+        if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+          &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
+        { 
+          
+          if((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
+             > (uint64_t)(15/(DWT_TIME_UNITS*1000)))
+          {
+            sustained_delay -= 1;
+            sustained_delay =(sustained_delay>10?sustained_delay:10);
+            keeping_times = 1;
+            break;
+          }
+        }
+        
+        // /*本次RX时间 到 预测的下一次TX 太远*/
+        // if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+        //   &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
+        // { 
+          
+        //   if((TfBuffer[TfBufferIndex].timestamp.full+(uint64_t)(sustained_delay/(DWT_TIME_UNITS*1000))-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
+        //      < (uint64_t)(2/(DWT_TIME_UNITS*1000)))
+        //   {
+        //     sustained_delay += 1;
+        //     keeping_times = 1;
+        //     break;
+        //   }
+        // }
+    }    
+  }
+
+}
 
 void rangingRxCallback(void *parameters)
 {
@@ -41,6 +147,13 @@ void rangingRxCallback(void *parameters)
 
   dwTime_t rxTime = {0};
   dwt_readrxtimestamp((uint8_t *)&rxTime.raw);
+  // DEBUG_PRINT("rangingRxCallback: received packet with timestamp %f \n",(float)(rxTime.high32*DWT_TIME_UNITS*1000));
+  rx_buffer_index++;
+  rx_buffer_index %= RX_BUFFER_SIZE;
+  rx_buffer[rx_buffer_index].seqNumber = rangingSeqNumber;
+  rx_buffer[rx_buffer_index].timestamp = rxTime;
+  predict_period_in_rx(rx_buffer_index);
+  
   Ranging_Message_With_Timestamp_t rxMessageWithTimestamp;
   rxMessageWithTimestamp.rxTime = rxTime;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
@@ -53,6 +166,7 @@ void rangingTxCallback(void *parameters)
 {
   dwTime_t txTime = {0};
   dwt_readtxtimestamp((uint8_t *)&txTime.raw);
+  temp_delay=0;
   TfBufferIndex++;
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
@@ -88,7 +202,7 @@ static void uwbRangingTxTask(void *parameters)
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    vTaskDelay(TX_PERIOD_IN_MS);
+    vTaskDelay(M2T(sustained_delay+temp_delay));
   }
 }
 

@@ -14,7 +14,7 @@
 #define RANGING_INTERVAL_MIN 20 // default 20
 #define RANGING_INTERVAL_MAX 500 // default 500
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
-#define TX_PERIOD_IN_MS 20
+#define TX_PERIOD_IN_MS 30 // default 200
 
 /* Ranging Operations */
 void rangingInit();
@@ -25,5 +25,5 @@ void processRangingMessage(Ranging_Message_With_Timestamp_t *rangingMessageWithT
 int generateRangingMessage(Ranging_Message_t *rangingMessage);
 int16_t getDistance(uint16_t neighborAddress);
 void setDistance(uint16_t neighborAddress, int16_t distance);
-
+void predict_period_in_rx(int a);
 #endif
