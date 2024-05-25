@@ -25,7 +25,7 @@ static TaskHandle_t uwbRangingRxTaskHandle = 0;
 static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int TfBufferIndex = 0;
 static int rangingSeqNumber = 1;
-#define RX_BUFFER_SIZE 20
+#define RX_BUFFER_SIZE 30
 static Timestamp_Tuple_t rx_buffer[RX_BUFFER_SIZE]={0};
 static int rx_buffer_index = 0;
 #define SUSTAINED_DELAY_size 10
@@ -41,10 +41,10 @@ int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = 
 
 void predict_period_in_rx(int rx_buffer_index){
   
-  if(keeping_times!=0)
-  {
-    return;
-  }
+  // if(keeping_times!=0)
+  // {
+  //   return;
+  // }
 
   for(int i=0;i<Tf_BUFFER_POOL_SIZE;i++)
   {      
@@ -66,8 +66,8 @@ void predict_period_in_rx(int rx_buffer_index){
              < (uint64_t)(SAFETY_DISTANCE/(DWT_TIME_UNITS*1000)))
           {
             temp_delay = -1;
-            keeping_times = 5;
-            break;
+            keeping_times = 1;
+            return;
           }
         }
         
@@ -80,8 +80,8 @@ void predict_period_in_rx(int rx_buffer_index){
              < (uint64_t)(SAFETY_DISTANCE/(DWT_TIME_UNITS*1000)))
           {
             temp_delay = +1;
-            keeping_times = 5;
-            break;
+            keeping_times = 1;
+            return;
           }
         }
     }    
@@ -89,13 +89,14 @@ void predict_period_in_rx(int rx_buffer_index){
 }
 
 void predict_period_in_tx(int TfBufferIndex){
+  sustained_delay_index++;
+  sustained_delay_index %= SUSTAINED_DELAY_size;
   if(keeping_times!=0)
   {
   keeping_times--;
   return;
   }
-  sustained_delay_index++;
-  sustained_delay_index %= SUSTAINED_DELAY_size;
+  
   int number_of_tx = 0;
   for(int i=0;i<RX_BUFFER_SIZE;i++)
   {      
@@ -112,20 +113,24 @@ void predict_period_in_tx(int TfBufferIndex){
           &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
         {
           number_of_tx++;
-
         }
     }    
   }
 
+  if(number_of_tx == 0){
+    number_of_tx = 1;
+  }
   if(sustained_delay[sustained_delay_index]/number_of_tx > 6)
   {
     sustained_delay_change(-1);
-    keeping_times = 5;
+    // keeping_times = 5;
+    return;
   }
   if(sustained_delay[sustained_delay_index]/number_of_tx < 3)
   {
     sustained_delay_change(1);
-    keeping_times = 5;
+    // keeping_times = 5;
+    return;
   }
 
 }
@@ -137,7 +142,7 @@ void sustained_delay_change(int add_or_sub){
   {
     if(sustained_delay[i]*add_or_sub <temp_min)
     {
-      temp_min = sustained_delay[i];
+      temp_min = sustained_delay[i]*add_or_sub;
       temp_index = i;
     }
   }
@@ -145,7 +150,7 @@ void sustained_delay_change(int add_or_sub){
   sustained_delay[temp_index] += add_or_sub;
   sustained_delay[temp_index] =(sustained_delay[temp_index]>10?sustained_delay[temp_index]:10);
   sustained_delay[temp_index] =(sustained_delay[temp_index]<500?sustained_delay[temp_index]:500);
-  keeping_times = 5;
+  keeping_times = 3;
 
 }
 
@@ -215,7 +220,7 @@ static void uwbRangingTxTask(void *parameters)
     int msgLen = generateRangingMessage((Ranging_Message_t *)&txPacketCache.payload);
     txPacketCache.header.length = sizeof(Packet_Header_t) + msgLen;
     uwbSendPacketBlock(&txPacketCache);
-    vTaskDelay(M2T(sustained_delay+temp_delay));
+    vTaskDelay(M2T(sustained_delay[sustained_delay_index]+temp_delay));
   }
 }
 
