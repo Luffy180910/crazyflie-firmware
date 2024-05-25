@@ -28,7 +28,10 @@ static int rangingSeqNumber = 1;
 #define RX_BUFFER_SIZE 20
 static Timestamp_Tuple_t rx_buffer[RX_BUFFER_SIZE]={0};
 static int rx_buffer_index = 0;
-static int sustained_delay = TX_PERIOD_IN_MS;
+#define SUSTAINED_DELAY_size 10
+static int sustained_delay_index = 0;
+static int sustained_delay[SUSTAINED_DELAY_size] = {TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,
+                                                    TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,TX_PERIOD_IN_MS,TX_PERIOD_IN_MS};
 static int temp_delay = 0;
 static int keeping_times=6;
 static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
@@ -40,7 +43,6 @@ void predict_period_in_rx(int rx_buffer_index){
   
   if(keeping_times!=0)
   {
-    keeping_times--;
     return;
   }
 
@@ -61,10 +63,10 @@ void predict_period_in_rx(int rx_buffer_index){
         { 
           
           if((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
-             < (uint64_t)(2/(DWT_TIME_UNITS*1000)))
+             < (uint64_t)(SAFETY_DISTANCE/(DWT_TIME_UNITS*1000)))
           {
             temp_delay = -1;
-            keeping_times = 1;
+            keeping_times = 5;
             break;
           }
         }
@@ -74,11 +76,11 @@ void predict_period_in_rx(int rx_buffer_index){
           &&(TfBuffer[i].timestamp.full%MAX_TIMESTAMP)<(rx_buffer[rx_buffer_index].timestamp.full%MAX_TIMESTAMP))
         { 
           
-          if((TfBuffer[i].timestamp.full+(uint64_t)(sustained_delay/(DWT_TIME_UNITS*1000))-rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
-             < (uint64_t)(2/(DWT_TIME_UNITS*1000)))
+          if((TfBuffer[i].timestamp.full+(uint64_t)(sustained_delay[sustained_delay_index]/(DWT_TIME_UNITS*1000))-rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
+             < (uint64_t)(SAFETY_DISTANCE/(DWT_TIME_UNITS*1000)))
           {
             temp_delay = +1;
-            keeping_times = 1;
+            keeping_times = 5;
             break;
           }
         }
@@ -92,7 +94,9 @@ void predict_period_in_tx(int TfBufferIndex){
   keeping_times--;
   return;
   }
-
+  sustained_delay_index++;
+  sustained_delay_index %= SUSTAINED_DELAY_size;
+  int number_of_tx = 0;
   for(int i=0;i<RX_BUFFER_SIZE;i++)
   {      
     if(TfBuffer[TfBufferIndex].timestamp.full && rx_buffer[i].timestamp.full)
@@ -104,36 +108,44 @@ void predict_period_in_tx(int TfBufferIndex){
                                                 ^ 
                                                 now          
       */
-        /*上一次TX时间 到 本次RX时间 太远*/
         if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
           &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
-        { 
-          
-          if((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
-             > (uint64_t)(15/(DWT_TIME_UNITS*1000)))
-          {
-            sustained_delay -= 1;
-            sustained_delay =(sustained_delay>10?sustained_delay:10);
-            keeping_times = 1;
-            break;
-          }
+        {
+          number_of_tx++;
+
         }
-        
-        // /*本次RX时间 到 预测的下一次TX 太远*/
-        // if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
-        //   &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
-        // { 
-          
-        //   if((TfBuffer[TfBufferIndex].timestamp.full+(uint64_t)(sustained_delay/(DWT_TIME_UNITS*1000))-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
-        //      < (uint64_t)(2/(DWT_TIME_UNITS*1000)))
-        //   {
-        //     sustained_delay += 1;
-        //     keeping_times = 1;
-        //     break;
-        //   }
-        // }
     }    
   }
+
+  if(sustained_delay[sustained_delay_index]/number_of_tx > 6)
+  {
+    sustained_delay_change(-1);
+    keeping_times = 5;
+  }
+  if(sustained_delay[sustained_delay_index]/number_of_tx < 3)
+  {
+    sustained_delay_change(1);
+    keeping_times = 5;
+  }
+
+}
+
+void sustained_delay_change(int add_or_sub){
+  int temp_index = 0;
+  int temp_min = 1000000;
+  for(int i=0;i<SUSTAINED_DELAY_size;i++)
+  {
+    if(sustained_delay[i]*add_or_sub <temp_min)
+    {
+      temp_min = sustained_delay[i];
+      temp_index = i;
+    }
+  }
+
+  sustained_delay[temp_index] += add_or_sub;
+  sustained_delay[temp_index] =(sustained_delay[temp_index]>10?sustained_delay[temp_index]:10);
+  sustained_delay[temp_index] =(sustained_delay[temp_index]<500?sustained_delay[temp_index]:500);
+  keeping_times = 5;
 
 }
 
@@ -171,6 +183,7 @@ void rangingTxCallback(void *parameters)
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
   TfBuffer[TfBufferIndex].timestamp = txTime;
+  predict_period_in_tx(TfBufferIndex);
 }
 
 int16_t getDistance(uint16_t neighborAddress)
