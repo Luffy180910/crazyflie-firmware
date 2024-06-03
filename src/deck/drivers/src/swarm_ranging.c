@@ -25,7 +25,7 @@ static TaskHandle_t uwbRangingRxTaskHandle = 0;
 static Timestamp_Tuple_t TfBuffer[Tf_BUFFER_POOL_SIZE] = {0};
 static int TfBufferIndex = 0;
 static int rangingSeqNumber = 1;
-#define RX_BUFFER_SIZE 30
+#define RX_BUFFER_SIZE 50
 static Timestamp_Tuple_t rx_buffer[RX_BUFFER_SIZE]={0};
 static int rx_buffer_index = 0;
 #define SUSTAINED_DELAY_size 10
@@ -57,33 +57,28 @@ void predict_period_in_rx(int rx_buffer_index){
                   ^              ^ 
                  Tf             now
       */
+       
+      if(((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+        &&(TfBuffer[i].timestamp.full%MAX_TIMESTAMP)<(rx_buffer[rx_buffer_index].timestamp.full%MAX_TIMESTAMP))
+      { 
         /*上一次TX时间 到 本次RX时间 太近*/
-        if(((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
-          &&(TfBuffer[i].timestamp.full%MAX_TIMESTAMP)<(rx_buffer[rx_buffer_index].timestamp.full%MAX_TIMESTAMP))
-        { 
-          
-          if((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
-             < (uint64_t)(SAFETY_DISTANCE/(DWT_TIME_UNITS*1000)))
-          {
-            temp_delay = -1;
-            keeping_times = 1;
-            return;
-          }
+        if((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
+           < (uint64_t)(SAFETY_DISTANCE_MIN/(DWT_TIME_UNITS*1000)))
+        {
+          temp_delay = -1;
+          // keeping_times = 1;
+          return;
         }
-        
+                  
         /*本次RX时间 到 预测的下一次TX 太近*/
-        if(((-TfBuffer[i].timestamp.full+rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
-          &&(TfBuffer[i].timestamp.full%MAX_TIMESTAMP)<(rx_buffer[rx_buffer_index].timestamp.full%MAX_TIMESTAMP))
-        { 
-          
-          if((TfBuffer[i].timestamp.full+(uint64_t)(sustained_delay[sustained_delay_index]/(DWT_TIME_UNITS*1000))-rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
-             < (uint64_t)(SAFETY_DISTANCE/(DWT_TIME_UNITS*1000)))
-          {
-            temp_delay = +1;
-            keeping_times = 1;
-            return;
-          }
-        }
+        if((TfBuffer[i].timestamp.full+(uint64_t)(sustained_delay[sustained_delay_index]/(DWT_TIME_UNITS*1000))-rx_buffer[rx_buffer_index].timestamp.full)%MAX_TIMESTAMP 
+           < (uint64_t)(SAFETY_DISTANCE_MIN/(DWT_TIME_UNITS*1000)))
+        {
+          temp_delay = +1;
+          // keeping_times = 1;
+          return;
+        }      
+      }
     }    
   }
 }
@@ -120,13 +115,13 @@ void predict_period_in_tx(int TfBufferIndex){
   if(number_of_tx == 0){
     number_of_tx = 1;
   }
-  if(sustained_delay[sustained_delay_index]/number_of_tx > 6)
+  if(sustained_delay[sustained_delay_index]/number_of_tx > 10)
   {
     sustained_delay_change(-1);
     // keeping_times = 5;
     return;
   }
-  if(sustained_delay[sustained_delay_index]/number_of_tx < 3)
+  if(sustained_delay[sustained_delay_index]/number_of_tx < 5)
   {
     sustained_delay_change(1);
     // keeping_times = 5;
@@ -152,6 +147,51 @@ void sustained_delay_change(int add_or_sub){
   sustained_delay[temp_index] =(sustained_delay[temp_index]<500?sustained_delay[temp_index]:500);
   keeping_times = 3;
 
+}
+
+void predict_period_in_tx_2(int TfBufferIndex){
+  
+  bool temp_control[2]={0};
+  
+  for(int i=0;i<RX_BUFFER_SIZE;i++)
+  {      
+    if(TfBuffer[TfBufferIndex].timestamp.full && rx_buffer[i].timestamp.full)
+    {   
+      /*
+      +-------+------+-------+-------+-------+------+
+      |  RX3  |  TX  |  RX1  |  RX2  |  RX3  |  TX  |
+      +-------+------+-------+-------+-------+------+
+                                                ^ 
+                                                now          
+      */
+      if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+        &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
+      {
+        if((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
+           < (uint64_t)(SAFETY_DISTANCE_MAX/(DWT_TIME_UNITS*1000)))
+        {
+          temp_control[0] = 1;
+        }
+      }
+
+      if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
+        &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
+      {
+        if((sustained_delay[sustained_delay_index]-TfBuffer[TfBufferIndex].timestamp.full+rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
+           < (uint64_t)(SAFETY_DISTANCE_MAX/(DWT_TIME_UNITS*1000)))
+        {
+          temp_control[1] = 1;
+        }
+      }
+    }    
+  }
+
+  if(!temp_control[0] && temp_control[1]){
+    temp_delay = -1;
+  }
+  if(temp_control[0] && !temp_control[1]){
+    temp_delay = +1;  
+    }
 }
 
 void rangingRxCallback(void *parameters)
@@ -188,7 +228,7 @@ void rangingTxCallback(void *parameters)
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
   TfBuffer[TfBufferIndex].timestamp = txTime;
-  predict_period_in_tx(TfBufferIndex);
+  // predict_period_in_tx(TfBufferIndex);
 }
 
 int16_t getDistance(uint16_t neighborAddress)
