@@ -39,6 +39,23 @@ static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
 
+static Timestamp_Tuple_t neighbor_timestamp[RANGING_TABLE_SIZE][5]={0};
+
+void neighbor_add(int index, Timestamp_Tuple_t timestamp_t){
+  if(timestamp_t.timestamp.full==0)
+  return;
+  for(int i=2;i<5;i++){
+    neighbor_timestamp[index][i]=neighbor_timestamp[index][i-1];
+  }
+  neighbor_timestamp[index][1]=timestamp_t;
+
+//   neighbor_timestamp[index][0].timestamp.full =timestamp_t.timestamp.full+
+//   ((neighbor_timestamp[index][4].timestamp.full+neighbor_timestamp[index][3].timestamp.full
+//   -neighbor_timestamp[index][2].timestamp.full-neighbor_timestamp[index][1].timestamp.full)%MAX_TIMESTAMP)
+//   /(neighbor_timestamp[index][4].seqNumber+neighbor_timestamp[index][3].seqNumber
+//   -neighbor_timestamp[index][2].seqNumber-neighbor_timestamp[index][1].seqNumber);
+}
+
 void predict_period_in_rx(int rx_buffer_index){
   
   // if(keeping_times!=0)
@@ -215,7 +232,7 @@ void rangingRxCallback(void *parameters)
   rxMessageWithTimestamp.rxTime = rxTime;
   Ranging_Message_t *rangingMessage = (Ranging_Message_t *)packet->payload;
   rxMessageWithTimestamp.rangingMessage = *rangingMessage;
-
+  neighbor_add(rangingMessage->header.srcAddress,rx_buffer[rx_buffer_index]);
   xQueueSendFromISR(rxQueue, &rxMessageWithTimestamp, &xHigherPriorityTaskWoken);
 }
 
