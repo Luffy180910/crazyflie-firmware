@@ -151,7 +151,7 @@ void sustained_delay_change(int add_or_sub){
 
 void predict_period_in_tx_2(int TfBufferIndex){
   
-  bool temp_control[2]={0};
+  bool temp_control[2]={0,0};
   
   for(int i=0;i<RX_BUFFER_SIZE;i++)
   {      
@@ -177,7 +177,7 @@ void predict_period_in_tx_2(int TfBufferIndex){
       if(((TfBuffer[TfBufferIndex].timestamp.full-rx_buffer[i].timestamp.full)%MAX_TIMESTAMP < (uint64_t)(TX_PERIOD_IN_MS/(DWT_TIME_UNITS*1000)))
         &&(TfBuffer[TfBufferIndex].timestamp.full%MAX_TIMESTAMP)>(rx_buffer[i].timestamp.full%MAX_TIMESTAMP))
       {
-        if((sustained_delay[sustained_delay_index]-TfBuffer[TfBufferIndex].timestamp.full+rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
+        if((uint64_t)(sustained_delay[sustained_delay_index]/(DWT_TIME_UNITS*1000)-TfBuffer[TfBufferIndex].timestamp.full+rx_buffer[i].timestamp.full)%MAX_TIMESTAMP 
            < (uint64_t)(SAFETY_DISTANCE_MAX/(DWT_TIME_UNITS*1000)))
         {
           temp_control[1] = 1;
@@ -191,7 +191,7 @@ void predict_period_in_tx_2(int TfBufferIndex){
   }
   if(temp_control[0] && !temp_control[1]){
     temp_delay = +1;  
-    }
+  }
 }
 
 void rangingRxCallback(void *parameters)
@@ -228,7 +228,7 @@ void rangingTxCallback(void *parameters)
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
   TfBuffer[TfBufferIndex].timestamp = txTime;
-  // predict_period_in_tx(TfBufferIndex);
+  predict_period_in_tx_2(TfBufferIndex);
 }
 
 int16_t getDistance(uint16_t neighborAddress)

@@ -27,4 +27,6 @@ int generateRangingMessage(Ranging_Message_t *rangingMessage);
 int16_t getDistance(uint16_t neighborAddress);
 void setDistance(uint16_t neighborAddress, int16_t distance);
 void predict_period_in_rx(int a);
+void predict_period_in_tx_2(int a);
+
 #endif
