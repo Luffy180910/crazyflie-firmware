@@ -56,6 +56,24 @@ void neighbor_add(int index, Timestamp_Tuple_t timestamp_t){
 //   -neighbor_timestamp[index][2].seqNumber-neighbor_timestamp[index][1].seqNumber);
 }
 
+int neighbor_count(){
+  int count = 1;
+  for(int i=0;i<RANGING_TABLE_SIZE;i++){
+    if(neighbor_timestamp[i][1].timestamp.full!=0){
+      count++;
+    }
+  }
+ 
+  return count;
+}
+
+void predict_period_in_tx_3(int TfBufferIndex){
+  int number_of_rx = neighbor_count();
+  for(int i=0;i<SUSTAINED_DELAY_size;i++){
+    sustained_delay[i] = 8*number_of_rx;
+  }
+}
+
 void predict_period_in_rx(int rx_buffer_index){
   
   // if(keeping_times!=0)
@@ -245,7 +263,8 @@ void rangingTxCallback(void *parameters)
   TfBufferIndex %= Tf_BUFFER_POOL_SIZE;
   TfBuffer[TfBufferIndex].seqNumber = rangingSeqNumber;
   TfBuffer[TfBufferIndex].timestamp = txTime;
-  predict_period_in_tx_2(TfBufferIndex);
+  // predict_period_in_tx_2(TfBufferIndex);
+  predict_period_in_tx_3(TfBufferIndex);
 }
 
 int16_t getDistance(uint16_t neighborAddress)

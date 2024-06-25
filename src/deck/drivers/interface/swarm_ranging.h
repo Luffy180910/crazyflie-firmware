@@ -15,7 +15,7 @@
 #define RANGING_INTERVAL_MAX 500 // default 500
 #define Tf_BUFFER_POOL_SIZE (4 * RANGING_INTERVAL_MAX / RANGING_INTERVAL_MIN)
 #define TX_PERIOD_IN_MS 80 // default 200
-#define SAFETY_DISTANCE_MIN 5  // default 2 ms but 3 more safe
+#define SAFETY_DISTANCE_MIN 2  // default 2 ms but 3 more safe
 #define SAFETY_DISTANCE_MAX 10 // default 1000
 /* Ranging Operations */
 void rangingInit();
