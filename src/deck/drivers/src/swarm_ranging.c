@@ -38,32 +38,50 @@ static logVarId_t idVelocityX, idVelocityY, idVelocityZ;
 static float velocity;
 
 int16_t distanceTowards[RANGING_TABLE_SIZE + 1] = {[0 ... RANGING_TABLE_SIZE] = -1};
-
-static Timestamp_Tuple_t neighbor_timestamp[RANGING_TABLE_SIZE][5]={0};
+#define neighbor_timestamp_size 10
+static Timestamp_Tuple_t neighbor_timestamp[RANGING_TABLE_SIZE][neighbor_timestamp_size]={0};
 
 void neighbor_add(int index, Timestamp_Tuple_t timestamp_t){
   if(timestamp_t.timestamp.full==0)
   return;
-  for(int i=2;i<5;i++){
+  for(int i=2;i<neighbor_timestamp_size;i++){
     neighbor_timestamp[index][i]=neighbor_timestamp[index][i-1];
   }
   neighbor_timestamp[index][1]=timestamp_t;
 
-//   neighbor_timestamp[index][0].timestamp.full =timestamp_t.timestamp.full+
-//   ((neighbor_timestamp[index][4].timestamp.full+neighbor_timestamp[index][3].timestamp.full
-//   -neighbor_timestamp[index][2].timestamp.full-neighbor_timestamp[index][1].timestamp.full)%MAX_TIMESTAMP)
-//   /(neighbor_timestamp[index][4].seqNumber+neighbor_timestamp[index][3].seqNumber
-//   -neighbor_timestamp[index][2].seqNumber-neighbor_timestamp[index][1].seqNumber);
+  neighbor_timestamp[index][0].timestamp.full =timestamp_t.timestamp.full+
+  ((neighbor_timestamp[index][4].timestamp.full+neighbor_timestamp[index][3].timestamp.full
+  -neighbor_timestamp[index][2].timestamp.full-neighbor_timestamp[index][1].timestamp.full)%MAX_TIMESTAMP)
+  /(neighbor_timestamp[index][4].seqNumber+neighbor_timestamp[index][3].seqNumber
+  -neighbor_timestamp[index][2].seqNumber-neighbor_timestamp[index][1].seqNumber);
+  // DEBUG_PRINT("neighbor_add index:%d,next TX timestamp:%d,seqNumber:%d\n",index,(int)(timestamp_t.timestamp.full*(1.0 / 499.2e6 / 128.0) * 1000),timestamp_t.seqNumber);
 }
 
+//每两次发送删除一个邻居的历史记录
+void neighbor_refresh(){
+  for(int i=0;i<RANGING_TABLE_SIZE;i++){
+    for(int j=neighbor_timestamp_size-1;j>0;j--){
+      if(neighbor_timestamp[i][j].timestamp.full!=0){
+        neighbor_timestamp[i][j].timestamp.full=0;
+        neighbor_timestamp[i][j].seqNumber=0;
+        break;
+      }
+    }
+  }
+}
+
+//计算邻居个数
 int neighbor_count(){
   int count = 1;
   for(int i=0;i<RANGING_TABLE_SIZE;i++){
-    if(neighbor_timestamp[i][1].timestamp.full!=0){
-      count++;
+    for(int j=1;j<neighbor_timestamp_size;j++){
+      if(neighbor_timestamp[i][j].timestamp.full!=0)
+      {
+        count++;
+        break;
+      } 
     }
   }
- 
   return count;
 }
 
@@ -71,6 +89,9 @@ void predict_period_in_tx_3(int TfBufferIndex){
   int number_of_rx = neighbor_count();
   for(int i=0;i<SUSTAINED_DELAY_size;i++){
     sustained_delay[i] = 8*number_of_rx;
+  }
+  if(TfBufferIndex%2==1){
+    neighbor_refresh();
   }
 }
 

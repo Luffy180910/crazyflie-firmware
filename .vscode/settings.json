@@ -7,6 +7,8 @@
     "files.associations": {
         "bootloader.h": "c",
         "ranging_struct.h": "c",
-        "flooding_struct.h": "c"
+        "flooding_struct.h": "c",
+        "atomic": "c",
+        "cstdint": "c"
     }
 }
